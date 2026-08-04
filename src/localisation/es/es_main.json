@@ -75,8 +75,8 @@
     "unexpectedCharsPython": "caracter(es) inesperado(s)"
   },
   "appMessage": {
-    "editorFileUpload": "Cargando tu archive archiveo al editor...",
-    "editorFileUploadWrongVersion": "Este código se ha proudcido con una versión diferente del editor.\nLa importación puede generar errores.\n¿Aún quieres continuar?",
+    "loadEditorFile": "Cargando tu archive archiveo al editor...",
+    "loadEditorFileWrongVersion": "Este código se ha proudcido con una versión diferente del editor.\nLa importación puede generar errores.\n¿Aún quieres continuar?",
     "importsContainer": "Importaciones:",
     "defsContainer": "Definiciones:",
     "mainContainer": "Mi código:",

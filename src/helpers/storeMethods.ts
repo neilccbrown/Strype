@@ -2,13 +2,14 @@ import { getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import Parser from "@/parser/parser";
 import { useStore } from "@/store/store";
-import { AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameLabel, FrameObject, FrozenState, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, MessageDefinitions, NavigationPosition, OptionalSlotType, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
+import { AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CurrentFrame, DefsContainerDefinition, EditorFrameObjects, FieldSlot, FlatSlotBase, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameLabel, FrameObject, FrozenState, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, MessageDefinitions, NavigationPosition, OptionalSlotType, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
 import { nextTick} from "vue";
 import { checkEditorCodeErrors, countEditorCodeErrors, getCaretContainerUID, getLabelSlotUID, getMatchingBracket, parseLabelSlotUID, slotStructureParserToString } from "./editor";
 import { cloneDeep, isEqual } from "lodash";
 import scssVars from "@/assets/style/_export.module.scss";
 import { $enum } from "ts-enum-util";
 import { getUserDefinedSignature } from "@/autocompletion/acManager";
+import { calculatePrecedenceTiers } from "@/helpers/operatorPrecedence";
 
 export const retrieveSlotFromSlotInfos = (slotCoreInfos: SlotCoreInfos): FieldSlot => {
     // Retrieve the slot from its id (used for UI), check generateFlatSlotBases() for IDs explanation    
@@ -73,6 +74,36 @@ export const generateFlatSlotBases = (slot: { allowedSlotContent?: AllowedSlotCo
         slotStructure = transformEachLevel(slotStructure, topLevel);
     }
 
+    // Walks backward from the field immediately preceding operators[index], skipping over
+    // blank operator/blank-field placeholder pairs -- these flank every bracket/string/media
+    // field (reserved for a potential "." insertion, e.g. "(x).y") and are otherwise blank
+    // like a genuine unary position, so they can't be told apart by looking at a single
+    // preceding field alone. Returns true as soon as a real operand is found -- a non-blank
+    // field, or a bracket/string/media field -- at any distance back; false if we instead
+    // reach the start of the level, or a non-blank operator (a real operator/keyword
+    // directly followed by a blank gap, e.g. "if -a"'s "-").
+    const hasRealOperandBefore = (index: number): boolean => {
+        for (let i = index; i >= 0; i--) {
+            const field = slotStructure.fields[i];
+            if (!isFieldBaseSlot(field) || field.code.trim() !== "") {
+                return true;
+            }
+            if (i === 0 || slotStructure.operators[i - 1].code !== "") {
+                return false;
+            }
+        }
+        return false;
+    };
+    // A "-"/"+" is a unary sign when it's sitting in an otherwise-blank operand position
+    // (the same rule the live-typing tokenizer and pythonToFrames.ts already use to tell
+    // unary from binary sign) -- passed into calculatePrecedenceTiers so a detected unary
+    // sign binds as tightly as "~" rather than sharing binary +/-'s much looser precedence.
+    const isUnarySignAt = slotStructure.operators.map((operatorSlot, index) =>
+        (operatorSlot.code === "-" || operatorSlot.code === "+") && !hasRealOperandBefore(index));
+    // Computed once per level (i.e. per bracketed/top-level expression), so that
+    // spacing scales with the operators actually present at that level only.
+    const precedenceTiers = calculatePrecedenceTiers(slotStructure.operators.map((operatorSlot) => operatorSlot.code), isUnarySignAt);
+
     slotStructure.operators.forEach((operatorSlot, index) => {
         // Add the precededing field
         currIndex++;
@@ -114,7 +145,7 @@ export const generateFlatSlotBases = (slot: { allowedSlotContent?: AllowedSlotCo
 
         // Add this operator only if it is not blank
         if(operatorSlot.code.length > 0) {
-            addFlatSlot({...operatorSlot, id: slotId, type: SlotType.operator}, false);
+            addFlatSlot({...operatorSlot, id: slotId, type: SlotType.operator, operatorPrecedenceTier: precedenceTiers[index]}, false);
         }
     });
 
@@ -852,7 +883,70 @@ export const isContainedInFrame = function (currFrameId: number, caretPosition: 
     return isAncestorTypeFound;
 };
 
-// This method looks for the ancestor of a given frame indicated by frameId, 
+// return/global/break/continue are the only frame types whose availability at a given position isn't
+// fully captured by a plain forbiddenChildrenTypes check -- they're additionally gated by an ancestor
+// container (the Defs section, a case block, or a for/while loop). Used both to build the frame
+// commands pane's forbidden-types list (generateAvailableFrameCommands, store.ts) and to validate a
+// funccall->keyword conversion (LabelSlotsStructure.vue's isKeywordFrameConversionValid) -- both need
+// exactly the same ancestor rule, just phrased as "what's forbidden" vs "is this one type allowed".
+export const isAncestorGatedFrameTypeAllowed = function (frameId: number, caretPosition: CaretPosition, targetType: string): boolean {
+    switch(targetType){
+    case AllFrameTypesIdentifier.global:
+        return isContainedInFrame(frameId, caretPosition, [DefsContainerDefinition.type]);
+    case AllFrameTypesIdentifier.return:
+        return isContainedInFrame(frameId, caretPosition, [DefsContainerDefinition.type])
+            || isContainedInFrame(frameId, caretPosition, [AllFrameTypesIdentifier.case]);
+    case AllFrameTypesIdentifier.break:
+    case AllFrameTypesIdentifier.continue:
+        return isContainedInFrame(frameId, caretPosition, [AllFrameTypesIdentifier.for, AllFrameTypesIdentifier.while]);
+    default:
+        return true;
+    }
+};
+
+// The "RULE FOR THE JOINTS": given the joint types allowed straight after some anchor frame (either a
+// joint-eligible root like "if", or an existing joint child like "elif"/"except"), narrows that list
+// down based on what (if anything) already follows the anchor in the same joint chain -- e.g. once a
+// "finally" is present nothing else may come after it, an "else" can't be added after a "finally",
+// "try" can never take an "else" directly, and so on. Shared between the frame commands pane's
+// generateAvailableFrameCommands (store.ts) and LabelSlotsStructure.vue's computeJointAttachmentAfter,
+// which both need this exact narrowing but derive anchorFrameType/allowedJointChildren/nextJointChild
+// from different starting points (a caret position vs. an existing funccall frame's neighbours).
+export const filterAllowedJointChildrenAfter = function (anchorFrameType: string, allowedJointChildren: string[], nextJointChild: FrameObject | undefined): string[] {
+    const uniqueJointFrameTypes = [AllFrameTypesIdentifier.else, AllFrameTypesIdentifier.finally];
+    let result = [...allowedJointChildren];
+    if(nextJointChild === undefined){
+        // Nothing follows in the chain yet.
+        if(anchorFrameType === AllFrameTypesIdentifier.try){
+            // try's else is special-cased out entirely (it must follow an except, never try directly).
+            result = result.filter((t) => t !== AllFrameTypesIdentifier.else);
+        }
+        else if(uniqueJointFrameTypes.includes(anchorFrameType)){
+            // The anchor itself is a unique joint (else/finally): only whatever (if anything) is
+            // allowed to follow that specific unique remains available.
+            result = result.slice(result.indexOf(anchorFrameType) + 1);
+        }
+    }
+    else if(!uniqueJointFrameTypes.includes(nextJointChild.frameType.type)){
+        // What follows isn't unique: show all non-uniques.
+        result = result.filter((t) => !uniqueJointFrameTypes.includes(t));
+    }
+    else if(uniqueJointFrameTypes.includes(anchorFrameType)){
+        // Both the anchor and what follows are uniques (e.g. we're in an else, and a finally already
+        // follows it): nothing more can be inserted here.
+        result = [];
+    }
+    else if(anchorFrameType === AllFrameTypesIdentifier.try){
+        result = result.filter((t) => t !== AllFrameTypesIdentifier.else);
+    }
+    else{
+        // Only what follows is unique: show everything up to (but not including) it.
+        result = result.slice(0, result.indexOf(nextJointChild.frameType.type));
+    }
+    return result;
+};
+
+// This method looks for the ancestor of a given frame indicated by frameId,
 // and which has a given frame type indicated by ancestorType (we exclude sections).
 // The ancestor ID is returned if found, undefined otherwise.
 export const getAncestorFrameOfTypeId = (frameId: number, ancestorType: string): number | undefined => {
@@ -1022,6 +1116,33 @@ export function checkPrecompiledErrorsForFrame(frameId: number): void {
         useStore().addPreCompileErrors(getPrecompiledErrorFrameId(frameObject.parentId));
     }
 
+    // Check that this frame's type is actually allowed by its real parent (or joint parent) --
+    // insertion-time UI gating (generateAvailableFrameCommands, store.ts) normally prevents this, but
+    // frames can still end up somewhere invalid via other paths (e.g. an older saved project, or a
+    // frame-type conversion triggered by typing a keyword -- see the keywordFrameConversions table in
+    // LabelSlotsStructure.vue). Joint frames (elif/else/except/finally) are deliberately excluded:
+    // their validity is governed by a separate mechanism (allowJointChildren/jointFrameTypes), not
+    // forbiddenChildrenTypes -- the parent if/try's forbiddenChildrenTypes list is about its *body*,
+    // and says nothing about which joint types may attach to it, so checking it here would
+    // false-positive on essentially every existing if/elif/else and try/except/finally.
+    if(!frameObject.frameType.isJointFrame){
+        // getParentOrJointParent() covers the joint case too, but frameObject is never itself a joint
+        // frame here (guarded above), so this just resolves to frameObject.parentId.
+        const actualParentId = getParentOrJointParent(frameId);
+        // actualParentId won't always resolve to a real entry in frameObjects: pasting a lone
+        // elif/else/except/finally parses it by gluing on a throwaway if/try wrapper to get valid
+        // Python syntax first, then discards the wrapper from the pasted frame tree -- but the
+        // wrapper's own frame object still ends up in frameObjects (unreachable from any real
+        // parent, so harmless on its own), still carrying pythonToFrames.ts's TOP_LEVEL_TEMP_ID
+        // (-999) placeholder parentId it was never given a chance to have fixed up. That wrapper
+        // frame gets its own precompiled-error check like any other, so its parentId lookup here
+        // needs to tolerate not finding a real frame at all, not just the frameless "0" sentinel:
+        const actualParent = useStore().frameObjects[actualParentId];
+        if(actualParentId !== 0 && actualParent && actualParent.frameType.forbiddenChildrenTypes.includes(frameObject.frameType.type)){
+            useStore().setFrameErroneous(frameId, i18n.global.t("errorMessage.frameNotAllowedInParent"));
+            useStore().addPreCompileErrors(getPrecompiledErrorFrameId(frameId));
+        }
+    }
 }
 
 export function checkCodeErrors(frameIdForPrecompiled?: number): void {

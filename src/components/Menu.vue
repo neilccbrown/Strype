@@ -37,7 +37,8 @@
                             <span>{{ $t("appMessage.targetFS") }}</span>
                         </div>
                     </div>
-                    <div class="recent-states-pane" v-if="recentLoadableStates && recentLoadableStates.length > 0">
+                    <div><a class="open-menu-embedded-proj-link" @click="onOpenMenuLinkClick('examples')">{{$t("appMenu.loadDemoProject")}}</a><a class="open-menu-embedded-proj-link" @click="onOpenMenuLinkClick('book')">{{$t("appMenu.book")}}</a></div>
+                    <div class="recent-states-pane" v-if="showRecentUnsaved && recentLoadableStates && recentLoadableStates.length > 0">
                         <div class="d-flex justify-content-between align-items-baseline">
                             <span class="load-save-label">{{ $t("appMessage.loadRecentState") }}</span>
                             <span class="clear-all-label" @click="clearAllRecent">{{ $t("appMessage.clearAllRecent") }}</span>
@@ -251,7 +252,7 @@ import { generateSPYFileContent } from "@/helpers/load-save";
 import ModalDlg from "@/components/ModalDlg.vue";
 import { ceil, cloneDeep } from "lodash";
 import appPackageJson from "@/../package.json";
-import { getAboveFrameCaretPosition, getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
+import { checkCodeErrors, getAboveFrameCaretPosition, getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
 import scssVars from "@/assets/style/_export.module.scss";
 import OpenDemoDlg from "@/components/OpenDemoDlg.vue";
 import { CloudFileSharingStatus, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
@@ -268,11 +269,15 @@ import { eventBus, getLocaleBuildDate } from "@/helpers/appContext";
 import {checkForRecentSaveStates, deleteStates} from "@/store/store-db-storage";
 import OpenBookDlg from "@/components/OpenBookDlg.vue";
 import {trackUsedBookProject} from "@/store/analytics";
+import { useBrowserDetect } from "vue3-detect-browser";
 
 //////////////////////
 //     Component    //
 //////////////////////
 const defaultSharingProjectMode = ShareProjectMode.public;
+// The browser doesn't change during a session, so we detect it once here rather than calling
+// useBrowserDetect() (which allocates a new reactive object) on every keydown event.
+const { isSafari } = useBrowserDetect();
 export default defineComponent({
     name: "Menu",
     
@@ -343,6 +348,10 @@ export default defineComponent({
         return {
             scssVars, // just to be able to use in template
             showMenu: false,
+            // Handle for the delayed focus/click on the save dialog's filename input (see
+            // onStrypeMenuShownModalDlg) -- cleared in onStrypeMenuHideModalDlg if the dialog
+            // closes before the delay fires, so it doesn't act on stale/hidden state later:
+            saveDialogFocusTimeoutId: undefined as ReturnType<typeof setTimeout> | undefined,
             // This flag is used to know if we've added the tabindex value for the closing "button", and get the number of indexes
             retrievedTabindexesCount: -1,
             // The tabindex of the currently focused element of the menu
@@ -377,6 +386,8 @@ export default defineComponent({
 
             // States that could be loaded from the load menu:
             recentLoadableStates: [] as {label: string, sublabel: string, data: string, tabId: string}[],
+            // Whether the "recent unsaved projects" pane is revealed in the load dialog (hidden by default, toggled by Ctrl+U while the dialog is open)
+            showRecentUnsaved: false,
         };
     },
 
@@ -385,8 +396,19 @@ export default defineComponent({
         window.addEventListener(
             "keydown",
             (event: KeyboardEvent) => {
-                // Loading/saving project shortcuts
-                if((event.key.toLowerCase() === "s" || event.key.toLowerCase() === "o") && (event.metaKey || event.ctrlKey) && (!event.shiftKey)){
+                // Loading/saving project shortcuts.
+                // The control for the shortcuts is a bit awkward to preserve a tight check on the browsers: for Safari, ⌘+O is interecepted
+                // by the browser so we cannot rely on this shortcut to open a Strype project. However, ctrl+O works, but is not trivial for macOS.
+                // Therefore for Safari, we use ⌘+⇧+O to open a project (while still supportting ctrl+O), ⌘+S to save a project (but silently supports
+                // ⌘+⇧+S too for muscle memory, and ctrl+s which was already supported implictly before).
+                // For other browsers: we are restricting to ctrl+O and ctrl+S as expected (explicitly discarding ⇧ to keep not override existing browser shortcuts).
+                const lowCaseEventKey = event.key.toLowerCase();
+                const isOpeningOrSavingShortcut = ((event.metaKey || event.ctrlKey) && (lowCaseEventKey === "s" || lowCaseEventKey === "o")) 
+                    && ((isSafari)
+                        ? event.metaKey && (lowCaseEventKey === "s" || (lowCaseEventKey === "o" && event.shiftKey))
+                        : !event.shiftKey
+                    );
+                if(isOpeningOrSavingShortcut){
                     event.stopImmediatePropagation();
                     event.preventDefault();
                     if(this.isPythonRunning){
@@ -414,12 +436,22 @@ export default defineComponent({
                     event.stopImmediatePropagation();
                     event.stopPropagation();
                 }
+                // Secret shortcut to reveal the "recent unsaved projects" pane in the load dialog.
+                // Ctrl+U is normally "view page source" in the browser, so we only intercept it (and
+                // therefore only override that browser shortcut) while the load dialog is open.
+                else if(lowCaseEventKey === "u" && (event.metaKey || event.ctrlKey) && this.appStore.currentModalDlgId === this.loadProjectModalDlgId) {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    event.stopPropagation();
+                    this.showRecentUnsaved = !this.showRecentUnsaved;
+                }
             }
         );
 
         // The events from Bootstrap modal are registered on eventBus.
+        eventBus.on(CustomEventTypes.strypeModalShow, this.onStrypeMenuShowModalDlg);
         eventBus.on(CustomEventTypes.strypeModalShown, this.onStrypeMenuShownModalDlg);
-        eventBus.on(CustomEventTypes.strypeModalHidden, this.onStrypeMenuHideModalDlg);      
+        eventBus.on(CustomEventTypes.strypeModalHidden, this.onStrypeMenuHideModalDlg);
         
         // Event listener for saving project action completion
         eventBus.on(CustomEventTypes.saveStrypeProjectDoneForLoad, this.openLoadProjectDlgAfterSaved);
@@ -433,6 +465,7 @@ export default defineComponent({
 
     beforeUnmount(){
         // Just in case, we remove the Bootstrap modal event handler from eventBus
+        eventBus.off(CustomEventTypes.strypeModalShow, this.onStrypeMenuShowModalDlg);
         eventBus.off(CustomEventTypes.strypeModalShown, this.onStrypeMenuShownModalDlg);
         eventBus.off(CustomEventTypes.strypeModalHidden, this.onStrypeMenuHideModalDlg);
 
@@ -511,7 +544,7 @@ export default defineComponent({
         },
 
         loadProjectKBShortcut(): string {
-            return `${(isMacOSPlatform()) ? "⌘" : (this.$t("contextMenu.ctrl")+"+")}O`;
+            return `${(isMacOSPlatform() ? "⌘" : this.$t("contextMenu.ctrl")+"+")+(isSafari ? "⇧" : "")}O`;
         },
         
         loadProjectModalDlgId(): string {
@@ -571,7 +604,8 @@ export default defineComponent({
         },
 
         shareProjectKBShortcut(): string {
-            return `${(isMacOSPlatform()) ? "⌘" : (this.$t("contextMenu.ctrl")+"+")}⇧+L`;
+            const isMacos = isMacOSPlatform();
+            return `${(isMacos) ? "⌘" : (this.$t("contextMenu.ctrl")+"+")}⇧${isMacos ? "" : "+"}L`;
         },
 
         shareProjectModalDlgId(): string {
@@ -743,6 +777,8 @@ export default defineComponent({
 
         async openLoadProjectModal(): Promise<void> {
             this.appStore.trackMenuAction("load_project");
+            // The recent unsaved projects pane is hidden by default each time the dialog is opened; Ctrl+U reveals it.
+            this.showRecentUnsaved = false;
             // We prepare the recent states now, even if the user might need to deal with the save dialog in a moment:
             this.recentLoadableStates = (await checkForRecentSaveStates(settingsStore().locale ?? "en", "load_menu"))
                 .map((s) => {
@@ -807,10 +843,12 @@ export default defineComponent({
         },
 
         handleSaveAsMenuClick(){
-            // This is used to set the "save as" flag, and open the modal; the saving mechanism is handled via the modal.
-            this.requestSaveAs = true;
-            eventBus.emit(CustomEventTypes.showStrypeModal, this.saveProjectModalDlgId);
-
+            // Don't do anything if "save as" is grayed out
+            if(this.isSynced){
+                // This is used to set the "save as" flag, and open the modal; the saving mechanism is handled via the modal.
+                this.requestSaveAs = true;
+                eventBus.emit(CustomEventTypes.showStrypeModal, this.saveProjectModalDlgId);
+            }
         },
 
         openLoadProjectDlgAfterSaved(): void {
@@ -868,6 +906,18 @@ export default defineComponent({
             // The new UI (changing combobox to buttons) means we can't directly check the HTML component to get the selection (unless using CSS).
             // Instead, we use the temp flag we've added in this Menu component, or the value for Google Drive (default) is no changed has been made.
             return (this.tempSyncTarget != StrypeSyncTarget.none) ? this.tempSyncTarget : StrypeSyncTarget.gd;
+        },
+
+        onOpenMenuLinkClick(target: "examples" | "book"): void {
+            // When a link from the menu is clicked, we need to close the "Open" dialog (as cancelled), 
+            // and open the selected link target's dialog.
+            eventBus.emit(CustomEventTypes.hideStrypeModal, {trigger: "cancel", componentId: this.loadProjectModalDlgId});
+            if(target === "examples"){
+                this.openLoadDemoProjectModal();
+            }
+            else{
+                this.openBookModal();
+            };
         },
 
         onSaveTargetChanged(){
@@ -945,6 +995,27 @@ export default defineComponent({
             }
         },
 
+        onStrypeMenuShowModalDlg(event: BvTriggerableEvent) {
+            // This fires just before the dialog becomes visible/interactable (unlike
+            // onStrypeMenuShownModalDlg below, which fires just after). The Examples... and
+            // Book... dialogs reset their category/chapter selection to the first entry whenever
+            // they're opened -- that reset needs to happen here, before the dialog can be
+            // interacted with, rather than in the "shown" handler. Doing it on "shown" left a
+            // window where a fast click (or, in CI, Playwright) could select a different
+            // category/chapter while the dialog was already interactable but the "shown" event
+            // hadn't fired yet, only for that selection to be silently wiped out moments later
+            // when the reset ran -- e.g. clicking "Chapter 2" then having the list of projects
+            // revert back to Chapter 1's, so a project by name in another chapter was never
+            // found (see the regression test for this).
+            const dlgId = event.componentId;
+            if (dlgId == this.loadDemoProjectModalDlgId) {
+                vueComponentsAPIHandler.openDemoDlgComponentAPI?.shown();
+            }
+            else if (dlgId == this.loadBookProjectModalDlgId) {
+                (this.$refs.openBookDlg as InstanceType<typeof OpenBookDlg>).shown();
+            }
+        },
+
         onStrypeMenuShownModalDlg(event: BvTriggerableEvent) {
             const dlgId = event.componentId;
             // This method handles the workflow of the menu entries' related dialog
@@ -956,7 +1027,13 @@ export default defineComponent({
                 // Maybe because of internal Bootstrap behaviour, can't give focus to the input right now or in next ticks
                 // so we wait a bit to generate a focus/click in the input.
                 // We also check which target is selected to update target-depend UI in the modal.
-                setTimeout(() => {
+                // If the dialog is closed again before this fires (e.g. a quick save), we must
+                // cancel it -- otherwise it fires later regardless, against a stale/hidden input,
+                // and the spurious .click() it performs can trigger unrelated UI (e.g. closing
+                // whatever menu happens to be open at that moment via the editor's click-outside
+                // handler) -- see the matching clearTimeout in onStrypeMenuHideModalDlg:
+                this.saveDialogFocusTimeoutId = setTimeout(() => {
+                    this.saveDialogFocusTimeoutId = undefined;
                     this.onSaveTargetChanged();
                     const saveFileNameInputElement = (document.getElementById(this.saveFileNameInputId) as HTMLInputElement);
                     // If the save as is opened because the user requested to create a copy of a file name, we use the file stored in the save existing file infos
@@ -979,13 +1056,9 @@ export default defineComponent({
                     this.getSharingLink(defaultSharingProjectMode, true);
                 }, 2000);
             }
-            else if (dlgId == this.loadDemoProjectModalDlgId) {
-                vueComponentsAPIHandler.openDemoDlgComponentAPI?.shown();
-            }
-            else if (dlgId == this.loadBookProjectModalDlgId) {
-                (this.$refs.openBookDlg  as InstanceType<typeof OpenBookDlg>).shown();
-            }
-            else {
+            else if (dlgId != this.loadDemoProjectModalDlgId && dlgId != this.loadBookProjectModalDlgId) {
+                // (The Examples... and Book... dialogs' own "shown" work happens earlier, in
+                // onStrypeMenuShowModalDlg -- see its comment for why.)
                 // When the load or save project dialogs are opened, we focus the Google Drive selector by default when we don't have information about the source target
                 setTimeout(() => {
                     const targetToFocusButton =[...document.querySelectorAll(`#${dlgId} .${scssVars.projectTargetButtonClassName}`)].find((targetButton) => {
@@ -1126,6 +1199,12 @@ export default defineComponent({
             }
 
             if(dlgId == this.saveProjectModalDlgId){
+                // Cancel the delayed focus/click from onStrypeMenuShownModalDlg if it hasn't fired
+                // yet -- the dialog is closing now, so it must not act later on a stale input:
+                if(this.saveDialogFocusTimeoutId !== undefined){
+                    clearTimeout(this.saveDialogFocusTimeoutId);
+                    this.saveDialogFocusTimeoutId = undefined;
+                }
                 const saveExistingCloudProjectInfos = vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.getSaveExistingCloudProjectInfos();
                 if(saveExistingCloudProjectInfos){
                     vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.setSaveExistingCloudProjectInfos({...saveExistingCloudProjectInfos, isCopyFileRequested: false});  
@@ -1136,6 +1215,11 @@ export default defineComponent({
                 if(dlgId == this.saveOnLoadModalDlgId){
                     // Case of request to save/discard the file currently opened, before loading a new file:
                     // user chose to discard the file saving: we can trigger the file opening.
+                    // Before we throw the current content away, back it up to the internal webstorage
+                    // recovery copy (never the real FS/cloud target -- discarding must never silently
+                    // write to the user's actual file) so it's still recoverable via the recent-states
+                    // banner/Open Recent menu, exactly as if the tab had been closed instead of reused:
+                    eventBus.emit(CustomEventTypes.backupEditorProjectBeforeDiscard);
                     if (this.afterSaveDialog && "spy" in this.afterSaveDialog) {
                         vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(this.afterSaveDialog.spy, this.afterSaveDialog.name, 0, false, "import")
                             .then(() => this.saveTargetChoice(StrypeSyncTarget.none));
@@ -1257,10 +1341,15 @@ export default defineComponent({
                 else if (dlgId == this.loadBookProjectModalDlgId) {
                     const selectedProject = (this.$refs.openBookDlg  as InstanceType<typeof OpenBookDlg>).getSelectedProject();
                     if (selectedProject) {
+                        // We always show the book menu entry and dialog. However, the projects do not run on the micro:bit version.
+                        // Therefore, if we are on the micro:bit version, instead of loading the selected project inside the current editor,
+                        // we open a new tab pointing at the standard version with the project as if we shared it.
+                        const projectName = selectedProject.name ?? "Book";
+                        trackUsedBookProject(projectName, selectedProject.chapter);
+                        // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
                         selectedProject.projectFile.then((content) => {
                             if (content) {
-                                trackUsedBookProject(selectedProject.name ?? "Book", selectedProject.chapter);
-                                this.afterSaveDialog = {spy: content, name: selectedProject.name ?? "Book"};
+                                this.afterSaveDialog = {spy: content, name: projectName};
                                 if (this.appStore.isEditorContentModified) {
                                     eventBus.emit(CustomEventTypes.showStrypeModal, this.saveOnLoadModalDlgId);
                                 }
@@ -1269,6 +1358,12 @@ export default defineComponent({
                                 }
                             }
                         });
+                        // #v-else
+                        // For micro:bit, we can simply open a shared the project as an exteral resource since it exists in our public repository.
+                        // Of course, this rely on how we expose the projects, and that we have the correct project name set.
+                        const normalisedChapterNumber = selectedProject.chapter.replace(/chapter\s+(\d+)/i, (_, n) => n.padStart(2, "0"));
+                        window.open(`https://strype.org/editor/?${sharedStrypeProjectIdKey}=${encodeURI(`https://strype.org/editor/book_projects/chapter${normalisedChapterNumber}/${projectName}.spy`)}`, "_blank");
+                        // #v-endif
                     }
                 }
             }
@@ -1304,7 +1399,7 @@ export default defineComponent({
                         // We need to get the file content (hope for the best) and update the store
                         fileHandles[0].getFile().then((file: File) => {
                             const emitPayload: AppEvent = {requestAttention: true};
-                            emitPayload.message = this.$t("appMessage.editorFileUpload");
+                            emitPayload.message = this.$t("appMessage.loadEditorFile");
                             this.$emit(CustomEventTypes.appShowProgressOverlay, emitPayload);
                             // Make sure we have a delay for the main event loop to let us display the progress bar triggered above
                             setTimeout(() => {
@@ -1343,7 +1438,7 @@ export default defineComponent({
                 //before reading the file, we check the extension is supported for the import
                 if(files[0].name.indexOf(".") > -1 && fileImportSupportedFormats.findIndex((extension) => extension === files[0].name.substring(files[0].name.lastIndexOf(".") + 1)) > -1) {
                     const emitPayload: AppEvent = {requestAttention: true};
-                    emitPayload.message = this.$t("appMessage.editorFileUpload");
+                    emitPayload.message = this.$t("appMessage.loadEditorFile");
                     this.$emit(CustomEventTypes.appShowProgressOverlay, emitPayload);
                     // Store the file name in a variable to use it later in the callback, for some reason using files[0].name fails in Pinia, on Safari
                     const fileName = files[0].name;
@@ -1433,6 +1528,9 @@ export default defineComponent({
                 // #v-endif
                 return;
             }
+            
+            // Update errors in case they're about to download etc:
+            checkCodeErrors();
 
             const isMenuOpening = (e !== null);
             if(isMenuOpening) {
@@ -1721,6 +1819,30 @@ export default defineComponent({
     cursor: pointer;
 }
 
+.open-menu-embedded-proj-link{
+    font-size: smaller;
+    cursor: pointer;
+    color: inherit;
+    text-decoration: none;
+    border: #c5c4c1 2px solid;
+    border-radius: 6px;
+    padding: 4px 10px;
+}
+
+.open-menu-embedded-proj-link:hover,
+.open-menu-embedded-proj-link:focus {
+    border-color: #007bff;
+    box-shadow: 2px 2px 5px rgb(141, 140, 140);
+    outline: none;
+}
+
+div:has(> a.open-menu-embedded-proj-link) {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 5px;
+}
+
 .save-project-modal-dlg-container {
     display: table;
     border-spacing: 10px 10px;
@@ -1979,5 +2101,4 @@ export default defineComponent({
     color: #aaa;
     padding-left: 3rem;
 }
-
 </style>

@@ -7,10 +7,11 @@ import path from "path";
 import * as os from "os";
 import "../support/paste-test-support";
 import { checkDownloadedCodeEquals, testRoundTripPasteAndDownload, testRoundTripImportAndDownload } from "../support/paste-test-support";
-import { focusEditorAndClear, getDefaultStrypeProjectDocumentationFullLine } from "../support/test-support";
-import { scssVars } from "../support/standard-setup";
+import { focusEditorAndClear, getDefaultStrypeProjectDocumentationFullLine, getDefaultStrypeProjectImportFullLine, getDownloadedFileContent } from "../support/test-support";
+import { scssVars, strypeElIds } from "../support/standard-setup";
 
 const defaultProjectDocFullLine = getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"));
+const defaultImportFullLine = getDefaultStrypeProjectImportFullLine(Cypress.env("mode"));
 
 describe("Python round-trip", () => {
     // Some of these are semantically invalid but as long as they're syntactically valid,
@@ -20,28 +21,47 @@ describe("Python round-trip", () => {
     //const unary_operators = ["not ", "~", "-"];
     const terminals = ["0", "5.2", "-6.7", "\"hi\"", "'bye'", "True", "False", "None", "foo", "bar_baz"];
     
-    const basics = [
-        "raise 0\n",
-        "raise 0+1\n",
-        "raise 0 and 3\n",
-        "raise 0 is not 3\n",
-        "raise 0 not in 3\n",
-        "raise (1+2-3)\n",
-        "raise (1+2-3)==(4*5/6)\n",
-        // ** binds tighter than unary -, hence the space before:
-        "raise foo**-6.7**False**True**'bye'\n",
-        "try:\n    x = 0\nexcept:\n    x = 1\n",
+    // Each entry is [pasted input, expected downloaded output]. The pasted input can stay tight
+    // around symbol operators (that's still valid Python to paste in); the expected output must
+    // reflect the generator's new behaviour of always spacing a genuine binary operator, while
+    // leaving structural tokens (. , : =) and unary operator uses tight against their operand.
+    const basics: [string, string][] = [
+        ["raise 0\n", "raise 0\n"],
+        ["raise 0+1\n", "raise 0 + 1\n"],
+        ["raise 0 and 3\n", "raise 0 and 3\n"],
+        ["raise 0 is not 3\n", "raise 0 is not 3\n"],
+        ["raise 0 not in 3\n", "raise 0 not in 3\n"],
+        ["raise (1+2-3)\n", "raise (1 + 2 - 3)\n"],
+        ["raise (1+2-3)==(4*5/6)\n", "raise (1 + 2 - 3) == (4 * 5 / 6)\n"],
+        // ** binds tighter than unary -, hence the space before (binary ** is now spaced too):
+        ["raise foo**-6.7**False**True**'bye'\n", "raise foo ** -6.7 ** False ** True ** 'bye'\n"],
+        // Unary ~ (bitwise not) directly followed by a binary operator, with no
+        // parentheses to separate them -- regression test for a paste-import bug
+        // where parseNextTerm() didn't recognise "~" as a unary prefix, so it
+        // consumed "~" as a whole term on its own and then choked on the operand
+        // that follows, expecting an operator there instead:
+        ["raise ~a&b\n", "raise ~a & b\n"],
+        ["raise ~a\n", "raise ~a\n"],
+        // "lambda" has no semantic support (no parameter-list awareness) -- it's a
+        // pass-through prefix keyword operator, like "not". Regression coverage for
+        // a paste-import crash ("Unknown operator ... varargslist") since lambdef
+        // wasn't handled by parseNextTerm() at all. ":" is structural (tight) and the
+        // "-n" after it is a unary minus (tight), so these stay unspaced:
+        ["raise lambda n:-n\n", "raise lambda n:-n\n"],
+        ["raise lambda :x\n", "raise lambda :x\n"],
+        ["raise sorted(x,key= lambda n:-n,reverse=True)\n", "raise sorted(x,key= lambda n:-n,reverse=True)\n"],
+        ["try:\n    x = 0\nexcept:\n    x = 1\n", "try:\n    x = 0\nexcept:\n    x = 1\n"],
         // Expand operator:
-        "f(*a)\n",
-        "x = [*a]\n",
-        "first,*rest = x\n",
+        ["f(*a)\n", "f(*a)\n"],
+        ["x = [*a]\n", "x = [*a]\n"],
+        ["first,*rest = x\n", "first,*rest = x\n"],
         // Single element tuples (made using a trailing comma in a bracket):
-        "(x,) = a\n",
-        "print((100,))\n",        
+        ["(x,) = a\n", "(x,) = a\n"],
+        ["print((100,))\n", "print((100,))\n"],
     ];
-    for (const basic of basics) {
+    for (const [basic, expectedBasic] of basics) {
         // Since basics paste code from the default state, we need to include the default project documentation to the code
-        it("Supports pasting: " + basic, () => testRoundTripPasteAndDownload(basic, undefined, defaultProjectDocFullLine + basic));
+        it("Supports pasting: " + basic, () => testRoundTripPasteAndDownload(basic, undefined, defaultProjectDocFullLine + expectedBasic));
     }
     it("Allows pasting fixture file with functions", () => {
         // Since the default code contains a project doc, we need to include it to the code
@@ -51,7 +71,11 @@ describe("Python round-trip", () => {
         cy.fixture("python-bubble.py").then((py) => testRoundTripPasteAndDownload(py, "{uparrow}", defaultProjectDocFullLine + py));
     });
     it("Allows pasting fixture file with main code", () => {
-        cy.fixture("python-code.py").then((py) => testRoundTripPasteAndDownload(py, undefined, defaultProjectDocFullLine + py));
+        // This is the largest of the paste fixtures (92 lines/frames), so settling after the paste
+        // can take longer than the default budget on a loaded CI runner -- give it more headroom
+        // than waitForEditorSettled's default 10s (seen timing out at ~10s with the state genuinely
+        // still converging, not stuck).
+        cy.fixture("python-code.py").then((py) => testRoundTripPasteAndDownload(py, undefined, defaultProjectDocFullLine + py, undefined, undefined, undefined, 20000));
     });
     it("Allows importing fixture file with functions", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/python-functions.py");
@@ -100,6 +124,7 @@ describe("Python round-trip", () => {
 
     it("Shows an error for invalid code with wrong code", () => {
         // Since the default code contains a project doc, we need to include it to the code
+        // The fixture's invalidity comes from a "@" (matrix mult) operator, which Strype doesn't support
         testRoundTripImportAndDownload("tests/cypress/fixtures/python-invalid-hints-extract.py", defaultProjectDocFullLine);
         assertVisibleError(/invalid.*import.*operator.*line: 24/si);
     });
@@ -164,28 +189,41 @@ from a.b.c import *
 `);
     });
     
-    it("Supports basic binary operator combinations", () => {
-        for (const op of sampleSize(binary_operators, 3)) {
-            for (const lhs of sampleSize(terminals, 2)) {
-                for (const rhs of sampleSize(terminals, 3)) {
-                    // Keep a space between operands only for keyword operators (they all contains "i")
-                    const operatorSpacing = (op.includes("i")) ? " " : ""; 
-                    // Since the default code contains a project doc, we need to include it to the code
-                    const code = "raise " + lhs + operatorSpacing + op + operatorSpacing + rhs + "\n";
-                    testRoundTripPasteAndDownload(code, undefined, defaultProjectDocFullLine + code);
-                }
+    // One it() per combination, rather than looping through all of them inside a single it() as
+    // this used to do: CI (ubuntu-latest) hit a Cypress/Electron "V8 process OOM" crash partway
+    // through the ~18 round-trip paste+download+compare cycles previously accumulating within one
+    // test. Splitting them like this matches the `basics` loop above, and each new it() gets its
+    // own beforeEach page reload (registered by the paste-test-support.ts import), which resets
+    // memory in between:
+    for (const op of sampleSize(binary_operators, 3)) {
+        for (const lhs of sampleSize(terminals, 2)) {
+            for (const rhs of sampleSize(terminals, 3)) {
+                // Keep a space between operands in the pasted *input* only for keyword operators
+                // (they all contain "i") -- tight symbol operators are still valid Python to paste.
+                const operatorSpacing = (op.includes("i")) ? " " : "";
+                // Since the default code contains a project doc, we need to include it to the code
+                const code = "raise " + lhs + operatorSpacing + op + operatorSpacing + rhs + "\n";
+                // The generator now always surrounds a genuine binary operator (symbol or keyword)
+                // with spaces in its *output*, regardless of what spacing the input used:
+                const expectedCode = "raise " + lhs + " " + op + " " + rhs + "\n";
+                it("Supports basic binary operator combination: " + code.trim(), () => testRoundTripPasteAndDownload(code, undefined, defaultProjectDocFullLine + expectedCode));
             }
         }
-    });
-    it("Supports basic n-ary operator combinations", () => {
-        for (const op of sampleSize(nary_operators, 5)) {
-            // Keep a space between operands only for keyword operators (they all contains "i")
-            const operatorSpacing = (["and", "or"].includes(op)) ? " " : "";
-            // Since the default code contains a project doc, we need to include it to the code
-            const code = "raise " + sampleSize(terminals, 5).join(operatorSpacing + op + operatorSpacing) + "\n";
-            testRoundTripPasteAndDownload(code, undefined, defaultProjectDocFullLine + code);
-        }
-    });
+    }
+    for (const op of sampleSize(nary_operators, 5)) {
+        // Keep a space between operands in the pasted *input* only for keyword operators
+        // (they all contain "i") -- tight symbol operators are still valid Python to paste.
+        const operatorSpacing = (["and", "or"].includes(op)) ? " " : "";
+        const operands = sampleSize(terminals, 5);
+        // Since the default code contains a project doc, we need to include it to the code
+        const code = "raise " + operands.join(operatorSpacing + op + operatorSpacing) + "\n";
+        // The generator now always surrounds a genuine binary operator (symbol or keyword) with
+        // spaces in its output, regardless of what spacing the input used. Note: "-" between two
+        // terminals here is always used as a binary operator (there's an operand on both sides),
+        // so it always gets spaced even though "-" can also be unary elsewhere:
+        const expectedCode = "raise " + operands.join(" " + op + " ") + "\n";
+        it("Supports basic n-ary operator combination: " + code.trim(), () => testRoundTripPasteAndDownload(code, undefined, defaultProjectDocFullLine + expectedCode));
+    }
     
     // Check that if you paste something that already has indent on every line, we manage to preserve
     // the relation among the lines correctly:
@@ -199,12 +237,12 @@ from a.b.c import *
                         x = -1
                     x = x * x
 `.slice(1), "", `
-${defaultProjectDocFullLine}if x>0:
+${defaultProjectDocFullLine}if x > 0:
     x = 0
     x = 1
 else:
     x = -1
-x = x*x
+x = x * x
 `.slice(1));
     });
     it("Handles multiple functions that are all indented the same amount", () => {
@@ -340,11 +378,14 @@ finally:
         // Since the default code contains a project doc, we need to include it to the code (and all check downloads)
         testRoundTripPasteAndDownload(ifCode, undefined, defaultProjectDocFullLine + ifCode);
         const elseCode = "else:\n    x = -9\n";
-        // Parameterise, to be able to tell them apart:
+        // Parameterise, to be able to tell them apart. Pasted input can stay tight around "==";
+        // the downloaded output always spaces a genuine binary operator like "==", so we need a
+        // separate expected-output variant:
         const elifCode = (x : number) => "elif x==" + x + ":\n    x = -" + x + "\n";
+        const elifCodeExpected = (x : number) => "elif x == " + x + ":\n    x = -" + x + "\n";
 
 
-        
+
         // Test just the else after if:
         cy.get("body").type("{end}{uparrow}");
         (cy.get("body") as any).paste(elseCode);
@@ -353,18 +394,18 @@ finally:
         cy.get("body").type("{end}{backspace}");
         cy.wait(500);
         cy.get("body").type("{uparrow}");
-        
+
         // Test with one elif
         (cy.get("body") as any).paste(elifCode(0));
-        checkDownloadedCodeEquals(defaultProjectDocFullLine + ifCode + elifCode(0));
+        checkDownloadedCodeEquals(defaultProjectDocFullLine + ifCode + elifCodeExpected(0));
         // Delete just the elif:
         cy.get("body").type("{end}{backspace}");
         cy.wait(500);
         cy.get("body").type("{uparrow}");
-        
+
         // Clear and try if with two elif:
         (cy.get("body") as any).paste(elifCode(0) + elifCode(1));
-        checkDownloadedCodeEquals(defaultProjectDocFullLine + ifCode + elifCode(0) + elifCode(1));
+        checkDownloadedCodeEquals(defaultProjectDocFullLine + ifCode + elifCodeExpected(0) + elifCodeExpected(1));
         // Delete just the two elif:
         cy.get("body").type("{end}{backspace}");
         cy.wait(500);
@@ -373,7 +414,7 @@ finally:
         // Now if with three elif and an else:
         cy.get("body").type("{end}{uparrow}");
         (cy.get("body") as any).paste(elifCode(0) + elifCode(1) + elifCode(2) + elseCode);
-        checkDownloadedCodeEquals(defaultProjectDocFullLine + ifCode + elifCode(0) + elifCode(1) + elifCode(2) + elseCode);
+        checkDownloadedCodeEquals(defaultProjectDocFullLine + ifCode + elifCodeExpected(0) + elifCodeExpected(1) + elifCodeExpected(2) + elseCode);
         // Check deletion works:
         cy.get("body").type("{end}{backspace}");
         cy.wait(500);
@@ -504,16 +545,16 @@ describe("Python complex function", () => {
         print(letter,end=' ')
     print()
 `, "{uparrow}",`${defaultProjectDocFullLine}def displayBoard (missedLetters,correctLetters,secretWord):
-    print("Misses:"+str(len(missedLetters)))
+    print("Misses:" + str(len(missedLetters)))
     print()
     print("Missed letters:",end=' ')
     for letter in missedLetters:
         print(letter,end=' ')
     print()
-    blanks = '_'*len(secretWord)
+    blanks = '_' * len(secretWord)
     for i in range(len(secretWord)):
         if secretWord[i] in correctLetters:
-            blanks = blanks[:i]+secretWord[i]+blanks[i+1:]
+            blanks = blanks[:i] + secretWord[i] + blanks[i + 1:]
     for letter in blanks:
         print(letter,end=' ')
     print()
@@ -564,5 +605,225 @@ describe("Python classes", () => {
         self.x = x
         self.y = y
 `);
+    });
+});
+
+describe("Editor operations", () => {
+    it("Undo/redo simple content paste", () => {
+        // Keep a backup of the current initial project
+        getDownloadedFileContent(strypeElIds, "My project.spy", true).then((spyContent) => {
+            const initialCodeContent = spyContent;
+
+            // Then let's paste something to generate at least 2 frames
+            cy.fixture("python-only-main.py").then((py) => {
+                // Get rid of any Windows file endings:
+                const code = py.replaceAll(/\r\n/g, "\n");    
+                (cy.get("body") as any).paste(code);    
+                // We make sure our pasting has completed before saving, so that the save mechanism is based on an loaded file...
+                cy.wait(1000);    
+                // Lazy check something was pasted to be sure we have changed the code!
+                getDownloadedFileContent(strypeElIds, "My project.spy").then((spyContent) => {
+                    const afterPasteContent = spyContent;
+                    expect(spyContent).not.to.equal(initialCodeContent);
+
+                    // Then perform undo: we expect paste to be reverted entirely, and the initial code to be there
+                    cy.get("body").type("{ctrl}z").then(() => {
+                        // wait a bit, then test
+                        cy.wait(300);
+                        getDownloadedFileContent(strypeElIds, "My project.spy").then((spyContent) => {
+                            expect(spyContent).to.equal(initialCodeContent);
+
+                            // Then perform redo: we expect the paste content to be back
+                            cy.get("body").type("{ctrl}y").then(() => {
+                                // wait a bit, then test
+                                cy.wait(300);
+                                getDownloadedFileContent(strypeElIds, "My project.spy").then((spyContent) => {
+                                    expect(spyContent).to.equal(afterPasteContent);
+                                });
+                            });
+                        });
+                    });
+                });
+            });            
+        });
+    });
+
+    it("Undo/redo mixed content paste", () => {
+        // Keep a backup of the current initial project
+        getDownloadedFileContent(strypeElIds, "My project.spy", true).then((spyContent) => {
+            const initialCodeContent = spyContent;
+
+            // Then let's paste something to generate at least 2 frames
+            cy.fixture("python-mixed-1.py").then((py) => {
+                // Get rid of any Windows file endings:
+                const code = py.replaceAll(/\r\n/g, "\n");    
+                (cy.get("body") as any).paste(code);    
+                // We make sure our pasting has completed before saving, so that the save mechanism is based on an loaded file...
+                cy.wait(1000);    
+                // Lazy check something was pasted to be sure we have changed the code!
+                getDownloadedFileContent(strypeElIds, "My project.spy").then((spyContent) => {
+                    const afterPasteContent = spyContent;
+                    expect(spyContent).not.to.equal(initialCodeContent);
+
+                    // Then perform undo: we expect paste to be reverted entirely, and the initial code to be there
+                    cy.get("body").type("{ctrl}z").then(() => {
+                        // wait a bit, then test
+                        cy.wait(300);
+                        getDownloadedFileContent(strypeElIds, "My project.spy").then((spyContent) => {
+                            expect(spyContent).to.equal(initialCodeContent);
+
+                            // Then perform redo: we expect the paste content to be back
+                            cy.get("body").type("{ctrl}y").then(() => {
+                                // wait a bit, then test
+                                cy.wait(300);
+                                getDownloadedFileContent(strypeElIds, "My project.spy").then((spyContent) => {
+                                    expect(spyContent).to.equal(afterPasteContent);
+                                });
+                            });
+                        });
+                    });
+                });
+            });            
+        });
+    });
+
+    // Have a different selection direction: a bug occured only when selecting in one direction
+    // so we should try both directions in this test.
+       
+    it("Paste simple content over a selection with ctrl+a", () => {
+        // Select everything in the main selection
+        cy.get("body").type("{ctrl}a").then(() => {
+            // Then retrieve a fixture content and paste it over, and test it
+            cy.fixture("python-only-main.py").then((py) => {
+                testRoundTripPasteAndDownload(py, undefined, defaultProjectDocFullLine + defaultImportFullLine + py, true);
+            });
+        });
+    });
+
+    it("Paste simple content over a selection with shift-up", () => {
+        // First go to the end of the main section, select everything with shift+up in the main selection
+        cy.get("body").type("{end}").then(() => {
+            cy.get("body").type("{shift}{upArrow}{shift}{upArrow}").then(() => {
+                //cy.wait(300);
+                // Then retrieve a fixture content and paste it over, and test it
+                cy.fixture("python-only-main.py").then((py) => {
+                    testRoundTripPasteAndDownload(py, undefined, defaultProjectDocFullLine + defaultImportFullLine + py, true);
+                });
+            });
+        });
+    });
+
+    it("Paste mixed content over a selection", () => {
+        // Select everything in the main selection
+        cy.get("body").type("{ctrl}a").then(() => {
+            cy.wait(300);
+            // Then retrieve a fixture content and paste it over, and test it
+            cy.fixture("python-mixed-1.py").then((py) => {
+                testRoundTripPasteAndDownload(py, undefined, defaultProjectDocFullLine + defaultImportFullLine + py, true);
+            });
+        });
+    });
+
+    it("Undo/redo paste simple content over a selection", () => {
+        // Keep a backup of the current initial project
+        getDownloadedFileContent(strypeElIds, "My project.spy", true).then((spyContent) => {
+            const initialCodeContent = spyContent;
+ 
+            // Select everything in the main selection
+            cy.get("body").type("{ctrl}a").then(() => {
+                // Then retrieve a fixture content and paste it over, and test it
+                cy.fixture("python-only-main.py").then((py) => {
+                    testRoundTripPasteAndDownload(py, undefined, defaultProjectDocFullLine + defaultImportFullLine + py, true);
+
+                    // Keep a backup of the pasted code
+                    getDownloadedFileContent(strypeElIds, "My project.spy").then((spyContent) => {
+                        const pasteCodeContent = spyContent;
+
+                        // Then perform undo: we expect paste to be reverted entirely, and the initial code to be there
+                        cy.get("body").type("{ctrl}z").then(() => {
+                        // wait a bit, then test
+                            cy.wait(300);
+                            getDownloadedFileContent(strypeElIds, "My project.spy").then((spyContent) => {
+                                expect(spyContent).to.equal(initialCodeContent);
+
+                                // Then perform redo: we expect the paste content to be back
+                                cy.get("body").type("{ctrl}y").then(() => {
+                                // wait a bit, then test
+                                    cy.wait(300);
+                                    getDownloadedFileContent(strypeElIds, "My project.spy").then((spyContent) => {
+                                        expect(spyContent).to.equal(pasteCodeContent);
+                                    });
+                                });
+                            });
+                        });
+                    });
+                });
+            });
+        });
+    });
+    
+    it("Undo/redo paste mixed content over a selection", () => {
+        // Keep a backup of the current initial project
+        getDownloadedFileContent(strypeElIds, "My project.spy", true).then((spyContent) => {
+            const initialCodeContent = spyContent;
+ 
+            // Select everything in the main selection
+            cy.get("body").type("{ctrl}a").then(() => {
+                // Then retrieve a fixture content and paste it over, and test it
+                cy.fixture("python-mixed-1.py").then((py) => {
+                    testRoundTripPasteAndDownload(py, undefined, defaultProjectDocFullLine + defaultImportFullLine + py, true);
+
+                    // Keep a backup of the pasted code
+                    getDownloadedFileContent(strypeElIds, "My project.spy").then((spyContent) => {
+                        const pasteCodeContent = spyContent;
+
+                        // Then perform undo: we expect paste to be reverted entirely, and the initial code to be there
+                        cy.get("body").type("{ctrl}z").then(() => {
+                        // wait a bit, then test
+                            cy.wait(300);
+                            getDownloadedFileContent(strypeElIds, "My project.spy").then((spyContent) => {
+                                expect(spyContent).to.equal(initialCodeContent);
+
+                                // Then perform redo: we expect the paste content to be back
+                                cy.get("body").type("{ctrl}y").then(() => {
+                                // wait a bit, then test
+                                    cy.wait(300);
+                                    getDownloadedFileContent(strypeElIds, "My project.spy").then((spyContent) => {
+                                        expect(spyContent).to.equal(pasteCodeContent);
+                                    });
+                                });
+                            });
+                        });
+                    });
+                });
+            });
+        });
+    });
+
+    it("Paste invalid content over a selection (check selection remains)", () => {
+        // Keep a backup of the current initial project
+        getDownloadedFileContent(strypeElIds, "My project.spy", true).then((spyContent) => {
+            const initialCodeContent = spyContent;
+ 
+            // Select everything in the main selection
+            cy.get("body").type("{ctrl}a").then(() => {
+                // Then retrieve a fixture content and paste it over, and test it
+                cy.fixture("python-invalid.py").then((py) => {
+                    // Get rid of any Windows file endings:
+                    const code = py.replaceAll(/\r\n/g, "\n");    
+                    (cy.get("body") as any).paste(code);    
+                    // We make sure our pasting has completed before saving, so that the save mechanism is based on an loaded file...
+                    cy.wait(1000);    
+
+                    // Check undo is not available (just to make sure no action has been "recorded")
+                    cy.get(".menu-icon-entry[title=\"Undo\"").should("exist").and("be.disabled");
+
+                    // Check the code
+                    getDownloadedFileContent(strypeElIds, "My project.spy").then((spyContent) => {
+                        expect(spyContent).to.equal(initialCodeContent);
+                    });
+                });
+            });
+        });
     });
 });

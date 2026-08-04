@@ -16,7 +16,7 @@
             @change="change"
         ></cropper>
         <div class="EditSoundDlg-button-wrapper">
-            <BButton class="EditSoundDlg-play-button" :variant="playStopVariant" @click="doPlayStopPreview">{{playStopLabel}}</BButton>
+            <BButton class="EditSoundDlg-play-button" :class="{'EditSoundImageDlg-info-btn': stopPreview == null}" :variant="playStopVariant" @click="doPlayStopPreview">{{playStopLabel}}</BButton>
         </div>
         <div class="d-flex justify-content-center" style="margin-top: 10px;">
             <div class="d-flex position-relative" style="font-size: 80%;">
@@ -41,6 +41,7 @@
         <span class="EditSoundDlg-sizeInfo">{{$t("media.soundAverageVolume")}} {{Math.round(volumeRMS * 10 * 100)}}%</span>
         <div class="EditSoundDlg-button-wrapper">
             <BButton class="EditSoundDlg-normalise-button EditSoundImageDlg-info-btn" @click="doNormaliseVolume">{{$t("media.soundNormaliseVolume")}}</BButton>
+            <BButton v-if="showReRecordButton" class="EditSoundDlg-rerecord-button EditSoundImageDlg-info-btn" @click="doReRecord"><i class="fa fa-microphone"></i> {{$t("media.reRecord")}}</BButton>
         </div>
     </ModalDlg>
 </template>
@@ -77,6 +78,10 @@ export default defineComponent({
         dlgId: String,
         dlgTitle: String,
         soundToEdit: {type: [AudioBuffer, null], default: null},
+        // Only true when this dialog was opened as part of the record-new-sound flow (see
+        // RecordSoundDlg.vue / App.vue::recordNewSoundInDialog); shows an extra button that
+        // discards the current capture and goes back to the record dialog instead of closing us.
+        showReRecordButton: Boolean,
     },
     
     data: function() {
@@ -142,8 +147,10 @@ export default defineComponent({
         playStopLabel(): TranslateResult {
             return this.stopPreview == null ? this.$t("media.soundPlay") : this.$t("media.soundStop");
         },
-        playStopVariant() : "link-success" | "link-danger" {
-            return this.stopPreview == null ? "link-success" : "link-danger";
+        playStopVariant() : "secondary" | "danger" {
+            // "Play" gets its colour from the shared EditSoundImageDlg-info-btn class (like the
+            // Normalise button); "Stop" uses the danger variant for a solid red background:
+            return this.stopPreview == null ? "secondary" : "danger";
         },
     },
 
@@ -153,6 +160,9 @@ export default defineComponent({
             if (this.stopPreview != null) {
                 this.stopPreview();
             }
+        },
+        doReRecord() {
+            eventBus.emit(CustomEventTypes.hideStrypeModal, {trigger: "reRecord", componentId: this.dlgId});
         },
         defaultSize({imageSize, visibleArea} : { imageSize: {width: number, height: number}, visibleArea : {width: number, height: number} }) {
             return {
@@ -412,7 +422,9 @@ export default defineComponent({
     text-align: center;
 }
 .EditSoundDlg-button-wrapper {
-    text-align: center;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
     margin: 5px;
 }
 .EditSoundDlg-img-red-line {

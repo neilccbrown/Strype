@@ -4,7 +4,9 @@ require("cypress-terminal-report/src/installLogsCollector")();
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
 
-import {testInsert, testMultiInsert, testBackspace, testPushBracket, PushBracketArrow} from "../support/expression-test-support";
+import {testInsert, testMultiInsert, testBackspace, testPushBracket, PushBracketArrow, focusEditor, testInsertMediaThenExp} from "../support/expression-test-support";
+import {pressFrameShortcut} from "../support/test-support";
+import { assertState } from "../support/autocomplete-test-support";
 
 // We need this to prevent test failures.  I don't actually know what the error is for sure
 // (even if you log it, it is not visible), but I suspect it may be a Brython error that I
@@ -14,12 +16,21 @@ Cypress.on("uncaught:exception", (err, runnable) => {
     return false;
 });
 
-// Must clear all local storage between tests to reset the state:
+// Must clear all local storage between tests to reset the state, and set the 'paste' command:
 beforeEach(standardBeforeEach);
 
 describe("Test brackets", () => {
     it("Tests brackets", () => {
         testInsert("a+(b-c)", "{a}+{}_({b}-{c})_{$}");
+    });
+
+    it("Test brackets in a for frame LHS", () => {
+        focusEditor();
+        pressFrameShortcut("f");
+        cy.get("body").type("a,(b,c)");
+        // Frame IDs 1-4 are already taken by the starting project's 2 default imports + 2 Main
+        // frames (see nextAvailableId in initial-states.ts), so the for frame created here gets 5:
+        assertState((Cypress.env("mode") == "microbit") ? 4 : 5, "a,(b,c)$");
     });
 });
 
@@ -35,6 +46,13 @@ describe("Stride TestExpressionSlot.testBrackets()", () => {
     testInsert("a+(b-c)", "{a}+{}_({b}-{c})_{$}");
     testInsert("a+(b-(c*d))", "{a}+{}_({b}-{}_({c}*{d})_{})_{$}");
 
+    // With list comprehensions + preceding slots that are parsed by us (string, media literal)
+    testInsert("\"a\"(for ", "{}_“a”_{}_({}for{$})_{}", false);
+    if (Cypress.env("mode") != "microbit") {
+        // Can't paste media in the microbit version
+        testInsertMediaThenExp("src/assetsFilesystem/images/cat-test.jpg", "image/jpeg", "(for ", "{}_§_{}_({}for{$})_{}");
+    }
+    
     // Without close:
     testInsert("(a+b", "{}_({a}+{b$})_{}", false);
 

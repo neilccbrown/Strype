@@ -105,7 +105,7 @@ export type OpenDemoDlgComponentAPI = {
 export type LabelSlotsStructureComponentAPI = {
   forInstance: {
     [componentInstanceKey: string]: {
-      checkSlotRefactoring: (slotUID: string, stateBeforeChanges: any, options?: {skipCursorSetAndStateSave?: boolean, skipStateSaveOnly?: boolean, doAfterCursorSet?: VoidFunction, useFlatMediaDataCode?: boolean}) => void,
+      checkSlotRefactoring: (slotUID: string, stateBeforeChanges: any, options?: {skipCursorSetAndStateSave?: boolean, skipStateSaveOnly?: boolean, doAfterCursorSet?: VoidFunction, useFlatMediaDataCode?: boolean, triggeredByEnter?: boolean}) => void,
       updatePrependText: () => void,
       updatePrependTextAndCheckErrors: () => void,
     },
@@ -162,6 +162,7 @@ export type PEAComponentAPI = {
   downloadWAV: (src: AudioBuffer, filenameStem: string) => void,
   redrawCanvas: () => void,
   overrideGraphics: (background: OffscreenCanvas | HTMLImageElement | null, imageToShowCentered: OffscreenCanvas | HTMLImageElement | null) => void,
+  copyConsoleText: (event?: Event) =>void,
 };
 
 export type MediaPreviewPopupComponentAPI = {
@@ -175,5 +176,13 @@ export type EditImageDlgComponentAPI = {
 
 export type EditSoundDlgComponentAPI = {
   getUpdatedMedia: () => Promise<{code: string; mediaType: string;}>,
+}
+
+export type RecordImageDlgComponentAPI = {
+  getCapturedImageDataURL: () => string | null,
+}
+
+export type RecordSoundDlgComponentAPI = {
+  getCapturedAudioBuffer: () => AudioBuffer | null,
 }
 // #v-end-if

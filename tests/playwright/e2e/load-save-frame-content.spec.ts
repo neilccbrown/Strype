@@ -1,52 +1,25 @@
-// We want to stress test loading and saving, so we pick a random frame
-// and fill the slots with blanks or random content then see if it
+// We want to stress test loading and saving, so we enter a set of specific
+// frames and fill the slots with blanks or specific content then see if it
 // saves or not.
 
-import {allFrameCommandsDefs, AllowedSlotContent, CommentFrameTypesIdentifier, DefIdentifiers, getFrameDefType, ImportFrameTypesIdentifiers, JointFrameIdentifiers, StandardFrameTypesIdentifiers} from "../../cypress/support/frame-types";
-import seedrandom from "seedrandom";
+import {allFrameCommandsDefs, AllowedSlotContent, getFrameDefType} from "../../cypress/support/frame-types";
 import en from "../../../src/localisation/en/en_main.json";
 
 import {WINDOW_STRYPE_HTMLIDS_PROPNAME} from "../../../src/helpers/sharedIdCssWithTests";
 import {Page, test, expect, ElementHandle, JSHandle} from "@playwright/test";
 import { rename } from "fs/promises";
-import {checkFrameXorTextCursor, typeIndividually} from "../support/editor";
+import {checkFrameXorTextCursor, clearDefaultProject, pressFrameShortcut, typeIndividually, waitForEditorSettled} from "../support/editor";
 import {readFileSync} from "node:fs";
 import {createBrowserProxy} from "../support/proxy";
 import {load, save} from "../support/loading-saving";
-import { skipPyodideLoading } from "../support/general";
+import { DEFAULT_STARTING_FRAME_COUNT, setupStrypeTest } from "../support/general";
 
 let scssVars: {[varName: string]: string};
 let strypeElIds: {[varName: string]: (...args: any[]) => Promise<string>};
 test.beforeEach(async ({ page, browserName }, testInfo) => {
-    // With regards to Chromium: several of these tests fail on Chromium in Playwright on Mac and
-    // I can't figure out why.  I've tried them manually in Chrome and Chromium on the same
-    // machine and it works fine, but I see in the video that the test fails in Playwright
-    // (pressing right out of a comment frame puts the cursor at the beginning and makes a frame cursor).
-    // Since it works in the real browsers, and on Webkit and Firefox, we just skip the tests in Chromium
-    test.skip(testInfo.project.name == "chromium", "Cannot run in Chromium");
-    if (browserName === "webkit" && process.platform === "win32") {
-        // On Windows+Webkit it just can't seem to load the page for some reason:
-        testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
-    }
-
-    // These tests can take longer than the default 30 seconds:
-    testInfo.setTimeout(240000); // 240 seconds
-    
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 240000, skipPyodide: true});
     strypeElIds = createBrowserProxy(page, WINDOW_STRYPE_HTMLIDS_PROPNAME);
-    // Make browser's console.log output visible in our logs (useful for debugging):
-    page.on("console", (msg) => {
-        console.log("Browser log:", msg.text());
-    });
-    await skipPyodideLoading(page);
-    await page.goto("./", {waitUntil: "load"});
-    await page.waitForSelector("body");
-    // Wait for content to load:
-    await expect(page.locator(".frame-div")).toHaveCount(2);
     scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
-    //strypeElIds = await page.evaluate(() => (window as any)["StrypeHTMLELementsIDsGlobals"]);
-    await page.evaluate(() => {
-        (window as any).Playwright = true;
-    });
 });
 
 
@@ -59,106 +32,20 @@ type FrameEntry = {
     joint?: FrameEntry[];
 };
 
-let rng = () => 0;
-
-const framesBySection = [Object.values(ImportFrameTypesIdentifiers),
-    [... Object.values(DefIdentifiers), ...Object.values(CommentFrameTypesIdentifier)],
-    Object.values(StandardFrameTypesIdentifiers).filter((id) => id != "global" && id != "return" && id != "continue" && id != "break" && !Object.values(JointFrameIdentifiers).includes(id))];
-
-function genRandomInt(n: number): number {
-    // Get number into range of 0 to (n-1) inclusive:
-    return ((rng() % n) + n) % n;
-}
-function pick<T>(ts: T[]): T {
-    return ts[genRandomInt(ts.length)];
-}
-
-function genRandomString(includeSymbols: boolean) : string {
-    // These are some easy valid characters and some awkward invalid ones, but
-    // none that are valid Python operators:
-    const candidates = includeSymbols ? "aB01#$!@_\\ü" : "aB01_ü";
-    const len = genRandomInt(6);
-    return Array.from({ length: len }, () => pick(candidates.split(""))).join("");
-}
-
-function genRandomExpression(level = 0) : string {
-    // Keep a reasonable chance of just producing a simple name:
-    if (genRandomInt(3) == 0 || level >= 3) {
-        return genRandomString(true);
+async function dismissAutocompleteIfShowing(page: Page) : Promise<void> {
+    // The randomly-generated slot content often looks like an identifier, which can trigger the
+    // autocomplete dropdown (AutoCompletion.vue). While it's open, ArrowUp/ArrowDown are consumed
+    // by LabelSlot.vue's handleUpDown to navigate the dropdown instead of the editor (see its
+    // "showAC" check), which can leave later frame/body navigation acting on the wrong target --
+    // this is a likely cause of the "expected a frame cursor, found none" flakiness in this file.
+    // Escape closes the dropdown while staying in the slot, but pressing it when the dropdown
+    // ISN'T showing exits/blurs the slot entirely (see LabelSlot.vue's onEscKeyUp), which would be
+    // its own new source of unexpected cursor movement -- so we only press it when the dropdown is
+    // actually visible:
+    if (await page.locator(`.${scssVars.acPopupContainerClassName}:visible`).count() > 0) {
+        await page.keyboard.press("Escape");
+        await waitForEditorSettled(page);
     }
-    // Otherwise we glue together idents and operators and brackets:
-    let expr = "";
-    const len = genRandomInt(8 - level * 2);
-    for (let i = 0; i < len; i++) {
-        // Pick: ident, operator, string or bracket:
-        expr += pick([
-            () => genRandomString(true),
-            () => pick(["0", "1", "-1", "+6.7", "0.78"]),
-            () => pick(["+", "-", "*", "/", ">=", ">", " and ", " or ", " not ", " is ", " is not ", " not in "]),
-            () => pick(["“”", "‘’", "“#”", "‘a’", "‘ foo bar ’", "‘+’", "“ and ”"]),
-            () => {
-                const brackets = pick([["(", ")"], ["[", "]"], ["{", "}"]]);
-                return brackets[0] + genRandomExpression(level + 1) + brackets[1];
-            },
-        ] as (() => string)[])();
-    }
-    // If we have generated "is" <blank> "not" (which we encode as "is  not") it's going to get interpreted in the editor
-    // as is not, so we just correct to the latter here:
-    expr = expr.replaceAll(/is {2}not in/g, "is not  in");
-    expr = expr.replaceAll(/is {2}not/g, "is not");
-    // Similarly, > > will not be interpreted correctly so just discard one part:
-    expr = expr.replaceAll(/> > >/g, ">");
-    expr = expr.replaceAll(/> >/g, ">");
-    return expr;
-}
-
-function disableAll(frames: FrameEntry[]) : FrameEntry[] {
-    return frames.map((frame) => {
-        return {
-            ...frame,
-            disabled: true,
-            ...(frame.body != undefined ? {body: disableAll(frame.body)} : {}),
-            ...(frame.joint != undefined ? {joint: disableAll(frame.joint)} : {}),
-        };
-    });  
-}
-
-function genRandomFrame(fromFrames: string[], level : number): FrameEntry {
-    const id = pick(fromFrames);
-    const def = getFrameDefType(id);
-    const subLen = level == 2 ? 0 : genRandomInt(4 - level * 2);
-
-    const children = def.allowChildren ? Array.from({ length: subLen }, () => genRandomFrame(framesBySection[2].filter((f) => !def.forbiddenChildrenTypes.includes(f)), level + 1)) : undefined;
-    const jointChildren: FrameEntry[] | undefined = !!def.allowJointChildren ? [] : undefined;
-    if (jointChildren != undefined && (id == "try" || genRandomInt(2) == 0)) {
-        // Pick one then see what can follow that:
-        let cur : string | undefined = pick(def.jointFrameTypes.filter((j) => !(j == "else" && id == "try")));
-        while (cur != undefined) {
-            const j = genRandomFrame([cur], level);
-            jointChildren.push(j);
-            const canFollow = getFrameDefType(j.frameType).jointFrameTypes.filter((f) => def.jointFrameTypes.includes(f));
-            cur = canFollow && genRandomInt(3) != 0 ? pick(canFollow) : undefined; 
-        }
-    }
-    
-    // Disable 1 in 8:
-    const disable = id != "blank" && id != "comment" && genRandomInt(8) == 0;
-    
-    return {
-        frameType: id,
-        ...(disable ? {disabled: true} : {}),
-        slotContent: def.labels.filter((l) => l.showSlots ?? true).map((_, i) => {
-            if (id == "import" || id == "from-import" || id == "funcdef" || ((id == "for" || id == "varassign") && i == 0) || ((id == "with") && i == 1)) {
-                return genRandomString(false);
-            }
-            else {
-                const expr = genRandomExpression();
-                return id == "comment" || id == "library" ? expr.trim() : expr;
-            }
-        }),
-        ...(children !== undefined ? { body: disable ? disableAll(children) : children } : {}),
-        ...(jointChildren !== undefined ? { joint: disable ? disableAll(jointChildren) : jointChildren } : {}),
-    };
 }
 
 async function disablePrev(page: Page, fromFollowingJoint: boolean) : Promise<void> {
@@ -182,9 +69,10 @@ async function disablePrev(page: Page, fromFollowingJoint: boolean) : Promise<vo
     const targetX = box.x + (fromFollowingJoint ? -10: 10);
     const targetY = box.y - (fromFollowingJoint ? 35 : 10);
     await page.mouse.click(targetX, targetY, {button: "right"});
-    await page.waitForTimeout(200);
+    // No manual wait needed for the context menu to render -- click() below already waits for
+    // the menu item to become actionable:
     await page.getByRole("menuitem", {name: en.contextMenu.disable}).click();
-    await page.waitForTimeout(100);
+    await waitForEditorSettled(page);
 }
 
 async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolean, beforeBody?: () => Promise<void>) : Promise<void> {
@@ -194,15 +82,15 @@ async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolea
             await page.keyboard.press("Enter");
         }
         else {
-            await page.keyboard.type(shortcut);
+            await pressFrameShortcut(page, shortcut);
         }
-        await page.waitForTimeout(400);
+        await waitForEditorSettled(page);
         if (frame.frameType == "try") {
             // We delete the except which automatically gets generated, then add our own:
             await page.keyboard.press("ArrowDown");
-            await page.waitForTimeout(200);
+            await waitForEditorSettled(page);
             await page.keyboard.press("Backspace");
-            await page.waitForTimeout(200);
+            await waitForEditorSettled(page);
         }
     }
     else {
@@ -212,18 +100,19 @@ async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolea
     if (frame.frameType == "funccall") {
         // Have to remove default brackets:
         await page.keyboard.press("Delete");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
     }
-    
+
     for (let i = 0; i < frame.slotContent.length; i++){
         const slotType = getFrameDefType(frame.frameType).labels.filter((l) => l.showSlots ?? true)[i].allowedSlotContent ?? AllowedSlotContent.TERMINAL_EXPRESSION;
         const s = frame.slotContent[i];
         console.log("Entering slot:   <<<" + s + ">>> into " + frame.frameType);
         await checkFrameXorTextCursor(page, false, "Slot of frame " + frame.frameType);
         const enterable = slotType == AllowedSlotContent.FREE_TEXT_DOCUMENTATION || slotType == AllowedSlotContent.LIBRARY_ADDRESS ? s : s.replaceAll(/[“”]/g, "\"").replaceAll(/[‘’]/g, "'");
-        await typeIndividually(page, enterable, 100);
+        await typeIndividually(page, enterable);
+        await dismissAutocompleteIfShowing(page);
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
     }
     if (beforeBody) {
         await beforeBody();
@@ -232,9 +121,9 @@ async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolea
         if (frame.frameType == "classdef") {
             // Need to remove the default constructor:
             await page.keyboard.press("Delete");
-            await page.waitForTimeout(200);
+            await waitForEditorSettled(page);
         }
-        
+
         for (const s of frame.body) {
             await checkFrameXorTextCursor(page, true, "Body of frame " + frame.frameType);
             await enterFrame(page, s, frame.disabled ?? false);
@@ -242,12 +131,12 @@ async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolea
         if (frame.joint && frame.joint.length > 0) {
             // We enter the next joint frame, and make any others a joint part of that:
             const [head, ...tail] = frame.joint;
-            
+
             await enterFrame(page, {...head, joint: tail}, frame.disabled ?? false, frame.disabled && !parentDisabled && getFrameDefType(frame.frameType).isJointFrame ? () => disablePrev(page, true) : undefined);
         }
         else {
             await page.keyboard.press("ArrowDown");
-            await page.waitForTimeout(200);
+            await waitForEditorSettled(page);
             if (frame.disabled && getFrameDefType(frame.frameType).isJointFrame) {
                 await disablePrev(page, false);
             }
@@ -257,14 +146,17 @@ async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolea
     if (frame.disabled && !parentDisabled && !getFrameDefType(frame.frameType).isJointFrame) {
         // With shift, one press should select whole frame, including any joint frames:
         await page.keyboard.press("Shift+ArrowUp");
-        await page.waitForTimeout(200);
-        await page.keyboard.press(" ");
-        await page.waitForTimeout(500);
+        await waitForEditorSettled(page);
+        // Enter opens the frame context menu with a selection active; Space is now the frame-commands
+        // pane prefix instead (see App.vue/Commands.vue), so it no longer does this:
+        await page.keyboard.press("Enter");
+        // No manual wait needed for the context menu to render -- click() below already waits for
+        // the menu item to become actionable:
         await page.getByRole("menuitem", { name: en.contextMenu.disable }).click();
-        await page.waitForTimeout(100);
+        await waitForEditorSettled(page);
         // Now it's disabled, a single down press should skip the entire lot:
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
     }
     
     
@@ -373,20 +265,25 @@ async function getFramesFromDOM(page: Page) : Promise<FrameEntry[][]> {
 async function newProject(page: Page) : Promise<void> {
     // New is located in the menu, so we need to open it first, then find the link and click on it:
     await page.click("#" + await strypeElIds.getEditorMenuUID());
-    await page.waitForTimeout(2000);
-    await page.click("#" + await strypeElIds.getNewProjectLinkId());
-    await page.waitForTimeout(2000);
+    // Confirming "new project" triggers a full page reload (see resetStrypeProject in App.vue) --
+    // wait for the reloaded app to actually be ready, using the same signal beforeEach uses for
+    // the initial page load, rather than guessing how long the reload takes. noWaitAfter avoids a
+    // hang: the click handler synchronously unmounts this link (showMenu=false) right after
+    // scheduling the reload, which otherwise races Playwright's own post-click wait:
+    await page.click("#" + await strypeElIds.getNewProjectLinkId(), {noWaitAfter: true});
+    // A full page reload is genuinely slower than the default 5s assertion timeout under load
+    // (same reasoning as the equivalent check in loading-saving.ts's load()):
+    await expect(page.locator(".frame-div")).toHaveCount(DEFAULT_STARTING_FRAME_COUNT, {timeout: 20000});
 }
 
 async function testSpecific(page: Page, sections: FrameEntry[][], projectDoc?: string) : Promise<void> {
-    await page.keyboard.press("Delete");
-    await page.keyboard.press("Delete");
-    await page.keyboard.press("ArrowUp");
-    await page.keyboard.press("ArrowUp");
-    
+    // Clears every default frame (Imports and Main), leaving the caret at the top of Imports --
+    // exactly where the section-by-section loop below needs to start:
+    await clearDefaultProject(page);
+
     if (projectDoc) {
         await page.keyboard.press("ArrowLeft");
-        await page.waitForTimeout(100);
+        await waitForEditorSettled(page);
         const lines = projectDoc.split("\n");
         for (let i = 0; i < lines.length; i++) {
             if (i > 0) {
@@ -394,9 +291,9 @@ async function testSpecific(page: Page, sections: FrameEntry[][], projectDoc?: s
             }
             await page.keyboard.type(lines[i]);
         }
-        await page.waitForTimeout(100);
+        await waitForEditorSettled(page);
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(500);
+        await waitForEditorSettled(page);
     }
 
     for (let section = 0; section < 3; section++) {
@@ -404,14 +301,13 @@ async function testSpecific(page: Page, sections: FrameEntry[][], projectDoc?: s
             await enterFrame(page, sections[section][j], false);
         }
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(100);
+        await waitForEditorSettled(page);
     }
     const dom = await getFramesFromDOM(page);
     expect(dom).toEqual(sections);
     const savePath = await save(page);
-    await page.waitForTimeout(2000);
     await newProject(page);
-    
+
     // Log for debugging purposes:
     try {
         const contents = readFileSync(savePath, "utf8");
@@ -429,71 +325,6 @@ async function testSpecific(page: Page, sections: FrameEntry[][], projectDoc?: s
     expect(dom2).toEqual(sections);
     expect(dom2).toEqual(dom);
 }
-
-test.describe("Enters, saves and loads random frame", () => {
-    // One day we should get all these passing, but in the mean time...
-    test.describe.configure({ retries: 3 });
-    for (let i = 0; i < 5; i++) {
-        test("Tests random entry #" + i, async ({page}, testInfo) => {
-            // Increase test timeout:
-            test.setTimeout(180_000);
-            // Don't retry these tests; if they fail, we want to know:
-            if (testInfo.retry > 0) {
-                return;
-            }
-            
-            await page.keyboard.press("Delete");
-            await page.keyboard.press("Delete");
-            await page.keyboard.press("ArrowUp");
-            await page.keyboard.press("ArrowUp");
-
-            const seed = Math.random().toString();
-            console.log(`Seed: "${seed}"`);
-            const prng = seedrandom(seed);
-            rng = prng.int32.bind(prng);
-            if (genRandomInt(3) == 1) {
-                await page.keyboard.press("ArrowLeft");
-                await page.waitForTimeout(100);
-                await page.keyboard.type("Doc " + rng());
-                await page.keyboard.press("ArrowRight");
-                await page.waitForTimeout(100);
-            }
-            
-            const frames = [[], [], []] as FrameEntry[][];
-            for (let section = 0; section < 3; section++) {
-                const numFrames = 5;
-                for (let j = 0; j < numFrames; j++) {
-                    const f = genRandomFrame(framesBySection[section], 0);
-                    await enterFrame(page, f, false);
-                    frames[section].push(f);
-                }
-                await page.keyboard.press("ArrowDown");
-                await page.waitForTimeout(100);
-            }
-            console.log(JSON.stringify(frames, null, 2));
-            const dom = await getFramesFromDOM(page);
-            expect(dom, seed).toEqual(frames);
-            const savePath = await save(page);
-            await newProject(page);
-            // Log for debugging purposes:
-            try {
-                const contents = readFileSync(savePath, "utf8");
-                console.log(contents);
-            }
-            catch (err) {
-                console.error("Error reading file:", err);
-            }
-
-            // Must make it have .spy extension:
-            await rename(savePath, savePath + ".spy");
-            await load(page, savePath + ".spy");
-            const dom2 = await getFramesFromDOM(page);
-            // Just one should be needed, but why not both just in case:
-            expect(dom2, seed).toEqual(frames);
-            expect(dom2, seed).toEqual(dom);
-        });
-    }
-});
 
 // Here we test some specifics which previously failed:
 test.describe("Enters, saves and loads specific frames", () => {
@@ -919,6 +750,33 @@ test.describe("Enters, saves and loads specific frames", () => {
                             },
                         ],
                     },
+                ],
+            }]]);
+    });
+
+    // Regression test for the multi-level-nesting case of the blank-before-joint-continuation bug
+    // fixed alongside https://github.com/k-pet-group/Strype/issues/757 : the blank line here sits
+    // one level shallower than the enclosing if/elif chain's own body, but two levels deeper than
+    // the "else" that follows -- it belongs at the "for" body's own indent (matching "if"), not at
+    // either adjacent line's indent (the elif body's, nor the outer else's).
+    test("Tests blank line before an outer else, nested inside an if/elif chain", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {
+                "frameType": "for",
+                "slotContent": ["i", "myList"],
+                "body": [
+                    {
+                        "frameType": "if",
+                        "slotContent": ["a"],
+                        "body": [{"frameType": "raise", "slotContent": ["b"]}],
+                        "joint": [
+                            {"frameType": "elif", "slotContent": ["c"], "body": [{"frameType": "raise", "slotContent": ["d"]}]},
+                        ],
+                    },
+                    {"frameType": "blank", "slotContent": []},
+                ],
+                "joint": [
+                    {"frameType": "else", "slotContent": [], "body": [{"frameType": "raise", "slotContent": ["e"]}]},
                 ],
             }]]);
     });

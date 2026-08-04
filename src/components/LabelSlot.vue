@@ -74,12 +74,12 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType } from "vue";
+import { defineComponent, nextTick, PropType } from "vue";
 import Cache from "timed-cache";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
-import { closeBracketCharacters, CustomEventTypes, getACLabelSlotUID, getFocusedEditableSlotTextSelectionStartEnd, getFrameHeaderUID, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFrameUID, getLabelSlotUID, getMatchingBracket, getNumPrecedingBackslashes, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, keywordOperatorsWithSurroundSpaces, openBracketCharacters, operators, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, simpleSlotStructureToString, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringDoubleQuoteChar, stringQuoteCharacters, stringSingleQuoteChar, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength } from "@/helpers/editor";
-import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, CollapsedState, EditImageInDialogFunction, FieldSlot, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, getFrameDefType, isFieldBracketedSlot, isFieldStringSlot, LoadedMedia, MediaSlot, MessageDefinitions, OptionalSlotType, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
+import { bumpCaretRequestSeq, closeBracketCharacters, CustomEventTypes, getACLabelSlotUID, getCaretRequestSeq, getFocusedEditableSlotTextSelectionStartEnd, getFrameHeaderUID, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFrameUID, getLabelSlotUID, getMatchingBracket, getNumPrecedingBackslashes, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, keywordOperatorsWithSurroundSpaces, openBracketCharacters, operators, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, simpleSlotStructureToString, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringDoubleQuoteChar, stringQuoteCharacters, stringSingleQuoteChar, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength } from "@/helpers/editor";
+import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, CollapsedState, EditImageInDialogFunction, FieldSlot, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, getFrameDefType, isFieldBracketedSlot, isFieldStringSlot, LoadedMedia, MediaSlot, MessageDefinitions, OptionalSlotType, PythonExecRunningState, RecordNewImageInDialogFunction, RecordNewSoundInDialogFunction, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
 import {evaluateSlotType, getFlatNeighbourFieldSlotInfos, getOutmostDisabledAncestorFrameId, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
@@ -92,6 +92,7 @@ import { isMacOSPlatform } from "@/helpers/common";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { eventBus, projectDocumentationFrameId } from "@/helpers/appContext";
 import { detectBrowser } from "@/helpers/browser";
+import { PrecedenceTier, UNARY_PREFIX_OPERATORS } from "@/helpers/operatorPrecedence";
 
 // Default time to keep in cache: 5 minutes.
 const soundPreviewImages = new Cache<LoadedMedia>({ defaultTtl: 5 * 60 * 1000 });
@@ -147,9 +148,13 @@ export default defineComponent({
         isEditableSlot: Boolean,
         isEmphasised: Boolean,
         isFrozen: Boolean,
+        operatorPrecedenceTier: {
+            type: String as PropType<PrecedenceTier>,
+            required: false,
+        },
     },
     
-    inject: ["editImageInDialog"],    
+    inject: ["editImageInDialog", "recordNewImageInDialog", "recordNewSoundInDialog"],
 
     mounted(){
         // To make sure the a/c component shows just below the spans, we set its top position here based on the span height.
@@ -296,10 +301,37 @@ export default defineComponent({
             let codeTypeCSS = "";
             let boldClass = "";               
             switch(this.slotType){
-            case SlotType.operator:
-                // For commas, we add a right margin:
-                codeTypeCSS = scssVars.frameOperatorSlotClassName + ((this.code==",") ? " slot-right-margin" : "");
+            case SlotType.operator: {
+                // Spacing is driven by the operator's precedence tier (see operatorPrecedence.ts),
+                // computed once per bracketed/top-level expression in generateFlatSlotBases().
+                const tierClassNames: Record<PrecedenceTier, string> = {
+                    "dot": scssVars.opTierDotClassName,
+                    "comma": scssVars.opTierCommaClassName,
+                    "equals": scssVars.opTierEqualsClassName,
+                    "colon": scssVars.opTierColonClassName,
+                    "keyword-high": scssVars.opTierKeywordHighClassName,
+                    "keyword-medium": scssVars.opTierKeywordMediumClassName,
+                    "keyword-low": scssVars.opTierKeywordLowClassName,
+                    "high": scssVars.opTierHighClassName,
+                    "medium": scssVars.opTierMediumClassName,
+                    "low": scssVars.opTierLowClassName,
+                    // A detected unary "-"/"+" (see generateFlatSlotBases; it now binds as
+                    // tightly as "~", so "medium" is the loosest it practically reaches)
+                    // substitutes this in for "medium" -- same trailing spacing, reusing the
+                    // exact same CSS class, just also picked up by the unary-prefix check
+                    // below to suppress the leading margin ("high" needs no substitute: it's
+                    // already zero margin on both sides):
+                    "sign-medium": scssVars.opTierMediumClassName,
+                };
+                const tierClass = tierClassNames[this.operatorPrecedenceTier ?? "high"];
+                // Unary-prefix operators (not, ~, lambda always; -/+ only when detected as a
+                // unary sign, indicated by the "sign-medium" tier) have nothing meaningful to
+                // their left -- suppress the tier's leading margin, keep its trailing one:
+                const isUnarySign = this.operatorPrecedenceTier === "sign-medium";
+                const unaryPrefixClass = (UNARY_PREFIX_OPERATORS.has(this.code) || isUnarySign) ? " " + scssVars.opUnaryPrefixClassName : "";
+                codeTypeCSS = scssVars.frameOperatorSlotClassName + " " + tierClass + unaryPrefixClass;
                 break;
+            }
             case SlotType.string:
                 codeTypeCSS = scssVars.frameStringSlotClassName;
                 break;
@@ -375,6 +407,14 @@ export default defineComponent({
 
         doEditImageInDialog() : EditImageInDialogFunction {
             return (this as any).editImageInDialog as EditImageInDialogFunction;
+        },
+
+        doRecordNewImageInDialog() : RecordNewImageInDialogFunction {
+            return (this as any).recordNewImageInDialog as RecordNewImageInDialogFunction;
+        },
+
+        doRecordNewSoundInDialog() : RecordNewSoundInDialogFunction {
+            return (this as any).recordNewSoundInDialog as RecordNewSoundInDialogFunction;
         },
     },
 
@@ -475,7 +515,14 @@ export default defineComponent({
             // When this method is triggered by a natural click on the text slot, we delay the chain of actions a bit,
             // because the potential blurring of another slot may interfer with with timing and scrolling into view.
             const waitFor = (fromNaturalClick) ? 200 : 0;
+            // Mark this as the newest pending "got caret" request (see bumpCaretRequestSeq() doc) so
+            // that if the user navigates elsewhere (e.g. arrows out to a frame caret) before this
+            // fires, we can tell this callback is stale and must not re-focus this slot underneath them.
+            const myCaretRequestSeq = bumpCaretRequestSeq();
             setTimeout(() => {
+                if(myCaretRequestSeq !== getCaretRequestSeq()){
+                    return;
+                }
                 // If the user's code is being executed, or if the frame is disabled, we don't focus any slot, but we make sure we show the adequate frame cursor instead.
                 if(this.isPythonExecuting || this.isDisabled || this.isFrozen){
                     event?.stopImmediatePropagation();
@@ -820,14 +867,51 @@ export default defineComponent({
                     }); 
                 }
                 else{
-                    // Same as hitting ctrl/alt + arrow down
-                    document.getElementById(getFrameLabelSlotsStructureUID(this.frameId, this.labelSlotsIndex))?.dispatchEvent(
-                        new KeyboardEvent("keydown", {
-                            key: "ArrowDown",
-                            altKey: true,
-                            ctrlKey: true,
-                        })
-                    );
+                    // Same as hitting ctrl/alt + arrow down -- unless the bare word typed so far is
+                    // a recognised keyword eligible for conversion right here (see
+                    // keywordFrameConversions, LabelSlotsStructure.vue):
+                    // typing "if" or "else" then Enter should convert exactly like typing "if "/
+                    // "else " does, without requiring the space first. Only a func-call frame can
+                    // ever convert this way, so that's checked here as a cheap prefilter -- avoiding
+                    // an unconditional cloneDeep(appStore.$state) on every single Enter keypress,
+                    // in every slot, of every frame type -- before deferring to
+                    // checkSlotRefactoring's own fuller isFunccallTopLevelSlot gating (labelIndex,
+                    // slotId) for the rarer case where it matters. Once we do call it, we always
+                    // give it the chance to convert (via its triggeredByEnter option), and only fall
+                    // back to the normal "move to next line" behaviour if nothing actually converted.
+                    // We detect that by comparing the frame's type after the call to what it was
+                    // before: a conversion always changes it (funccall -> if/for/etc.), so an
+                    // unchanged type means nothing converted (checkSlotRefactoring is also a no-op
+                    // for e.g. a func-call whose content isn't actually a recognised keyword).
+                    // skipStateSaveOnly avoids pushing a spurious no-op undo/redo entry for that
+                    // still-common case.
+                    const frameId = this.frameId;
+                    const labelSlotsIndex = this.labelSlotsIndex;
+                    const frameTypeBeforeEnter = this.appStore.frameObjects[frameId]?.frameType.type;
+                    const moveToNextLine = () => {
+                        document.getElementById(getFrameLabelSlotsStructureUID(frameId, labelSlotsIndex))?.dispatchEvent(
+                            new KeyboardEvent("keydown", {
+                                key: "ArrowDown",
+                                altKey: true,
+                                ctrlKey: true,
+                            })
+                        );
+                    };
+                    if(frameTypeBeforeEnter !== AllFrameTypesIdentifier.funccall){
+                        moveToNextLine();
+                    }
+                    else{
+                        const stateBeforeChanges = cloneDeep(this.appStore.$state);
+                        vueComponentsAPIHandler.labelSlotsStructureComponentAPI?.forInstance[getFrameLabelSlotsStructureUID(frameId, labelSlotsIndex)].checkSlotRefactoring(this.UID, stateBeforeChanges, {
+                            triggeredByEnter: true,
+                            skipStateSaveOnly: true,
+                            doAfterCursorSet: () => {
+                                if(this.appStore.frameObjects[frameId]?.frameType.type === frameTypeBeforeEnter){
+                                    moveToNextLine();
+                                }
+                            },
+                        });
+                    }
                 }
             }
             this.showAC = false;
@@ -845,6 +929,21 @@ export default defineComponent({
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation();
+            }
+
+            // Ctrl-Shift-I / Ctrl-Shift-U record a new image/sound literal from the webcam/microphone
+            // at the current caret position. Not available inside strings or comments (mirrors the
+            // gate used elsewhere for slot-type-sensitive shortcuts, e.g. around line 1239), and not
+            // while any modal (including one of our own) is already open, to avoid re-entrancy.
+            if((event.ctrlKey || event.metaKey) && event.shiftKey
+                    && (event.key.toLowerCase() == "i" || event.key.toLowerCase() == "u")
+                    && this.slotType != SlotType.string && this.slotType != SlotType.comment
+                    && this.frameType != AllFrameTypesIdentifier.comment
+                    && !this.appStore.isModalDlgShown){
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+                this.triggerMediaRecording(event.key.toLowerCase() == "i" ? "image" : "sound");
             }
 
             // Manage the handling of home/end and page up/page down keys (see macOS case in method details)
@@ -869,7 +968,78 @@ export default defineComponent({
             // All other input events (i.e. typing, no modifiers) are handled by
             // processInput instead.
         },
-        
+
+        // Captures where to insert the recorded media literal (the slot and the text either side
+        // of the caret) synchronously, at the moment the shortcut is pressed -- NOT re-derived from
+        // DOM/focus later, since focus moves to the record/edit modals for a while before the user
+        // finishes (or cancels). Mirrors the DOM-read logic already used for paste in
+        // onCodePasteImpl below. The record/edit dialogs are true modals that block all editor
+        // interaction while open, so the target slot cannot change or be deleted in the meantime.
+        triggerMediaRecording(kind: "image" | "sound") {
+            const inputSpanField = document.getElementById(this.UID) as HTMLSpanElement;
+            if (!inputSpanField) {
+                return;
+            }
+            const {selectionStart, selectionEnd} = getFocusedEditableSlotTextSelectionStartEnd(this.UID);
+            const lhsCode = (inputSpanField.textContent?.substring(0, selectionStart) ?? "").replace(/\u200B/g, "");
+            const rhsCode = (inputSpanField.textContent?.substring(selectionEnd) ?? "").replace(/\u200B/g, "");
+            const targetSlotInfos = parseLabelSlotUID(this.UID);
+
+            // Suppress the artificial blur about to happen as focus moves to the modal, exactly as
+            // is already done before opening the large-image edit dialog on paste (see onCodePaste):
+            this.appStore.ignoreBlurEditableSlot = true;
+
+            // If the user cancels (at either the record or the edit dialog) instead of confirming,
+            // nothing is inserted -- but real DOM focus has still moved to the modal throughout, so
+            // without this we'd be left showing the frame cursor instead of back in the slot. Restore
+            // the original selection exactly as it was before the shortcut was pressed:
+            const restoreOriginalCursor = () => {
+                const anchorCursorInfo: SlotCursorInfos = {slotInfos: targetSlotInfos, cursorPos: selectionStart};
+                const focusCursorInfo: SlotCursorInfos = {slotInfos: targetSlotInfos, cursorPos: selectionEnd};
+                nextTick(() => {
+                    setDocumentSelection(anchorCursorInfo, focusCursorInfo);
+                    this.appStore.setSlotTextCursors(anchorCursorInfo, focusCursorInfo);
+                    this.appStore.setFocusEditableSlot({
+                        frameSlotInfos: targetSlotInfos,
+                        caretPosition: this.appStore.getAllowedChildren(targetSlotInfos.frameId) ? CaretPosition.body : CaretPosition.below,
+                    });
+                });
+            };
+
+            const commitInsertion = (replacement: {code: string, mediaType: string}) => {
+                this.appStore.addNewSlot(targetSlotInfos, replacement.mediaType, lhsCode, rhsCode, SlotType.media, false, replacement.code);
+                // Explicitly place the cursor in the new trailing (empty) field right after the
+                // inserted media, mirroring the same three calls onGetCaret() uses when a user
+                // clicks into a slot (setDocumentSelection + setSlotTextCursors +
+                // setFocusEditableSlot, see ~line 595 above). We can't rely on leftRightKey()'s
+                // *relative* navigation here (as paste's onCodePasteImpl does) because that
+                // depends on appStore.isEditing/focusSlotCursorInfos reflecting where we were
+                // focused, which is no longer valid after going through the record/edit dialogs:
+                // real DOM focus has been on dialog buttons throughout, not any text slot, so
+                // leftRightKey ends up navigating frame-caret-style from a stale/wrong position
+                // instead of moving within the slot text (observed: caret landing at the very
+                // start of the line rather than after the media).
+                const {parentId, slotIndex} = getSlotParentIdAndIndexSplit(targetSlotInfos.slotId);
+                const rhsSlotInfos: SlotCoreInfos = {...targetSlotInfos, slotId: getSlotIdFromParentIdAndIndexSplit(parentId, slotIndex + 2)};
+                const cursorInfo: SlotCursorInfos = {slotInfos: rhsSlotInfos, cursorPos: 0};
+                nextTick(() => {
+                    setDocumentSelection(cursorInfo, cursorInfo);
+                    this.appStore.setSlotTextCursors(cursorInfo, cursorInfo);
+                    this.appStore.setFocusEditableSlot({
+                        frameSlotInfos: rhsSlotInfos,
+                        caretPosition: this.appStore.getAllowedChildren(rhsSlotInfos.frameId) ? CaretPosition.body : CaretPosition.below,
+                    });
+                });
+            };
+
+            if (kind == "image") {
+                this.doRecordNewImageInDialog(commitInsertion, restoreOriginalCursor);
+            }
+            else {
+                this.doRecordNewSoundInDialog(commitInsertion, restoreOriginalCursor);
+            }
+        },
+
         // Removes the given string which has just been entered as part of an input event,
         // and puts the cursor back before the added-then-removed string
         removeLastInput(toRemove: string) {
@@ -896,6 +1066,14 @@ export default defineComponent({
                 // Don't think this should ever happen; for now, log:
                 console.trace("Didn't find \"" + toRemove + "\" before " + cursorPos + " within content: \"" + content + "\"");
             }
+        },
+
+        // Checks whether the label immediately following this one is a plain ":" label with no slot of its own
+        // (e.g. the " :" label of if/elif/for/while/except/class frames), which is the case we want to treat
+        // a trailing ":" keypress as overtyping rather than insertion.
+        isNextLabelColon() : boolean {
+            const nextLabel = this.appStore.frameObjects[this.frameId].frameType.labels[this.labelSlotsIndex + 1];
+            return nextLabel != undefined && nextLabel.showSlots === false && nextLabel.label.replace(/&nbsp;/g, "").trim() === ":";
         },
 
         doArrowRightNextTick() {
@@ -977,6 +1155,18 @@ export default defineComponent({
                 }
                 return;
             }
+            // If the frame is a "for" or "with" frame and we are in the first top-level slot (the loop target
+            // for "for", the expression for "with"), pressing space at the end of that slot moves to the
+            // second slot (the iterable for "for", the "as" target for "with"), just like it does for the
+            // LHS of a variable assignment frame above.
+            else if(this.labelSlotsIndex === 0 && this.slotId.indexOf(",") == -1 && !hasTextSelection &&
+                inputString === " " && (this.frameType === AllFrameTypesIdentifier.for || this.frameType === AllFrameTypesIdentifier.with)){
+                this.removeLastInput(inputString);
+                if (isAtEndOfLastSlot) {
+                    this.doArrowRightNextTick();
+                }
+                return;
+            }
             // If the frame is an import frame, pressing space will automatically add the "as" operator when it makes sense to do so (see details below),
             // when we press space and we are just before  an "as", we go to the next slot.
             // In other cases and anywhere for "from... import" frames, pressing space will result in no action.
@@ -1003,16 +1193,46 @@ export default defineComponent({
                 }
                 return;
             }
+            // For "from ... import ...", pressing space at the end of the first slot (the module name) moves
+            // to the second slot (the imported part), just like it does for "for"/"with" above. Elsewhere in
+            // a from-import frame, pressing space does nothing.
             else if (inputString === " " && this.frameType === AllFrameTypesIdentifier.fromimport){
                 this.removeLastInput(inputString);
+                if (this.labelSlotsIndex === 0 && this.slotId.indexOf(",") == -1 && !hasTextSelection && isAtEndOfLastSlot) {
+                    this.doArrowRightNextTick();
+                }
             }
             // We also prevent start trailing spaces on all slots except comments and string content, to avoid indentation errors
             else if(inputString === " " && this.frameType !== AllFrameTypesIdentifier.comment && this.slotType != SlotType.string && cursorPos == 0){
                 this.removeLastInput(inputString);
             }
+            // If we type ":" as the very first character of a function/class definition's docs field, we
+            // discard it: the user has just overtyped the closing bracket/name (which moves the cursor past
+            // the frame's own " :" label and into the docs field), so this ":" is almost certainly a leftover
+            // keystroke from habitually typing "def foo():"/"class Foo:" rather than text intended for the docs.
+            else if(inputString === ":" && cursorPos == 0 && (this.frameType === AllFrameTypesIdentifier.funcdef || this.frameType === AllFrameTypesIdentifier.classdef) && this.allowedSlotContent == AllowedSlotContent.FREE_TEXT_DOCUMENTATION){
+                this.removeLastInput(inputString);
+            }
             // On comments, we do not need multislots and parsing any code, we just let any key go through
             else if(this.allowedSlotContent == AllowedSlotContent.LIBRARY_ADDRESS || this.allowedSlotContent == AllowedSlotContent.FREE_TEXT_DOCUMENTATION){
                 // Do nothing
+            }
+            // If we type ":" at the very end of a top-level slot structure (not inside a bracket or quote), and the
+            // next label of this frame is just a colon label (e.g. "if <cond>:", "while <cond>:"...), we treat this
+            // as overtyping that colon label rather than inserting a new one:
+            else if(inputString === ":" && isAtEndOfLastSlot && !isFieldStringSlot(currentSlot) && !this.coreSlotInfo.slotId.includes(",") && this.isNextLabelColon()){
+                this.removeLastInput(inputString);
+                // There is no further slot to move the focus to within this frame's own label slots (the
+                // ":" label that follows has no slot of its own), so unlike the other overtyping cases in
+                // this method we can't just dispatch a synthetic ArrowRight to the label-slots-structure
+                // element -- we need to actually leave the frame's header, so we call the store action
+                // that performs this navigation directly instead:
+                this.$nextTick(() => {
+                    this.$nextTick(() => {
+                        this.appStore.leftRightKey({key: "ArrowRight"});
+                    });
+                });
+                return;
             }
             // Finally, we check the case an operator, bracket or quote has been typed and the slots within this frame need update
             // First we check closing brackets or quote as they have a specifc behaviour, then keep working out the other things
@@ -1046,9 +1266,15 @@ export default defineComponent({
                 else{
                     // It's not a string, check for bracket
                     const parentBracketSlot = (parentSlot && isFieldBracketedSlot(parentSlot)) ? parentSlot as SlotsStructure : undefined;
+                    // A function definition's parameter list isn't stored as a bracketed field slot like a normal
+                    // "(...)" expression -- its surrounding brackets are just the frame label's own static text
+                    // (labels "(" and ") :"), so there is no bracketed parent slot to find via parentBracketSlot
+                    // above. We special-case it here so overtyping its closing ")" still moves to the next slot:
+                    const isFuncDefParamsRoot = !this.coreSlotInfo.slotId.includes(",") && this.allowedSlotContent == AllowedSlotContent.ONLY_FORMAL_PARAMS;
                     shouldMoveToNextSlot = inputSpanFieldContent.substring(cursorPos).replace(/\u200B/g, "").trim() == inputString
                         // make sure we are inside a bracketed structure and that the opening bracket is the counterpart of the key value (closing bracket)
-                        && parentBracketSlot != undefined && parentBracketSlot.openingBracketValue == getMatchingBracket(inputString, false)
+                        && ((parentBracketSlot != undefined && parentBracketSlot.openingBracketValue == getMatchingBracket(inputString, false))
+                            || (isFuncDefParamsRoot && inputString == ")"))
                         && !hasTextSelection;
                     checkMultidimBrackets = !shouldMoveToNextSlot && !hasTextSelection;
                 }
@@ -1131,11 +1357,12 @@ export default defineComponent({
                     || isBracket
                     || isStringQuote
                     ){
-                        // If we are in the LHS of a function definition or of a for, then we just don't allow the operator, bracket or quotes.
-                        // For a for though, we allow comma as we may have something as "for a,b in xxx".
+                        // If we are in the LHS of a function definition frame or of a for frame, then we just don't allow the operator or the quotes.
+                        // For the function def LHS, we also retrict brackets.
+                        // For a for frame LHS, we allow comma as we may have something as "for a,b in xxx".
                         // For imports, we only allow comma and * (comma in import frame, coma and * in RHS from (* isn't treated as operator in this case)).
                         let forbidOperator = [AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.for].includes(this.frameType)
-                            && this.labelSlotsIndex == 0;
+                            && this.labelSlotsIndex == 0 && ((isBracket && this.frameType == AllFrameTypesIdentifier.funcdef) || !isBracket);
                         if(forbidOperator && this.frameType == AllFrameTypesIdentifier.for && inputString == ","){
                             forbidOperator = false;
                         }
@@ -1844,6 +2071,64 @@ export default defineComponent({
     color: blue !important;
 }
 
+// Precedence-based operator spacing tiers (see src/helpers/operatorPrecedence.ts):
+// tighter-binding operators get less visual space, looser-binding ones get more,
+// capped at a "low" tier so deeply-nested low-precedence chains don't keep growing.
+.#{$strype-classname-op-tier-dot} {
+    margin: 0;
+}
+
+.#{$strype-classname-op-tier-comma} {
+    margin: 0 0.3em 0 0;
+}
+
+.#{$strype-classname-op-tier-equals} {
+    margin: 0 0.3em;
+}
+
+.#{$strype-classname-op-tier-colon} {
+    margin: 0;
+}
+
+// Keyword operators get their own tighter-to-looser ladder, parallel to the symbol one
+// below, since a word-shaped operator can never visually collapse all the way to zero
+// space -- "keyword-medium" keeps the same value the old single flat "keyword" tier used,
+// so the common (unmixed) case looks unchanged; "keyword-high"/"keyword-low" only show up
+// once keyword operators of different precedence share the same expression, e.g.
+// "a not in b and c or d" spans all three.
+.#{$strype-classname-op-tier-keyword-high} {
+    margin: 0 0.3em;
+}
+
+.#{$strype-classname-op-tier-keyword-medium} {
+    margin: 0 0.5em;
+}
+
+.#{$strype-classname-op-tier-keyword-low} {
+    margin: 0 0.8em;
+}
+
+.#{$strype-classname-op-tier-high} {
+    margin: 0;
+}
+
+.#{$strype-classname-op-tier-medium} {
+    margin: 0 0.3em;
+}
+
+.#{$strype-classname-op-tier-low} {
+    margin: 0 0.6em;
+}
+
+// Applied in addition to a tier class for unary-prefix operators (not, ~, lambda):
+// there's nothing meaningful to their left (they're always preceded by a blank
+// field), so only the tier's trailing margin should show. Must come after the
+// tier rules above so it wins on equal specificity.
+.#{$strype-classname-op-unary-prefix} {
+    margin-left: 0;
+    margin-right: 0.1em;
+}
+
 .#{$strype-classname-frame-code-slot}{
     color: black !important; 
 }
@@ -1857,9 +2142,6 @@ export default defineComponent({
     color: $frame-statement-comment-slot-base-colour !important;
 }
 
-.slot-right-margin {
-    margin-right: 2px;
-}
 // end classes for slot type
 
 .error-popover {

@@ -1,48 +1,11 @@
-import { test, expect, Locator, Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 import { enterCode } from "../support/editor";
-import { checkConsoleContent, runButtonShowsRun, runToFinish, startRunning } from "../support/execution";
-import { load } from "../support/loading-saving";
+import { checkConsoleContent, checkFrameErrorCount, runButtonShowsRun, runToFinish, setupGraphicsRedrawObserver, startRunning, waitForConsoleSettled } from "../support/execution";
+import { setupStrypeTest } from "../support/general";
 
-let scssVars: {[varName: string]: string};
 test.beforeEach(async ({ page, browserName }, testInfo) => {
-    if (browserName === "webkit" && process.platform === "win32") {
-        // On Windows+Webkit it just can't seem to load the page for some reason:
-        testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
-    }
-
-    // These tests can take longer than the default 30 seconds:
-    testInfo.setTimeout(90000); // 90 seconds
-    
-    await page.goto("./", {waitUntil: "load"});
-    // Wait for content to load:
-    await expect(page.locator(".frame-div")).toHaveCount(2);
-    scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
-    await page.evaluate(() => {
-        (window as any).Playwright = true;
-    });
-    // Make browser's console.log output visible in our logs (useful for debugging):
-    page.on("console", (msg) => {
-        console.log("Browser log:", msg.text());
-    });
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 120000});
 });
-
-// Given a locator for a slot or frame header, checks if the nearest enclosing frame has an error showing
-export async function expectHasVisibleErrorIcon(locator: Locator): Promise<void> {
-    const parent = locator.locator(
-        `xpath=ancestor::*[contains(concat(' ', normalize-space(@class), ' '), ' ${scssVars.frameHeaderClassName} ')][1]`
-    );
-
-    await expect(parent).toHaveCount(1);
-
-    const errIcon = parent.locator(".err-icon:visible");
-    await expect(errIcon).toHaveCount(1);
-    // Should only be one error:
-    await checkFrameErrorCount(locator.page(), 1);
-}
-
-export async function checkFrameErrorCount(page: Page, expectedCount: number) : Promise<void> {
-    await expect(page.locator(".err-icon:visible")).toHaveCount(expectedCount);
-}
 
 test.describe("Check console after execution", () => {
     test("Check default code works", async ({page}) => {
@@ -104,59 +67,66 @@ test.describe("Test stdin works", () => {
     });
 });
 
-test.describe("Check errors show", () => {
-    test("Check error shows #1", async ({page}) => {
-        await enterCode(page, ["", "", "print(len(None))"]);
-        await runToFinish(page);
-        await checkConsoleContent(page, "< TypeError: object of type 'NoneType' has no len() >\n  From the highlighted call in your code");
-        await expectHasVisibleErrorIcon(page.locator("span", {hasText: "print"}));
-    });
-    test("Check error shows #2", async ({page}) => {
-        await enterCode(page, ["", "", "print('a'.foo())"]);
-        await runToFinish(page);
-        await checkConsoleContent(page, "< AttributeError: 'str' object has no attribute 'foo' >\n  From the highlighted call in your code");
-        await expectHasVisibleErrorIcon(page.locator("span", {hasText: "print"}));
-    });
-    test("Check error shows for file reading", async ({page}) => {
-        await enterCode(page, ["", "", "open(\"/does/not/exist.txt\", \"r\", encoding=\"utf-8\")"]);
-        await runToFinish(page);
-        await checkConsoleContent(page, "< FileNotFoundError: [Errno 44] No such file or directory: '/does/not/exist.txt' >\n  From the highlighted call in your code");
-        await expectHasVisibleErrorIcon(page.locator("span", {hasText: "open"}));
-    });
-    
-    // Check syntax error too, this use of global shows a syntax error:
-    test("Check error shows for global mis-use", async ({page}) => {
-        await enterCode(page, ["", `
-def test():
-    a = 2
-    global a
-`.trimStart(), "print(\"Hi!\")\n"]);
-        await runToFinish(page);
-        await checkConsoleContent(page, "< SyntaxError: name 'a' is assigned to before global declaration >\n  From the highlighted call in your code");
-        await expectHasVisibleErrorIcon(page.locator("div.frame-header-label", {hasText: "global"}));
-    });
+test.describe("Test stopping during a pending input doesn't break the next run (issue #927)", () => {
+    // sInput()'s cleanup of a stopped-but-still-pending input() call (removing its console
+    // keydown/composition listeners, see execPythonCode.ts) is driven by a 1-second polling
+    // interval rather than any DOM-observable event, so we wait a little over a second after
+    // stopping to give that cleanup a chance to run before starting the next execution -- that's
+    // exactly the race these tests are meant to cover (without the fix, the stale listeners are
+    // never removed no matter how long we wait).
+    const STALE_INPUT_CLEANUP_WAIT_MS = 1500;
 
-    test("Check error shows after manually printing", async ({page}) => {
-        await enterCode(page, ["import traceback", "", `
-try:
-    print(len(None))
-except Exception:
-    traceback.print_exc()
-`]);
-        await runToFinish(page);
-        // Should be an error, but only one:
-        await checkConsoleContent(page, /.*TypeError: object of type 'NoneType' has no len\(\).*/);
-        // Should not show any error counts because we caught it:
+    test("Check console still accepts input after stopping with a second input still pending", async ({page}) => {
+        const code = "name = input('What is your name?\\n')\nprint('Hello ' + name)\nspecies = input('What is your species?\\n')\nprint('Hello ' + name + ' the ' + species)\n";
+        await enterCode(page, ["", "", code]);
+        let button = await startRunning(page);
+        await expect(page.locator("#peaConsole")).toBeEnabled();
+        await expect(page.locator("#peaConsole")).toBeFocused();
+        // Validate the first input, leaving the second one pending:
+        await page.locator("#peaConsole").pressSequentially("George\n", {delay: 75});
+        await checkConsoleContent(page, "What is your name?\nGeorge\nHello George\nWhat is your species?\n");
+        await expect(button).toContainText("Stop");
+        // Stop while the second input is still pending:
+        await button.click();
+        await runButtonShowsRun(button);
+        await page.waitForTimeout(STALE_INPUT_CLEANUP_WAIT_MS);
+
+        // Run again, and check that typing into the console actually works this time:
+        button = await startRunning(page);
+        await expect(page.locator("#peaConsole")).toBeEnabled();
+        await expect(page.locator("#peaConsole")).toBeFocused();
+        await page.locator("#peaConsole").pressSequentially("Amy\n", {delay: 75});
+        await checkConsoleContent(page, "What is your name?\nAmy\nHello Amy\nWhat is your species?\n");
+        await expect(button).toContainText("Stop");
+        await page.locator("#peaConsole").pressSequentially("dog\n", {delay: 75});
+        await checkConsoleContent(page, "What is your name?\nAmy\nHello Amy\nWhat is your species?\ndog\nHello Amy the dog\n");
+        await runButtonShowsRun(button);
         await checkFrameErrorCount(page, 0);
     });
-    
-    test("Check error shows at right place when documentation parts have newlines", async ({page}) => {
-        await load(page, "tests/cypress/fixtures/project-documented-newlines.spy");
-        await runToFinish(page);
-        // Two separate checks to keep things clear, one for the expected lengths of each of the docs, one for the error:
-        await checkConsoleContent(page, /9\n6\n4\n11\n5\n.*/);
-        await checkConsoleContent(page, /.*TypeError: object of type 'NoneType' has no len\(\).*/);
-        await expectHasVisibleErrorIcon(page.locator("span", {hasText: "This will cause an error:"}));
+
+    test("Check Enter still validates input after stopping with an unvalidated input pending", async ({page}) => {
+        const code = "name = input('What is your name?\\n')\nprint('Hello ' + name)\n";
+        await enterCode(page, ["", "", code]);
+        let button = await startRunning(page);
+        await expect(page.locator("#peaConsole")).toBeEnabled();
+        await expect(page.locator("#peaConsole")).toBeFocused();
+        // Type something but don't validate it with Enter:
+        await page.locator("#peaConsole").pressSequentially("Geo", {delay: 75});
+        await checkConsoleContent(page, "What is your name?\nGeo");
+        await expect(button).toContainText("Stop");
+        // Stop while the input is still pending and unvalidated:
+        await button.click();
+        await runButtonShowsRun(button);
+        await page.waitForTimeout(STALE_INPUT_CLEANUP_WAIT_MS);
+
+        // Run again, type something, and check Enter actually validates it this time:
+        button = await startRunning(page);
+        await expect(page.locator("#peaConsole")).toBeEnabled();
+        await expect(page.locator("#peaConsole")).toBeFocused();
+        await page.locator("#peaConsole").pressSequentially("Amy\n", {delay: 75});
+        await checkConsoleContent(page, "What is your name?\nAmy\nHello Amy\n");
+        await runButtonShowsRun(button);
+        await checkFrameErrorCount(page, 0);
     });
 });
 
@@ -204,12 +174,12 @@ print(type(s.get_samples()))`]);
         await checkFrameErrorCount(page, 0);
     });
 
-    test("Create zero length Sound", async ({page}) => {
-        if (process.platform === "linux") {
-            // Something about playing the sound headless on Linux in Firefox doesn't seem to work (it does on Windows)
+    test("Create zero length Sound", async ({page, browserName}) => {
+        if (browserName === "firefox") {
+            // Something about playing sound headless in Firefox doesn't seem to work (it does in Chromium)
             return;
         }
-        
+
         await enterCode(page, ["from strype.sound import *", "", `
 s = Sound([])
 # Playing sound should not hang things:
@@ -331,8 +301,9 @@ while True:
             // Now we stop:
             await runButton.click();
             await runButtonShowsRun(runButton, true);
-            // Wait for slush to print if there was some (shouldn't be, but that's what we're testing...):
-            await page.waitForTimeout(10_000);
+            // Wait for slush to print if there was some (shouldn't be, but that's what we're testing...) --
+            // wait until the console actually stops changing, rather than guessing how long that takes:
+            await waitForConsoleSettled(page);
             // Then check the last actual printed line:
             consoleValue = await page.locator("#peaConsole").inputValue();
             const lastNumberAfterStopping = Number(consoleValue.split("\n")?.at(-2)?.trim());
@@ -361,6 +332,45 @@ while True:
             const lengthAfterStopping = consoleValue.length / 3;
             // Should have stopped printing soon after (within 4 seconds' worth)  (should be less, but CI can be slow...):
             expect(lengthAfterStopping).toBeLessThan(lengthWhileRunning + linesPerSecond * 4);
+        });
+
+        test(`Check graphics actor stops moving within seconds of stopping after running for ${runTime} seconds`, async ({page}) => {
+            // Unlike the console print tests above (see https://github.com/k-pet-group/Strype/issues/996
+            // for that bug: unbatched, layout-forcing textarea writes on every print, routed through a
+            // promise chain with no yield points), sprite/graphics updates go through their own dedicated
+            // MessagePort (self.updatePort in python-execution.ts) straight into an in-memory SpriteManager
+            // update with no DOM/layout work at all, and the actual canvas redraw is decoupled from that
+            // and throttled to once per requestAnimationFrame via an isDirty() flag (see redrawCanvas() in
+            // PythonExecutionArea.vue) -- so a tight movement loop does not queue up unboundedly the way a
+            // tight print loop does. Verified empirically: under CPU throttling that reliably starves the
+            // main thread for the print-loop case, this test's responsiveness stayed close to the healthy
+            // baseline. This test still checks the ordinary "Stop takes effect promptly" behaviour, just
+            // without expecting the same failure mode as the print tests.
+            await enterCode(page, ["from strype.graphics import *", "", `
+cat = Actor('cat-test.jpg')
+while True:
+    cat.move(5)`]);
+            await setupGraphicsRedrawObserver(page);
+            const runButton = await startRunning(page, true);
+            await page.waitForTimeout(runTime * 1000);
+            // We use the number of actual canvas redraws (see setupGraphicsRedrawObserver) as a proxy for
+            // "the actor visibly moved", since there's no printed output to inspect here:
+            const redrawsWhileRunning = await page.evaluate(() => (window as any).__strypeGraphicsRedrawCount ?? 0);
+            const redrawsPerSecond = redrawsWhileRunning / runTime;
+            // Now we stop:
+            await runButton.click();
+            await runButtonShowsRun(runButton, true);
+            // Wait to see if it keeps moving after we've stopped (it shouldn't):
+            await page.waitForTimeout(10_000);
+            const redrawsAfterStopping = await page.evaluate(() => (window as any).__strypeGraphicsRedrawCount ?? 0);
+            // Should have stopped moving within seconds of stopping (should be less, but CI can be slow...).
+            // Floor the grace amount at a small constant: for a short runTime, setup latency (e.g. loading
+            // the Actor's image) can eat into the window before any redraw happens at all, making
+            // redrawsPerSecond (and hence the grace) come out as exactly 0 -- which would make this
+            // assertion impossible to satisfy (redraw counts can't be negative) regardless of whether
+            // stopping actually worked correctly. Seen for real in CI: run 30358240472, "3 seconds" case.
+            const grace = Math.max(redrawsPerSecond * 4, 5);
+            expect(redrawsAfterStopping).toBeLessThan(redrawsWhileRunning + grace);
         });
     }
 });

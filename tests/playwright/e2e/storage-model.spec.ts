@@ -1,10 +1,109 @@
 // These tests test what happens when you open, close and refresh Strype tabs,
 // specifically around storing and restoring the state from browser storage.
 
-import { Page, expect, test } from "@playwright/test";
-import { skipPyodideLoading } from "../support/general";
+import { BrowserContext, Page, expect, test } from "@playwright/test";
+import { DEFAULT_STARTING_FRAME_COUNT, skipPyodideLoading } from "../support/general";
 import { save } from "../support/loading-saving";
 import {strypeElIds} from "../support/proxy";
+import { BASE_URL } from "../../../playwright.config";
+
+// storageState() reports storage per-origin, and closePage() below navigates non-Chromium pages
+// to a different origin (our test asset server) as its "unload" trick, so we always need to pick
+// out the right origin rather than assuming there's only one:
+const STRYPE_ORIGIN = new URL(BASE_URL).origin;
+
+// These mirror the AutoSaveKeyNames enum and autoSaveFreqMins constant in src/helpers/editor.ts.
+// They're duplicated here (not imported) because that module pulls in i18n/Vue and the rest of
+// the app's dependency graph, which isn't loadable from Playwright's Node-side test runner.
+const TAB_ID_SESSION_KEY = "StrypeEditorTabId";
+const DB_NAME = "StrypeStateDatabase";
+const DB_STORE = "StrypeStorePython"; // the Python-platform object store; these tests run in Python mode
+const EMERGENCY_KEY_PREFIX = "PythonStrypeSavedState:";
+const AUTO_SAVE_FREQ_MINS = 2;
+
+type StoredSessionRecord = {
+    tabId: string;
+    data: string;
+    projectName: string;
+    lastModifiedAt: number;
+    lastAliveAt: number;
+    stillAlive: string;
+    modifiedSinceExternalSave: string;
+    userDecidedOnReloading: string;
+};
+
+// Reads the tabId that identifies a page's own saved session (see getEditorTabId() in store.ts).
+async function getTabId(page: Page): Promise<string> {
+    const tabId = await page.evaluate((key) => sessionStorage.getItem(key), TAB_ID_SESSION_KEY);
+    if (!tabId) {
+        throw new Error("Page has no tabId yet");
+    }
+    return tabId;
+}
+
+// Reads the raw IndexedDB rows for our object store, straight from the browser's storage layer
+// (via CDP, same as the storageState() call already used in afterEach below) -- this deliberately
+// does not need any page to be open/alive, which is exactly what we need when polling right after
+// a tab has been closed.
+async function getStoredSessionRecords(context: BrowserContext): Promise<StoredSessionRecord[]> {
+    const state = await context.storageState({indexedDB: true}) as unknown as {
+        origins: {origin: string, indexedDB?: {name: string, stores: {name: string, records: {value: StoredSessionRecord}[]}[]}[]}[]
+    };
+    const origin = state.origins.find((o) => o.origin === STRYPE_ORIGIN);
+    const db = origin?.indexedDB?.find((d) => d.name === DB_NAME);
+    const store = db?.stores.find((s) => s.name === DB_STORE);
+    return (store?.records ?? []).map((r) => r.value);
+}
+
+// Reads the "emergency save" localStorage keys written synchronously on pagehide (see
+// emergencySaveSessionState() in store-db-storage.ts), before they've been migrated into
+// IndexedDB by whatever tab loads next.
+async function getEmergencySaveTabIds(context: BrowserContext): Promise<string[]> {
+    const state = await context.storageState();
+    const origin = state.origins.find((o) => o.origin === STRYPE_ORIGIN);
+    return (origin?.localStorage ?? [])
+        .map((item) => item.name)
+        .filter((name) => name.startsWith(EMERGENCY_KEY_PREFIX))
+        .map((name) => name.slice(EMERGENCY_KEY_PREFIX.length));
+}
+
+// Waits until the given (just-closed) tab's state has actually landed in browser storage --
+// either still as the raw "emergency save" in localStorage, or (if some other page has already
+// run its startup migration) as a proper IndexedDB row -- instead of guessing a fixed delay.
+// Playwright's page.close({runBeforeUnload: true}) explicitly does not wait for unload handlers
+// to finish (confirmed against the Playwright docs, not just a guess), and we can't page.evaluate()
+// on a page once it's closed, so polling browser-level storage state is the only reliable signal.
+async function waitForTabStateSaved(context: BrowserContext, tabId: string, timeout = 15000): Promise<void> {
+    await expect.poll(async () => {
+        const emergencyTabIds = await getEmergencySaveTabIds(context);
+        if (emergencyTabIds.includes(tabId)) {
+            return true;
+        }
+        const records = await getStoredSessionRecords(context);
+        return records.some((r) => r.tabId === tabId);
+    }, {timeout, message: `Waiting for tab ${tabId}'s state to be saved (emergency localStorage or IndexedDB)`}).toBe(true);
+}
+
+// Directly writes a row into the IndexedDB store using the real IndexedDB API from within the
+// page, bypassing the app's own save path entirely. This lets us set up a precise, controlled
+// precondition (e.g. a specific lastAliveAt) for testing checkForRecentSaveStates()'s read-side
+// logic, without needing to wait for real time to pass or coax the app's save machinery into an
+// awkward sequence to get there.
+async function seedStoredSessionRecord(page: Page, record: StoredSessionRecord): Promise<void> {
+    await page.evaluate(({dbName, storeName, record}) => {
+        return new Promise<void>((resolve, reject) => {
+            const req = indexedDB.open(dbName);
+            req.onsuccess = () => {
+                const db = req.result;
+                const tx = db.transaction(storeName, "readwrite");
+                tx.objectStore(storeName).put(record);
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+            };
+            req.onerror = () => reject(req.error);
+        });
+    }, {dbName: DB_NAME, storeName: DB_STORE, record});
+}
 
 // Note we don't visit a page in the beforeEach; that is left to individual tests.
 // It's also important to not even have it as a parameter; Playwright creates it based on whether it appears as a param.
@@ -14,8 +113,17 @@ test.beforeEach(async ({ browserName }, testInfo) => {
         testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
     }
 
-    // These tests can take longer than the default 30 seconds:
-    testInfo.setTimeout(300000); // 300 seconds
+    // These tests can take longer than the default 30 seconds. 180s turned out not to be enough
+    // headroom: CI run 29351662646 showed the heaviest (six-page-load) case consistently landing
+    // at 182-186s on Firefox under contention, failing all 4 attempts. 240s matched the margin
+    // scroll-into-view.spec.ts uses for its own heaviest multi-step tests, but CI run 29398924054
+    // showed "(2nd: false)" still hitting the 240s wall on all 4 attempts, even on the macOS+WebKit
+    // job that runs this file single-worker/isolated specifically to rule out CPU contention --
+    // the resource-monitor log for that job showed load average around 3-5 on a 3-vCPU runner
+    // during the failures (not the 15-30 seen during job setup), so this isn't primarily
+    // contention. Bumped to 360s pending further investigation into why the "false" (autosave-
+    // recovery) branch is consistently slower than "true" (explicit save) -- see PROGRESS notes.
+    testInfo.setTimeout(360000); // 360 seconds
 });
 
 test.afterEach(async ({ context }, testInfo) => {
@@ -31,13 +139,16 @@ test.afterEach(async ({ context }, testInfo) => {
 
 async function assertStartingProject(page: Page)  {
     // Checks the starting project is showing:
-    await expect(page.locator(".frame-div")).toHaveCount(2);
+    await expect(page.locator(".frame-div")).toHaveCount(DEFAULT_STARTING_FRAME_COUNT);
     await expect(page.locator("span", {hasText: "Hello from Strype"})).toHaveCount(1);
     await expect(page.locator("span", {hasText: "This is the default Strype starter project"})).toHaveCount(1);
 }
 
-async function assertStartingPlus(page: Page, paramContent: string) {
-    await expect(page.locator(".frame-div")).toHaveCount(3);
+// expectedFrameCount defaults to the current default project's frame count plus one, but tests
+// that load an old, frozen localStorage snapshot (captured before the default project's shape
+// last changed) need to pass the frame count that snapshot actually contains, not today's count:
+async function assertStartingPlus(page: Page, paramContent: string, expectedFrameCount = DEFAULT_STARTING_FRAME_COUNT + 1) {
+    await expect(page.locator(".frame-div")).toHaveCount(expectedFrameCount);
     await expect(page.locator("span", {hasText: "Hello from Strype"})).toHaveCount(1);
     await expect(page.locator("span", {hasText: "This is the default Strype starter project"})).toHaveCount(1);
     await expect(page.locator("span", {hasText: paramContent})).toHaveCount(1);
@@ -48,8 +159,7 @@ async function appendContent(page: Page, paramContent: string) {
     await page.keyboard.press("End");
     await page.keyboard.type("p\"" + paramContent);
     await page.keyboard.press("Enter");
-    await page.waitForTimeout(500);
-    // Sanity check it actually appeared:
+    // Sanity check it actually appeared (assertStartingPlus's own assertions already retry):
     await assertStartingPlus(page, paramContent);
 }
 
@@ -62,6 +172,22 @@ async function loadAndWaitForEditor(page: Page) {
     await page.evaluate(() => {
         (window as any).Playwright = true;
     });
+}
+
+// "New Project" (see resetProject()/onHideModalDlg() in App.vue) performs a real browser
+// navigation -- window.location.href = "...?new_project" -- not an SPA transition, so the whole
+// app (Vue, the service worker, etc.) has to boot up again from scratch, same as a fresh
+// page.goto(). Callers used to just call assertStartingProject() straight after clicking through
+// the confirmation dialog, relying on its own expect() calls' default 5000ms timeout to also cover
+// this reload+reboot -- CI logs (e.g. run 30398078084) showed that isn't always enough on a
+// contended Firefox runner ("frame-div" still resolving to 0 elements after 5s), even though the
+// overall per-test timeout (360s, see beforeEach above) has plenty of headroom. Wait for the same
+// real conditions loadAndWaitForEditor() waits for on first load, so the eventual
+// assertStartingProject() call only has to wait for reactive rendering, not the reload itself:
+async function waitForNewProjectReload(page: Page): Promise<void> {
+    await page.waitForURL(/[?&]new_project(&|$)/);
+    await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+    await page.waitForSelector(".frame-container");
 }
 
 test.describe("Test basic operation", () => {
@@ -170,7 +296,9 @@ test.describe("Test migration from old system", () => {
         const page = await context.newPage();
         await loadAndWaitForEditor(page);
         // This is the content I used to make the above Unicode escaped version:
-        await assertStartingPlus(page, "Saved state from previous storage model");
+        // The snapshot predates the current default project's imports, so it has one fewer frame
+        // than DEFAULT_STARTING_FRAME_COUNT + 1 would now assume:
+        await assertStartingPlus(page, "Saved state from previous storage model", 3);
         // Check the key has gone:
         const keys = await page.evaluate(() => {
             const keys = [];
@@ -200,7 +328,9 @@ test.describe("Test migration from old system", () => {
         const page1 = await context.newPage();
         await loadAndWaitForEditor(page1);
         // This is the content I used to make the above Unicode escaped version:
-        await assertStartingPlus(page1, "Saved state from previous storage model");
+        // The snapshot predates the current default project's imports, so it has one fewer frame
+        // than DEFAULT_STARTING_FRAME_COUNT + 1 would now assume:
+        await assertStartingPlus(page1, "Saved state from previous storage model", 3);
 
         const page2 = await context.newPage();
         await loadAndWaitForEditor(page2);
@@ -247,9 +377,25 @@ async function assertRecentStatesShowing(page: Page, expectedProjectNames: RegEx
     await expect(page.locator("." + scssVars.projectRecentStateLabel)).toHaveText(expectedProjectNames);
 }
 
+// The "recent unsaved projects" pane is hidden by default in the load dialog; Ctrl+U reveals it.
+// The shortcut is only armed once the dialog has fully finished its "shown" transition (a Bootstrap
+// event that fires a little after the dialog becomes visible to Playwright), so a single press right
+// after opening the dialog can race that transition. Presses before the dialog is armed are harmless
+// no-ops, so we just retry the press until the pane shows up:
+async function revealRecentUnsavedPane(page: Page) : Promise<void> {
+    const scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
+    await expect(async () => {
+        await page.keyboard.press("ControlOrMeta+u");
+        await expect(page.locator("." + scssVars.projectRecentStateLabel).first()).toBeVisible({timeout: 300});
+    }).toPass({timeout: 5000});
+}
+
 async function assertOpenRecentMenu(page: Page, expectedProjectNames: RegExp[]) : Promise<void> {
     await page.click("#" + await strypeElIds(page).getEditorMenuUID());
     await page.click("#" + await strypeElIds(page).getLoadProjectLinkId());
+    if (expectedProjectNames.length > 0) {
+        await revealRecentUnsavedPane(page);
+    }
     await assertRecentStatesShowing(page, expectedProjectNames);
 }
 
@@ -267,10 +413,11 @@ test.describe("Offer to reload unsaved backups", () => {
             // Modify it and close it:
             const str = "Modifying fresh project ahead of closing #1";
             await appendContent(page1, str);
+            const page1TabId = await getTabId(page1);
             await closePage(page1, browserName);
-            // Playwright seems to say it won't actually wait for the saving to be finished, so let's wait an extra couple of seconds:
-            // Can't use page1.waitForTimeout as it's closed...
-            await new Promise((resolve) => setTimeout(resolve, 2000));
+            // Wait for page1's close-time save to actually land in storage, rather than guessing
+            // a fixed delay:
+            await waitForTabStateSaved(context, page1TabId);
 
             // Load a new page in the same context (so it shares the storage):
             const page2 = await context.newPage();
@@ -296,6 +443,173 @@ test.describe("Offer to reload unsaved backups", () => {
             }
         });
     }
+
+    // Reported from memory as possibly broken: modify a never-saved project, close the tab
+    // without saving, open a new tab, and go straight to Open Recent (ignoring the auto-shown
+    // banner entirely) -- does the closed project show up? There's no code-level time limit on
+    // Open Recent that would exclude a just-closed session (unlike the banner, which does have a
+    // 2-minute-in-production freshness window -- see checkForRecentSaveStates()'s recentAliveMinutes),
+    // so this should pass; this test exists to catch it if that's wrong, or if it's actually a
+    // migration-timing race (the closed tab's state only gets copied from its emergency
+    // localStorage save into IndexedDB -- which is what Open Recent reads -- during the *next*
+    // tab's own startup):
+    test("A closed, modified-but-unsaved project appears in Open Recent from the very next new tab", async ({browser, browserName}) => {
+        const context = await browser.newContext();
+        const page1 = await context.newPage();
+        await loadAndWaitForEditor(page1);
+        const str = "Modifying a project ahead of closing without saving, no explicit save at all";
+        await appendContent(page1, str);
+        const page1TabId = await getTabId(page1);
+        await closePage(page1, browserName);
+        await waitForTabStateSaved(context, page1TabId);
+
+        const page2 = await context.newPage();
+        await loadAndWaitForEditor(page2);
+        // Deliberately don't touch the auto-shown banner -- go straight to Open Recent:
+        await assertOpenRecentMenu(page2, [/^My project \(/]);
+    });
+
+    // Regression test: "New Project" used to force isEditorContentModified false purely to
+    // suppress the native "Leave page?" dialog, but that same flag also fed
+    // modifiedSinceExternalSave in the close-time save, wrongly marking the abandoned project as
+    // "already saved externally" and permanently hiding it from Open Recent (see App.vue's
+    // onHideModalDlg -- the comment right above that line already said "the old state is actually
+    // retained if they want to get back to it", which this bug quietly defeated):
+    test("Starting a New Project (discarding changes) keeps the abandoned project recoverable in Open Recent", async ({page}) => {
+        await loadAndWaitForEditor(page);
+        const str = "Modifying before starting a new project";
+        await appendContent(page, str);
+
+        await page.click("#" + await strypeElIds(page).getEditorMenuUID());
+        await page.click("#" + await strypeElIds(page).getNewProjectLinkId());
+        // Confirm discarding unsaved changes:
+        await page.locator("*[id='confirmNewProjectModalDlg'] button", {hasText: "Continue"}).click();
+
+        // Should now be back to the fresh default project:
+        await waitForNewProjectReload(page);
+        await assertStartingProject(page);
+
+        // The abandoned, unsaved project should still be recoverable:
+        await assertOpenRecentMenu(page, [/^My project \(/]);
+    });
+
+    // Regression test for the Ctrl+U secret-shortcut behaviour: the recent-unsaved-projects pane
+    // (and its divider) must be hidden by default, only appear once Ctrl+U is pressed, toggle off
+    // again on a second press, and reset back to hidden the next time the dialog is opened:
+    test("The recent unsaved projects pane is hidden until Ctrl+U is pressed", async ({page}) => {
+        await loadAndWaitForEditor(page);
+        const str = "Modifying before starting a new project";
+        await appendContent(page, str);
+
+        await page.click("#" + await strypeElIds(page).getEditorMenuUID());
+        await page.click("#" + await strypeElIds(page).getNewProjectLinkId());
+        await page.locator("*[id='confirmNewProjectModalDlg'] button", {hasText: "Continue"}).click();
+        await waitForNewProjectReload(page);
+        await assertStartingProject(page);
+
+        // Open the load dialog directly (not via assertOpenRecentMenu, which presses Ctrl+U itself):
+        await page.click("#" + await strypeElIds(page).getEditorMenuUID());
+        await page.click("#" + await strypeElIds(page).getLoadProjectLinkId());
+        await page.locator("#load-strype-project-modal-dlg").waitFor({state: "visible"});
+        const scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
+        const recentPane = page.locator("." + scssVars.projectRecentStateLabel);
+
+        // Hidden by default, even though there is a recent unsaved project to show:
+        await expect(recentPane).not.toBeVisible();
+
+        // Ctrl+U reveals it:
+        await revealRecentUnsavedPane(page);
+        await assertRecentStatesShowing(page, [/^My project \(/]);
+
+        // Pressing it again hides it:
+        await page.keyboard.press("ControlOrMeta+u");
+        await expect(recentPane).not.toBeVisible();
+
+        // Reveal it once more, then close and reopen the dialog -- it should reset to hidden:
+        await page.keyboard.press("ControlOrMeta+u");
+        await assertRecentStatesShowing(page, [/^My project \(/]);
+        await page.locator("#load-strype-project-modal-dlg .btn-close").click();
+        await page.click("#" + await strypeElIds(page).getEditorMenuUID());
+        await page.click("#" + await strypeElIds(page).getLoadProjectLinkId());
+        await expect(recentPane).not.toBeVisible();
+    });
+
+    // Regression test: discarding changes via the "save changes before loading?" dialog (shown
+    // when opening a different project, a demo, or a book chapter while the current one is
+    // modified) used to never back up the outgoing project at all -- unlike the "Save changes"
+    // path, the "Discard changes" path went straight to loading the new content with no call to
+    // persist so much as the internal webstorage recovery copy, so unless a periodic autosave had
+    // happened to land beforehand by chance, the discarded project was simply gone with no way
+    // back (see backupEditorProjectBeforeDiscard in App.vue/Menu.vue):
+    test("Discarding changes via the Open dialog keeps the previous project recoverable in Open Recent", async ({page}) => {
+        await loadAndWaitForEditor(page);
+        const str = "Modifying before discarding via the Open dialog";
+        await appendContent(page, str);
+
+        // Open "Load Project" while content is modified -- triggers the save-or-discard dialog:
+        await page.click("#" + await strypeElIds(page).getEditorMenuUID());
+        await page.click("#" + await strypeElIds(page).getLoadProjectLinkId());
+        await page.locator("button", {hasText: "Discard changes"}).filter({visible: true}).click();
+
+        // This re-shows the actual "choose where to load from" dialog; we've already confirmed the
+        // discard itself, so back out of it without picking anything. We use the dialog's own
+        // close button rather than Escape: Escape only works once bootstrap-vue-next's document-level
+        // keydown listener for this dialog instance has attached, which isn't guaranteed to have
+        // happened yet at this point (the dialog was just re-shown synchronously off the back of the
+        // previous one's "hidden" event) -- this was intermittently leaving the dialog stuck open and
+        // blocking every subsequent click, hanging the test on CI. A real click on the close button
+        // has no such race: Playwright's click already waits for the button to be actionable.
+        await page.locator("#load-strype-project-modal-dlg .btn-close").click();
+
+        // We backed out without loading anything, so our own project is still exactly as modified
+        // as it was before -- openLoadProjectModal() checks isEditorContentModified on every call,
+        // so clicking "Load Project" again shows the save-or-discard dialog once more, not the
+        // target-picker dialog directly (unlike assertOpenRecentMenu's usual case of a fresh,
+        // unmodified page). Discarding again is harmless: it just re-backs-up the same content
+        // under the same tabId:
+        await page.click("#" + await strypeElIds(page).getEditorMenuUID());
+        await page.click("#" + await strypeElIds(page).getLoadProjectLinkId());
+        await page.locator("button", {hasText: "Discard changes"}).filter({visible: true}).click();
+
+        // The discarded project should still be recoverable. This dialog was opened directly rather
+        // than via assertOpenRecentMenu(), so we need to reveal the recent-unsaved-projects pane ourselves:
+        await revealRecentUnsavedPane(page);
+        await assertRecentStatesShowing(page, [/^My project \(/]);
+    });
+
+    // Regression test for the bug where declining the banner (via Cancel or the cross icon)
+    // never marked the state as "decided", so a further new tab opened shortly after would be
+    // offered the exact same state again (see markUserDecisionOnReloading() in MessageBanner.vue):
+    test("Cancelling the banner does not offer the same state again to a subsequently opened tab", async ({browser, browserName}) => {
+        const context = await browser.newContext({recordVideo: {dir: "tests/playwright/test-results/videos/"}});
+        const page1 = await context.newPage();
+        page1.on("console", (msg) => console.log("Browser log page 1:", msg.text()));
+
+        await loadAndWaitForEditor(page1);
+        const str = "Modifying fresh project ahead of closing #2";
+        await appendContent(page1, str);
+        const page1TabId = await getTabId(page1);
+        await closePage(page1, browserName);
+        await waitForTabStateSaved(context, page1TabId);
+
+        const page2 = await context.newPage();
+        page2.on("console", (msg) => console.log("Browser log page 2:", msg.text()));
+        await loadAndWaitForEditor(page2);
+        await assertStartingProject(page2);
+        const scssVars = await page2.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
+        await expect(page2.locator("." + scssVars.messageBannerContainerClassName)).toBeVisible();
+        // Decline the offer:
+        await page2.locator("button", {hasText: "Cancel"}).filter({ visible: true }).click();
+        await expect(page2.locator("." + scssVars.messageBannerContainerClassName)).not.toBeVisible();
+
+        // A further new tab, opened shortly after, should NOT be offered the same state again:
+        const page3 = await context.newPage();
+        page3.on("console", (msg) => console.log("Browser log page 3:", msg.text()));
+        await loadAndWaitForEditor(page3);
+        await assertStartingProject(page3);
+        await expect(page3.locator("." + scssVars.messageBannerContainerClassName)).not.toBeVisible();
+    });
+
     // We load four pages in a row:
     // - State 1: modified, not saved, closed
     // - State 2: modified, saved or not depending on a flag, closed (should be offered 1 on initial load)
@@ -311,15 +625,15 @@ test.describe("Offer to reload unsaved backups", () => {
 
             await loadAndWaitForEditor(page1);
             await save(page1, true, "Project 1");
-            await page1.waitForTimeout(1000);
             const scssVars = await page1.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
             // Modify it and close it:
             const str1 = "Modifying state #1 ahead of closing";
             await appendContent(page1, str1);
+            const page1TabId = await getTabId(page1);
             await closePage(page1, browserName);
-            // Playwright seems to say it won't actually wait for the saving to be finished, so let's wait an extra couple of seconds:
-            // Can't use page1.waitForTimeout as it's closed...
-            await new Promise((resolve) => setTimeout(resolve, 2000));
+            // Wait for page1's close-time save to actually land in storage, rather than guessing
+            // a fixed delay:
+            await waitForTabStateSaved(context, page1TabId);
 
             // Load a new page in the same context (so it shares the storage):
             const page2 = await context.newPage();
@@ -331,20 +645,18 @@ test.describe("Offer to reload unsaved backups", () => {
             await expect(page2.locator("." + scssVars.messageBannerContainerClassName)).toBeVisible();
             await expect(page2.locator("." + scssVars.messageBannerContainerClassName)).toContainText("load it?");
             await save(page2, true, "Project 2");
-            await page2.waitForTimeout(1000);
-            
+
             // Now we modify, optionally save, and close:
             const str2 = "Modifying state #2 ahead of closing";
             await appendContent(page2, str2);
             if (state2Saved) {
                 await save(page2, false);
-                // Give it a moment to update the state:
-                await page2.waitForTimeout(1000);
             }
+            const page2TabId = await getTabId(page2);
             await closePage(page2, browserName);
-            // Playwright seems to say it won't actually wait for the saving to be finished, so let's wait an extra couple of seconds:
-            // Can't use page2.waitForTimeout as it's closed...
-            await new Promise((resolve) => setTimeout(resolve, 2000));
+            // Wait for page2's close-time save to actually land in storage, rather than guessing
+            // a fixed delay:
+            await waitForTabStateSaved(context, page2TabId);
 
             // Load a new page in the same context (so it shares the storage):
             const page3 = await context.newPage();
@@ -392,8 +704,7 @@ test.describe("Offer to reload unsaved backups", () => {
             
             // Clear all the states:
             await page5.locator("span", {hasText: "Clear all"}).click();
-            await page5.waitForTimeout(1000);
-            // Check this dialog is now empty:
+            // Check this dialog is now empty (assertRecentStatesShowing's own assertion retries):
             await assertRecentStatesShowing(page5, []);
             
             // Also check on a new page:
@@ -410,15 +721,15 @@ test.describe("Offer to reload unsaved backups", () => {
 
             await loadAndWaitForEditor(page1);
             await save(page1, true, "Project 1");
-            await page1.waitForTimeout(1000);
             const scssVars = await page1.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
             // Modify it and close it:
             const str1 = "Modifying state #1 ahead of closing";
             await appendContent(page1, str1);
+            const page1TabId = await getTabId(page1);
             await closePage(page1, browserName);
-            // Playwright seems to say it won't actually wait for the saving to be finished, so let's wait an extra couple of seconds:
-            // Can't use page1.waitForTimeout as it's closed...
-            await new Promise((resolve) => setTimeout(resolve, 2000));
+            // Wait for page1's close-time save to actually land in storage, rather than guessing
+            // a fixed delay:
+            await waitForTabStateSaved(context, page1TabId);
 
             // Load a new page in the same context (so it shares the storage):
             const page2 = await context.newPage();
@@ -430,17 +741,14 @@ test.describe("Offer to reload unsaved backups", () => {
             await expect(page2.locator("." + scssVars.messageBannerContainerClassName)).toBeVisible();
             await expect(page2.locator("." + scssVars.messageBannerContainerClassName)).toContainText("load it?");
             await save(page2, true, "Project 2");
-            await page2.waitForTimeout(1000);
 
             // Now we modify, and optionally save:
             const str2 = "Modifying state #2 ahead of closing";
             await appendContent(page2, str2);
             if (state2Saved) {
                 await save(page2, false);
-                // Give it a moment to update the state:
-                await page2.waitForTimeout(1000);
             }
-            
+
             // We don't close the page, we use the new project from the menu
             await page2.locator("#" + await strypeElIds(page2).getEditorMenuUID()).click();
             await page2.locator("#" + await strypeElIds(page2).getNewProjectLinkId()).click();
@@ -448,14 +756,59 @@ test.describe("Offer to reload unsaved backups", () => {
                 // Need to click the confirmation dialog to go despite unsaved changes:
                 await page2.locator("*[id='confirmNewProjectModalDlg'] button", {hasText: "Continue"}).click();
             }
-            
-            // Wait a bit just to be sure it's all loaded:
-            await page2.waitForTimeout(3000);            
-            
+
+            // "New project" reloads the browser with a forceNewProject flag, which makes
+            // loadLocalStorageProjectOnStart() skip the recent-state banner check entirely (see
+            // App.vue) -- so once the fresh default project has actually finished loading, the
+            // absence of a banner is structurally guaranteed, not just "probably settled by now".
+            // Waiting for the default project confirms the reload/restart has completed.
+            await waitForNewProjectReload(page2);
+            await assertStartingProject(page2);
+
             // Now we check there's no banner:
             await expect(page2.locator("." + scssVars.messageBannerContainerClassName)).not.toBeVisible();
         });
     }
+});
+
+// This targets a branch of checkForRecentSaveStates() that the tests above never exercise: for
+// the "load_menu" reason, a tab counts as stale (and so gets offered) once its lastAliveAt is
+// older than autoSaveFreqMins * 2, even if it's never been marked closed (stillAlive == "maybe").
+// Waiting 4 real minutes for that would be impractical, so instead we seed IndexedDB rows
+// directly with a controlled lastAliveAt, to test the read-side logic deterministically and fast.
+test.describe("Open Recent menu treats a long-idle-but-still-open tab as stale", () => {
+    test("Recent menu offers a tab whose lastAliveAt is older than 2x the autosave interval, even though it was never marked closed", async ({page}) => {
+        await loadAndWaitForEditor(page);
+
+        const now = Date.now();
+        const staleAgeMs = (AUTO_SAVE_FREQ_MINS * 2 + 1) * 60 * 1000; // just past the load_menu staleness threshold
+        const freshAgeMs = 30 * 1000; // well within the threshold
+
+        // Neither row is marked closed ("maybe" alive) -- only their lastAliveAt differs:
+        await seedStoredSessionRecord(page, {
+            tabId: "test-stale-tab",
+            data: "seed-data-stale",
+            projectName: "StaleIdleProject",
+            lastModifiedAt: now - staleAgeMs,
+            lastAliveAt: now - staleAgeMs,
+            stillAlive: "maybe",
+            modifiedSinceExternalSave: "true",
+            userDecidedOnReloading: "false",
+        });
+        await seedStoredSessionRecord(page, {
+            tabId: "test-fresh-tab",
+            data: "seed-data-fresh",
+            projectName: "FreshIdleProject",
+            lastModifiedAt: now - freshAgeMs,
+            lastAliveAt: now - freshAgeMs,
+            stillAlive: "maybe",
+            modifiedSinceExternalSave: "true",
+            userDecidedOnReloading: "false",
+        });
+
+        // Only the stale one should be offered; the fresh one (still within the threshold) should not:
+        await assertOpenRecentMenu(page, [/^StaleIdleProject /]);
+    });
 });
 
 async function assertNoDialog(page: Page, browserName: string) {

@@ -22,7 +22,7 @@ def prepare (color ) :
 #(=> FrameState:FoldToHeader;Frozen
 def interpolate (start,end,d ) :
     '''This is a helper function to do some calculations when igniting the rockets.'''
-    return start+d*(end-start) 
+    return start + d * (end - start) 
 #(=> FrameState:FoldToHeader;Frozen
 def make_particle (sx,sy,ex,ey,ssize,esize,n,makes_trail,explodes,particle_image,delay=0 ) :
     '''Create a glowing fireworks particle.'''
@@ -48,21 +48,21 @@ def make_particle_image (color ) :
     c  = Color(c.red,c.green,c.blue,64) 
     img.set_fill(c) 
     for i  in range(1,5)  :
-        img.draw_oval(15,15,i*2,i*2,0,360) 
+        img.draw_oval(15,15,i * 2,i * 2,0,360) 
     return img 
 #(=> FrameState:FoldToHeader;Frozen
 def ignite ( ) :
     '''Ignite all the rockets that have previously been placed.'''
     global particles 
-    while len(particles)>0  :
+    while len(particles) > 0  :
         keep  = [] 
         for p  in particles  :
             #Implement launch delay:
-            if p.delay>0  :
-                p.delay  = p.delay-1 
+            if p.delay > 0  :
+                p.delay  = p.delay - 1 
                 keep.append(p) 
                 continue
-            d  = 1-(p.n/p.total) 
+            d  = 1 - (p.n / p.total) 
             p.set_location(interpolate(p.sx,p.ex,d),interpolate(p.sy,p.ey,d)) 
             s  = interpolate(p.ssize,p.esize,d) 
             try :
@@ -71,12 +71,12 @@ def ignite ( ) :
                 #Image too small; discard:
                 p.remove() 
                 continue
-            p.n  = p.n-1 
-            if p.n<=0  :
+            p.n  = p.n - 1 
+            if p.n <= 0  :
                 if p.explodes  :
                     for angle  in range(0,10)  :
-                        angle  = angle*36+randint(-20,20) 
-                        keep.append(make_particle(p.ex,p.ey,p.ex+100*sin(radians(angle)),p.ey+100*cos(radians(angle)),s*0.75,0,30,True,False,p.get_image())) 
+                        angle  = angle * 36 + randint(-20,20) 
+                        keep.append(make_particle(p.ex,p.ey,p.ex + 100 * sin(radians(angle)),p.ey + 100 * cos(radians(angle)),s * 0.75,0,30,True,False,p.get_image())) 
                 p.remove() 
                 continue
             elif p.makes_trail  :
@@ -103,7 +103,7 @@ def place_rocket (color,target_x=0,target_y=0,delay=0 ) :
             How long to wait after igniting until this rocket fires'''
     size  = 1.2 
     particle_image  = make_particle_image(color) 
-    p  = make_particle(0,-300,target_x,target_y,size,size,30,True,True,particle_image,int(delay*20)) 
+    p  = make_particle(0,-300,target_x,target_y,size,size,30,True,True,particle_image,int(delay * 20)) 
     particles.append(p) 
 #(=> Section:Main
 prepare("MidnightBlue") 

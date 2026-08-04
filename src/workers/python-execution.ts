@@ -102,7 +102,6 @@ async function loadOnly() : Promise<PyodideInterface> {
     // whether to mount and "cd /cloud" before running, and we give a runtime error if the user tries to access the file system
     // while not saved to the cloud.
     pyodide.FS.filesystems.CLOUDFS = getFSForEmscripten(pyodide);
-    pyodide.FS.mkdir("/cloud");
     
     pyodide.FS.filesystems.ASSETSFS = createLazyFetchAssetsFS(pyodide);
 
@@ -149,23 +148,37 @@ const executePython = pyodideExpose(async (
     // be answered after the previous async requests have all been processed.
     //
     // To avoid problems with many consecutive async requests, we count them, and every 50 requests
-    // we do a dummy sync request just to make sure we haven't gotten too far ahead of the main thread:
+    // we do a dummy sync request just to make sure we haven't gotten too far ahead of the main thread.
+    // Note that sprite/graphics updates (see self.spriteManager below) are sent on an entirely separate
+    // MessagePort (self.updatePort) rather than via makeRawRequest, for speed, but a tight loop of those
+    // (e.g. "while True: actor.move(5)") can queue up just as unboundedly as a tight print loop can.  So
+    // we share this same counter and catch-up logic with sprite updates, to bound how many messages of
+    // *either* kind can be outstanding at once:
     let numConsecutiveAsyncRequests = 0;
+    // Does the actual sync dummy round-trip that guarantees all previously-sent async requests
+    // (e.g. console_print for stdout/stderr) have been fully processed by the main thread, per the
+    // ordering guarantee described above.
+    const syncCatchUpWithMainThread = () => {
+        makeRawRequest({kind: "sync", request: {request: "dummy"}});
+        const reply = extras.readMessage() as (SyncStrypePyodideWorkerResponse | {request: string, error: string});
+        if (reply.request != "dummy") {
+            throw new Error(`Internal error: Pyodide worker received ${reply.request} but had asked for dummy`);
+        }
+        numConsecutiveAsyncRequests = 0;
+    };
+    const catchUpWithMainThreadIfNeeded = () => {
+        numConsecutiveAsyncRequests += 1;
+        if (numConsecutiveAsyncRequests >= 50) {
+            // To avoid racing too far ahead of the main thread, we do a quick catch-up:
+            syncCatchUpWithMainThread();
+        }
+    };
     const makeRequest = (req: SyncOrAsyncStrypePyodideWorkerRequest) => {
         if (req.kind === "sync") {
             numConsecutiveAsyncRequests = 0;
         }
         else {
-            numConsecutiveAsyncRequests += 1;
-            if (numConsecutiveAsyncRequests >= 50) {
-                // To avoid racing too far ahead of the main thread, we do a quick catch-up:
-                makeRawRequest({kind: "sync", request: {request: "dummy"}});
-                const reply = extras.readMessage() as (SyncStrypePyodideWorkerResponse | {request: string, error: string});
-                if (reply.request != "dummy") {
-                    throw new Error(`Internal error: Pyodide worker received ${reply.request} but had asked for dummy`);
-                }
-                numConsecutiveAsyncRequests = 0;
-            }
+            catchUpWithMainThreadIfNeeded();
         }
         // All requests are ultimately sent on:
         makeRawRequest(req);
@@ -202,7 +215,7 @@ sys.path.append("${libDir}")
         const usingMatplotlib = loaded.some((pd) => pd.name == "matplotlib");
         if (usingMatplotlib) {
             // Matplotlib takes ages (7 seconds on my fast Windows+Firefox machine!) so let's print a message:
-            makeRequest({kind: "async", request: {request:"console_print", text: "Loading Matplotlib (this may take some time)", containsInputPrompt: false}});
+            makeRequest({kind: "async", request: {request:"console_print", text: "Loading Matplotlib (this may take some time)\n", containsInputPrompt: false}});
         }
         
         
@@ -244,7 +257,7 @@ if ${usingMatplotlib ? "True" : "False"}:
         from matplotlib.backends.backend_agg import FigureCanvasAgg
     
         class FigureRendererPyodide:        
-            def render_current_figure(self, fig):            
+            def render_current_figure(self, fig):
                 w_in, h_in = fig.get_size_inches()
                 dpi = min(800 / w_in, 600 / h_in)
     
@@ -253,7 +266,7 @@ if ${usingMatplotlib ? "True" : "False"}:
                 buf.seek(0)
                 img = "data:image/png;base64," + base64.b64encode(buf.read()).decode("utf-8")
     
-                self.cur_width, self.cur_height = runner.callback("matplotlib_img", data=img)
+                fig.strype_display_width, fig.strype_display_height = runner.callback("matplotlib_img", data=img)
 
         _figure_renderer_pyodide = FigureRendererPyodide()
     
@@ -264,44 +277,29 @@ if ${usingMatplotlib ? "True" : "False"}:
                 super().draw()
                 # Now push it out, same as show() does
                 _figure_renderer_pyodide.render_current_figure(self.figure)
+                
+                # Re-draw at fig.dpi (notional space) so cached renderer/bboxes match
+                # the coordinate space the click events will be delivered in.
+                super().draw()
+                self._draw_pending = False
         
             def draw_idle(self):
                 # draw_idle is what most interactive matplotlib code calls
                 # (widgets, event handlers, animations) instead of draw()
-                # directly, so route it through the same path.
-                self.draw()
+                # directly.  Schedule a draw:
+                self._draw_pending = True
+            
+            def flush_events(self):
+                # Flush the pending draw, by drawing:
+                if getattr(self, "_draw_pending", False):
+                    self.draw()        
     
         class FigureManagerPyodide(FigureManagerBase):
             """Manager class — this is where plt.show() ends up."""
     
             def show(self):
-                _figure_renderer_pyodide.render_current_figure(self.canvas.figure)
-                
-            @classmethod
-            def start_main_loop():
-                
-                # Now run a main loop:
-                x, y = -1, -1
-                import strype.graphics as g
-                from matplotlib.backend_bases import MouseEvent, KeyEvent
-                while True:
-                    fig = self.canvas.figure
-                    render_w, render_h = fig.canvas.get_width_height()
-                    scale_x = render_w / 800
-                    scale_y = render_h / 600
-                    x2, y2, _, _, _ = g.get_mouse()
-                    if x != x2 or y != y2:
-                        x, y = x2, y2
-                        self.canvas.callbacks.process("motion_notify_event", MouseEvent("motion_notify_event", self.canvas, (x + 400) * scale_x, (y + 300) * scale_y))
-                    # Strype's API doesn't give us press and release, but it does give clicks so we turn that into press with immediate release:
-                    c = g.get_mouse_click()
-                    if c is not None:
-                        xc, yc, button, clicks = c
-                        # Picking is done automatically when handling these events:
-                        self.canvas.callbacks.process("button_press_event", MouseEvent("button_press_event", self.canvas, (x + 400) * scale_x, (y + 300) * scale_y, button=button + 1, dblclick=clicks==2))
-                        self.canvas.callbacks.process("button_release_event", MouseEvent("button_release_event", self.canvas, (x + 400) * scale_x, (y + 300) * scale_y, button=button + 1))
-                    g.pace()
-    
+                self.canvas.draw()
+                   
         # Tell the canvas which manager class to use. This has to be set
         # after both classes are defined, since FigureCanvasPyodide is
         # declared before FigureManagerPyodide exists.
@@ -314,6 +312,49 @@ if ${usingMatplotlib ? "True" : "False"}:
             __module__ = "pyodide_mpl_backend"
             FigureCanvas = FigureCanvasPyodide
             FigureManager = FigureManagerPyodide
+
+            @classmethod
+            def mainloop(cls):                
+                # Now run a main loop:
+                x, y = -1, -1
+                import strype.graphics as g
+                from matplotlib.backend_bases import MouseEvent, KeyEvent
+                from matplotlib._pylab_helpers import Gcf
+                while True:
+                    # Should only be one manager, but we loop for simplicity:
+                    for manager in Gcf.get_all_fig_managers():
+                        canvas = manager.canvas
+                        fig = canvas.figure
+                        notional_w, notional_h = canvas.get_width_height()
+                        render_w = getattr(fig, "strype_display_width", notional_w)
+                        render_h = getattr(fig, "strype_display_height", notional_h)
+                        # Viewport is 800x600, image (render_w x render_h) is centered inside it.
+                        # Gap on each side, in viewport pixels:
+                        offset_x = (800 - render_w) / 2
+                        offset_y = (600 - render_h) / 2
+                        scale_x = notional_w / render_w
+                        scale_y = notional_h / render_h
+                       
+                        x2, y2, _, _, _ = g.get_mouse()
+                        if x != x2 or y != y2:
+                            x, y = x2, y2
+                            image_x, image_y = (x + 400 - offset_x) * scale_x, (y + 300 - offset_y) * scale_y
+                            if 0 <= image_x < notional_w and 0 <= image_y < notional_h:
+                                canvas.callbacks.process("motion_notify_event", MouseEvent("motion_notify_event", canvas, image_x, image_y))
+                        # Strype's API doesn't give us press and release, but it does give clicks so we turn that into press with immediate release:
+                        c = g.get_mouse_click()
+                        if c is not None:
+                            xc, yc, button, clicks = c
+                            # Picking is done automatically when handling these events:
+                            image_x, image_y = (xc + 400 - offset_x) * scale_x, (yc + 300 - offset_y) * scale_y
+                            if 0 <= image_x < notional_w and 0 <= image_y < notional_h:
+                                canvas.callbacks.process("button_press_event", MouseEvent("button_press_event", canvas, image_x, image_y, button=button + 1, dblclick=clicks==2))
+                                canvas.callbacks.process("button_release_event", MouseEvent("button_release_event", canvas, image_x, image_y, button=button + 1))
+                        # Must flush_events() to process any draw_idle()
+                        canvas.flush_events()
+                        # Use pace() to prevent running too quickly:
+                        g.pace()
+
     
         matplotlib.use("module://pyodide_mpl_backend")
     
@@ -354,7 +395,10 @@ runner`);
         // Set the global fields used by Javascript code (and by the pyodide cloud file mounting, just below): 
         self.syncStrypePyodideWorkerBridge = bridgeSync;
         self.asyncStrypePyodideWorkerBridge = (r) => makeRequest({kind: "async", request: r});
-        self.spriteManager = new SpriteManager((u) => self.updatePort.postMessage(u));
+        self.spriteManager = new SpriteManager((u) => {
+            catchUpWithMainThreadIfNeeded();
+            self.updatePort.postMessage(u);
+        });
         self.pyodide = pyodide;
         
 
@@ -366,6 +410,13 @@ runner`);
             }
             catch {
                 // Ignore any errors
+            }
+            // Do mkdir in a separate catch because it will expectedly fail if the directory exists:
+            try {
+                pyodide.FS.mkdir("/cloud");
+            }
+            catch {
+                // Ignore errors because they will come from the dir already existing
             }
             try {
                 // We have done the mkdir("/cloud") in the one time Pyodide initialisation, earlier.
@@ -382,7 +433,7 @@ runner`);
                 pyodide.FS.mkdir("/local");
             }
             catch {
-                // Ignore errors
+                // Ignore errors because they will come from the dir already existing
             }
             try {
                 pyodide.FS.chdir("/local");
@@ -454,6 +505,13 @@ runner`);
         };
         runner.set_callback(callback);
         await runner.run_async(pythonCode, {});
+        // The counter-based catch-up above only fires every 50 async requests, so a run that ends
+        // with a handful of prints immediately followed by an error (too few to trip that threshold)
+        // can otherwise have its error reported to the main thread before all of that trailing output
+        // has actually been processed there -- see the "documented newlines" flakiness this fixed.
+        // Do one final unconditional catch-up so the error is only returned once the main thread has
+        // caught up with everything printed during the run.
+        syncCatchUpWithMainThread();
         return error;
     });
 });

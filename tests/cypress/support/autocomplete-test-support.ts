@@ -1,7 +1,7 @@
 // Must clear all local storage between tests to reset the state,
 // and also retrieve the shared CSS and HTML elements IDs exposed
-// by Strype via the Window object of the app.
-import {cleanFromHTML} from "../support/test-support";
+// by Strype via the Window object of the app, and set the 'paste' command.
+import {cleanFromHTML, waitForEditorSettled} from "../support/test-support";
 import { scssVars, standardBeforeEach, strypeElIds } from "./standard-setup";
 
 beforeEach(standardBeforeEach);
@@ -17,38 +17,9 @@ chai.Assertion.addMethod("beLocaleSorted", function () {
     expect(actual).to.deep.equal(expected);
 });
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-Cypress.Commands.add("paste",
-    {prevSubject : true},
-    ($element, data : string | Buffer, type : string) => {
-        const clipboardData = new DataTransfer();
-        if (typeof data === "string") {
-            clipboardData.setData(type, data);
-        }
-        else {
-            const file = new File([new Blob([new Uint8Array(data)], {type: type})], "anon", { type: type });
-            clipboardData.items.add(file);
-        }
-
-        const pasteEvent = new ClipboardEvent("paste", {
-            bubbles: true,
-            cancelable: true,
-            clipboardData,
-        });
-
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        cy.get($element).then(() => {
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore
-            $element[0].dispatchEvent(pasteEvent);
-        });
-    });
-
 export function withAC(inner : (acIDSel : string, frameId: number) => void, isInMyCodeFuncCallFrame:boolean, skipSortedCheck?: boolean) : void {
-    // We need a delay to make sure last DOM update has occurred:
-    cy.wait(600);
+    // We need to make sure last DOM update has occurred:
+    waitForEditorSettled();
     cy.get("#" + strypeElIds.getEditorID()).then((eds) => {
         const ed = eds.get()[0];
         // Find the auto-complete corresponding to the currently focused slot:
@@ -73,8 +44,8 @@ export function focusEditorAC(): void {
 }
 
 export function withSelection(inner : (arg0: { id: string, cursorPos : number }) => void) : void {
-    // We need a delay to make sure last DOM update has occurred:
-    cy.wait(200);
+    // We need to make sure last DOM update has occurred:
+    waitForEditorSettled();
     cy.get("#" + strypeElIds.getEditorID()).then((eds) => {
         const ed = eds.get()[0];
         inner({id : ed.getAttribute("data-slot-focus-id") || "", cursorPos : parseInt(ed.getAttribute("data-slot-cursor") || "-2")});
@@ -120,8 +91,23 @@ export const BUILTIN = "Python";
 // within that section are in alphabetical order).  Also checks that the sections
 // themselves are in the correct order.
 export function checkAutocompleteSorted(acIDSel: string, isInFuncCallFrame: boolean) : void {
-    // The autocomplete only updates after 500ms:
-    cy.wait(1000);
+    // Wait for the autocomplete popup's rendered items to stop changing (no known fixed-duration
+    // debounce was found backing this in the app -- but the popup can still take a moment to
+    // filter/render after focus, and this is a one-shot check further down with no built-in
+    // retry, so make sure it's actually settled first):
+    let lastState: string | null = null;
+    let stableCount = 0;
+    cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName, {timeout: 10000}).should(($ac) => {
+        const state = $ac.text();
+        if (state === lastState) {
+            stableCount++;
+        }
+        else {
+            stableCount = 0;
+        }
+        lastState = state;
+        expect(stableCount, "autocomplete popup should stabilise").to.be.at.least(1);
+    });
     // Other items (like the names of variables when you do var.) will come out as -1,
     // which works nicely because they should be first 
     // (if we are in a function call definition (isInFuncCallFrame true) "My Functions"
@@ -133,6 +119,7 @@ export function checkAutocompleteSorted(acIDSel: string, isInFuncCallFrame: bool
         "neopixel",
         "time",
         "strype.graphics",
+        "strype.sound",
         BUILTIN,
     ];
     cy.get(acIDSel + " div.ac-module-header:not(." + scssVars.acEmptyResultsContainerClassName + ")")

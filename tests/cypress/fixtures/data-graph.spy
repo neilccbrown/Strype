@@ -21,7 +21,7 @@ def retrieve_data ( ) :
                     if data_bounds[key]["max"] is None or typedVar>data_bounds[key]["max"]  :
                         data_bounds[key]["max"]  = typedVar 
                 #Set the data point in our list
-                if rType=="e"  :
+                if rType == "e"  :
                     elec_data.append({'date':int(rDate),"value":float(rValue),'notes':rNotes.rstrip("\n")}) 
                 else :
                     gas_data.append({'date':int(rDate),"value":float(rValue),'notes':rNotes.rstrip("\n")}) 
@@ -69,7 +69,7 @@ def show_data ( ) :
             dataPoint["y"]  = (maxPlotY-minPlotY)*percentVal+minPlotY 
             
             dpImg  = Image(10,10) 
-            #(=> Disabled:dpImg.set_fill(___strype_invalid_u0065u006cu0065u0063u005fu0063u006fu006cu006fu0072u0020u0069u0066u0020u0069u006eu0064u0065u0078==___strype_invalid_u0030u0020u0065u006cu0073u0065u0020u0067u0061u0073u005fu0063u006fu006cu006fu0072) 
+            #(=> Disabled:dpImg.set_fill(___strype_invalid_u0065u006cu0065u0063u005fu0063u006fu006cu006fu0072u0020u0069u0066u0020u0069u006eu0064u0065u0078 == ___strype_invalid_u0030u0020u0065u006cu0073u0065u0020u0067u0061u0073u005fu0063u006fu006cu006fu0072) 
             dpImg.set_fill("yellow") 
             dpImg.draw_circle(5,5,4) 
             Actor(dpImg,dataPoint["x"],dataPoint["y"]) 
@@ -87,7 +87,7 @@ def listen_mouse ( ) :
     target  = get_clicked_actor() 
     if target is not None  :
         print("Clicked: " + target.get_tag()) 
-    if not data_inserting and target is not None and target.get_tag()=="button"  :
+    if not data_inserting and target is not None and target.get_tag() == "button"  :
         #show an overlay
         overlayImg  = Image(801,550) 
         maxPlotX  = 794 

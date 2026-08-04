@@ -19,6 +19,20 @@ import { eventBus } from "@/helpers/appContext";
 export const undoMaxSteps = 50;
 export const autoSaveFreqMins = 2; // The number of minutes between each autosave action.
 
+// A monotonically increasing counter used to detect stale, superseded "got caret" requests.
+// LabelSlot.vue's onGetCaret() defers its work by a tick (or 200ms for a real click) via
+// setTimeout(); if the user has since navigated elsewhere (e.g. arrowing out of the slot into a
+// frame caret) before that timeout fires, it must not blindly re-focus the slot it was originally
+// scheduled for. Each call to bumpCaretRequestSeq() marks "a new/different focus request has
+// started", invalidating any earlier-scheduled callback that captured an older sequence number.
+let caretRequestSeq = 0;
+export function bumpCaretRequestSeq(): number {
+    return ++caretRequestSeq;
+}
+export function getCaretRequestSeq(): number {
+    return caretRequestSeq;
+}
+
 // Constants used for query parameters parsing
 // The target to fetch the project (for now, we only support Google Drive. We use the enum StrypeSyncTarget for values)
 export const sharedStrypeProjectTargetKey = "shared_proj_targ"; 
@@ -55,6 +69,7 @@ export enum CustomEventTypes {
     removeFunctionToEditorProjectSave = "rmToProjectSaveFunction",
     requestEditorProjectSaveNow = "requestProjectSaveNow",
     saveStrypeProjectDoneForLoad = "saveProjDoneForLoad",
+    backupEditorProjectBeforeDiscard = "backupProjectBeforeDiscard",
     unsupportedByStrypeFilePicked = "unsupportedByStrypeFilePicked",
     acItemHovered = "acItemHovered",
     acItemClicked = "acItemClicked",
@@ -74,6 +89,7 @@ export enum CustomEventTypes {
     closeOtherRenameIdentifierPopup = "closeOtherRenameIdentifierPopup",
     // The following events are used for our modal dialogs, a wrapping mechanism around Bootstrap modals
     showStrypeModal = "bv::show::modal", // request a modal opening, param is a dialog ID
+    strypeModalShow = "bv::modal::show", // event just before a modal is shown (before its content is interactable): param is a BvTriggerableEvent event
     strypeModalShown = "bv::modal::shown", // event after a modal is opened: param is a BvTriggerableEvent event
     hideStrypeModal = "bv::hide::modal", // request a modal closing, param is a BvTriggerableEvent event
     strypeModalHidden = "bv::modal::hidden", // event after a modal is closed: param is a BvTriggerableEvent event
@@ -85,7 +101,8 @@ export enum CustomEventTypes {
     pythonConsoleAfterInput = "pythonConsoleAfterInput",
     notifyGraphicsUsage = "graphicsUsage",
     pythonExecAreaSizeChanged = "peaSizeChanged",
-    highlightPythonRunningState = "highlightPythonRunningState"
+    highlightPythonRunningState = "highlightPythonRunningState",
+    copyPEAConsoleText = "copyPEAConsoleText"
     // #v-endif
 }
 
@@ -306,7 +323,31 @@ export function setDocumentSelection(anchorCursorInfos: SlotCursorInfos, focusCu
             : Object.values(focusNode.childNodes).findIndex((node: any) => node.id === focusElement.id);
 
         document.getSelection()?.setBaseAndExtent(anchorNode, anchorOffset, focusNode, focusOffset);
-    }    
+    }
+}
+
+// Waits for an element with the given id to exist in the DOM, polling via Vue's nextTick() rather
+// than assuming a fixed number of ticks (or a fixed timer) is always enough. Some editor actions
+// change reactive state whose DOM update needs more than one render pass to land (e.g. a frame's
+// structure changing right before we need to find a slot inside it) -- code that only waits a
+// single nextTick() and then silently gives up if the element isn't there yet (e.g.
+// setDocumentSelection()'s no-op-if-missing behaviour) can leave the editor cursorless. Bounded by
+// both a retry count and a wall-clock time so a genuinely-never-appearing element (a real bug, not
+// just a slow render) can't hang the editor -- logs a warning rather than failing silently if the
+// bound is hit.
+export async function waitForElementId(id: string, maxRetries = 10, maxWaitMs = 5000): Promise<boolean> {
+    const start = Date.now();
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        await nextTick();
+        if (document.getElementById(id)) {
+            return true;
+        }
+        if (Date.now() - start >= maxWaitMs) {
+            break;
+        }
+    }
+    console.warn(`waitForElementId: gave up waiting for element "${id}" to appear in the DOM after ${Date.now() - start}ms`);
+    return false;
 }
 
 export function getFrameLabelSlotsStructureUID(frameId: number, labelIndex: number): string{
@@ -430,7 +471,7 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
                     + " ";
                 }
                 let stringPlaceHoldersCursorOffset = 0; // The offset induced by the difference of length between the string quotes and their placeholder representation
-                const stringPlaceholderMatcher = (spanElement.textContent as string).match(new RegExp("("+STRING_SINGLEQUOTE_PLACERHOLDER.replaceAll("$","\\$")+"|"+STRING_DOUBLEQUOTE_PLACERHOLDER.replaceAll("$","\\$")+")", "g"));
+                const stringPlaceholderMatcher = (spanElement.textContent as string).match(new RegExp(quotesPlaceholderRegExStr, "g"));
                 if(stringPlaceholderMatcher != null){
                     // The difference is 1 character per found placeholders 
                     stringPlaceHoldersCursorOffset = stringPlaceholderMatcher.length * (STRING_DOUBLEQUOTE_PLACERHOLDER.length - 1);
@@ -732,12 +773,6 @@ export function getNearestErrorIndex(): number {
 // unless conflicts are clearly impossible.
 export function generateAllFrameCommandsDefs():void {
     allFrameCommandsDefs = {
-        " ": [{
-            type: getFrameDefType(AllFrameTypesIdentifier.funccall),
-            description: i18n.global.t("frame.funccall_desc"),
-            shortcuts: [" "],
-            symbol: i18n.global.t("buttonLabel.spaceBar"),
-        }],
         "=": [{
             type: getFrameDefType(AllFrameTypesIdentifier.varassign),
             description: i18n.global.t("frame.varassign_desc"),
@@ -789,18 +824,18 @@ export function generateAllFrameCommandsDefs():void {
                 index: 0,
             },
             {
-                type: getFrameDefType(AllFrameTypesIdentifier.funcdef),
-                description: i18n.global.t("frame.funcdef_desc"),
-                shortcuts: ["f"],
-                index: 1,
-            },
-            {
                 type: getFrameDefType(AllFrameTypesIdentifier.fromimport),
                 description: "from...import",
                 shortcuts: ["f"],
-                index:2,
+                index: 1,
             },
         ],
+        "d": [{
+            type: getFrameDefType(AllFrameTypesIdentifier.funcdef),
+            description: i18n.global.t("frame.funcdef_desc"),
+            // "f" is kept working as a secret/legacy shortcut alongside the official "d".
+            shortcuts: ["d", "f"],
+        }],
         "c": [
             {
                 type: getFrameDefType(AllFrameTypesIdentifier.classdef),
@@ -813,6 +848,12 @@ export function generateAllFrameCommandsDefs():void {
                 description: "case",
                 shortcuts: ["c"],
                 index: 1,
+            },
+            {
+                type: getFrameDefType(AllFrameTypesIdentifier.funccall),
+                description: i18n.global.t("frame.funccall_desc"),
+                shortcuts: ["c"],
+                index: 2,
             },
         ],
         "w": [{
@@ -888,6 +929,12 @@ export function generateAllFrameCommandsDefs():void {
 //Commands for Frame insertion, one command can match more than 1 frame ONLY when there is a TOTAL distinct context between the two
 let allFrameCommandsDefs: {[id: string]: AddFrameCommandDef[]} | undefined = undefined;
 
+// def's hidden/legacy shortcut (e.g. "f" for funcdef, kept working alongside the official "d"), if
+// it has one -- named accessor so callers don't need to know shortcuts[1] is where that lives.
+export function getLegacyShortcut(def: AddFrameCommandDef): string | undefined {
+    return def.shortcuts[1];
+}
+
 export function getAddCommandsDefs(): {[id: string]: AddFrameCommandDef[]} { 
     if(allFrameCommandsDefs === undefined){
         generateAllFrameCommandsDefs();
@@ -918,7 +965,12 @@ export function findAddCommandFrameType(shortcut: string, index?: number): Frame
     return null;
 }
 
-// This shorthand frames are enhanced frames because they contain some default code value. 
+// These are the only frame-insertion shortcuts that still work directly at the frame caret without
+// first pressing the Tab/Space prefix key (see Commands.vue's keydown handler): blank frame, comment,
+// and assignment. Every other shortcut requires opening the frame commands pane first.
+export const alwaysDirectFrameShortcutKeys = ["enter", "#", "="];
+
+// This shorthand frames are enhanced frames because they contain some default code value.
 // Therefore they are treated separately in the code and in the UI. They do not show in the frame command panel.
 // IMPORTANT : make sure that the shortcut assigned to a frame IS NOT assigned to a normal frame (see generateAllFrameCommandsDefs()) 
 // unless conflicts are clearly impossible. Shortcut is not shown, so we don't need to define it elsewhere than in the indexes.
@@ -1267,7 +1319,10 @@ export const operators = [".","+","-","/","*","%",":","//","**","&","|","~","^",
 // as they will always come from a combination of writing one word then the other (the first will be added as operator);
 // "as" is added in the operator list for imports, but it will be discarded when not dealing with import frames.
 // Important that the longer operators come before the shorter ones with the same prefix:
-export const keywordOperatorsWithSurroundSpaces = [" and ", " in ", " is not ", " is ", " or ", " not in ", " not ", " as ", " if ", " else ", " for "];
+// "lambda" is recognised as a plain prefix keyword operator (like "not") so it can be
+// typed/pasted without crashing and gets sensible precedence-based spacing, but Strype
+// gives it no semantic support (no parameter-list awareness) -- it's a pass-through.
+export const keywordOperatorsWithSurroundSpaces = [" and ", " in ", " is not ", " is ", " or ", " not in ", " not ", " as ", " if ", " else ", " for ", " lambda "];
 export const trimmedKeywordOperators = keywordOperatorsWithSurroundSpaces.map((spacedOp) => spacedOp.trim());
 
 
@@ -1467,10 +1522,12 @@ function splitAtCommas<X>(operands: X[], operators: BaseSlot[]): { operands: X[]
 
 
 export const IMAGE_PLACERHOLDER = "$strype_image_placeholder$";
+const mediaLiteralPlaceholderRegExStr = IMAGE_PLACERHOLDER.replaceAll("$", "\\$") + "\\d+\\$";
 // The placeholders for the string quotes when strings are extracted FROM THE EDITOR SLOTS,
 // both placeholders need to have THE SAME LENGHT so sustitution operations are done with more ease
 export const STRING_SINGLEQUOTE_PLACERHOLDER = "$strype_StrSgQuote_placeholder$";
 export const STRING_DOUBLEQUOTE_PLACERHOLDER = "$strype_StrDbQuote_placeholder$";
+const quotesPlaceholderRegExStr = "(" + STRING_SINGLEQUOTE_PLACERHOLDER.replaceAll("$","\\$") + "|" + STRING_DOUBLEQUOTE_PLACERHOLDER.replaceAll("$","\\$") + ")";
 
 // Each params item is the set of operands and operators that are before the next comma or end of bracket
 // Each item in keyValues corresponds to the item in params
@@ -1527,8 +1584,7 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
     //                             <print($strype_StrDbQuote_placeholder$hello$strype_StrDbQuote_placeholder$)>
     // so we blank it like this --> print("                                                                 ")
     // in that way, everything is of the same length and we keep work character indexes properly. We only need to care about the real quotes when we create the string slots.   
-    const quotesPlaceholdersRegex = "(" + STRING_SINGLEQUOTE_PLACERHOLDER.replaceAll("$","\\$") + "|" + STRING_DOUBLEQUOTE_PLACERHOLDER.replaceAll("$","\\$") + ")";
-    const strRegEx = (flags?.skipStringEscape) ? new RegExp(quotesPlaceholdersRegex+"((?!\\1).)*\\1","g") : /(['"])(?:(?!(?:\\|\1)).|\\.)*\1?/g;
+    const strRegEx = (flags?.skipStringEscape) ? new RegExp(quotesPlaceholderRegExStr+"((?!\\1).)*\\1","g") : /(['"])(?:(?!(?:\\|\1)).|\\.)*\1?/g;
     let missingClosingQuote = "";
     const blankedStringCodeLiteral = codeLiteral.replace(strRegEx, (match) => {
         if(flags?.skipStringEscape){
@@ -1592,7 +1648,7 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
         while (innerOpeningBracketCount != 0 && closingBracketPos != -1);
        
         
-        // Now that we have found the bracket boudary (if we didn't find a closing bracket match, we "manually" close after the whole content following opening bracket)
+        // Now that we have found the bracket boundary (if we didn't find a closing bracket match, we "manually" close after the whole content following opening bracket)
         // we can make a structure and parse the split code content as 
         //  - before the bracket
         //  - inside the bracket (so, we DO NOT include the bracket themselves)
@@ -1610,7 +1666,15 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
         // Note: we need to pass (all) imageLiterals to the recursive calls because they might reverse our replacement:
         const {slots: structBeforeBracket, cursorOffset: beforeBracketCursorOffset} = parseCodeLiteral(beforeBracketCode, {isInsideString:false, cursorPos: flags?.cursorPos, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
         cursorOffset += beforeBracketCursorOffset;
-        const {slots: structOfBracket, cursorOffset: bracketCursorOffset} = parseCodeLiteral(innerBracketCode, {isInsideString: false, cursorPos: (flags?.cursorPos !== undefined) ? flags.cursorPos - (firstOpenedBracketPos + 1) : undefined, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
+        // When parsing the code between brackets, we should give the cursor position relative to the content before the bracket.
+        // Since that may contain placeholders, we need to account for them for finding out the cursor position for the inner content of the bracket.
+        let beforePlaceHoldersOffset = 0;
+        if(flags?.cursorPos){
+            beforeBracketCode.matchAll(new RegExp(`${quotesPlaceholderRegExStr}|${mediaLiteralPlaceholderRegExStr}`, "g")).forEach((matchedPlaceholder) => {
+                beforePlaceHoldersOffset += matchedPlaceholder[0].length - 1; // -1 as a quote would already counted from the user code that placeholder replaces
+            });            
+        }
+        const {slots: structOfBracket, cursorOffset: bracketCursorOffset} = parseCodeLiteral(innerBracketCode, {isInsideString: false, cursorPos: (flags?.cursorPos !== undefined) ? (flags.cursorPos + beforePlaceHoldersOffset) - (firstOpenedBracketPos + 1) : undefined, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
         if (openingBracketValue === "(") {
             // First scan and find all the comma-separated parameters:
             const {params, keyValues} = extractFormalParamsFromSlot(structOfBracket);
@@ -1634,8 +1698,7 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
         const structOfBracketField = {...structOfBracket, openingBracketValue: openingBracketValue};
         cursorOffset += bracketCursorOffset;
         let actualCodeClosingBracketPos = closingBracketPos;
-        const quotesPlaceholdersExp = "(" + STRING_SINGLEQUOTE_PLACERHOLDER.replaceAll("$","\\$") + "|" + STRING_DOUBLEQUOTE_PLACERHOLDER.replaceAll("$","\\$") + ")";
-        innerBracketCode.match(new RegExp(quotesPlaceholdersExp, "g"))?.forEach((placeholder) => {
+        innerBracketCode.match(new RegExp(quotesPlaceholderRegExStr, "g"))?.forEach((placeholder) => {
             // If the content of the brackets contained any string, the value of the closing bracket position is for a code WITH the string quotes placeholders.
             // Therefore, if we want to use that to check what is the new cursor position in the parsing of the code after the bracket, we need to do so without
             // the string placeholders, if any. When a placeholder is found, we remove its length - 1 to the positin, as it would match 1 quote.
@@ -1683,7 +1746,7 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
         }
         else{
             // 3 - break the code by operatorSlot, if we have any media here (that is, strype image placeholders) we need to temporary update the cursor position for that
-            const mediaMatchs = blankedStringCodeLiteral.matchAll(new RegExp(IMAGE_PLACERHOLDER.replaceAll("$", "\\$") + "\\d+\\$", "g"));
+            const mediaMatchs = blankedStringCodeLiteral.matchAll(new RegExp(mediaLiteralPlaceholderRegExStr, "g"));
             let mediaCursorPos: null|number = null;
             if(flags?.cursorPos != undefined && mediaMatchs){
                 mediaCursorPos = flags.cursorPos;
@@ -1843,9 +1906,20 @@ const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: stri
             }
         }
     }
-    // As we always have at least 1 field, and operators contained between fields, we need to add the trimming field 
+    // As we always have at least 1 field, and operators contained between fields, we need to add the trimming field
     // (and we also need to remove "dead" closing brackets)
-    let code = codeLiteral.substring(lookOffset).trimStart();
+    const untrimmedTailCode = codeLiteral.substring(lookOffset);
+    let code = untrimmedTailCode.trimStart();
+    // Symbol binary operators are now generated with real surrounding spaces (see parser.ts's
+    // getSlotStartsLengthsAndCodeForFrameLabel), so -- unlike before, when only keyword operators
+    // (whose match/length already bakes in a trailing space) could leave whitespace here -- this
+    // final trailing field can now have leading whitespace to trim off too. Account for that
+    // trimming in the cursor offset the same way the fields inside the loop above do, or the
+    // cursor ends up positioned as if that whitespace were still there (e.g. landing back inside
+    // the previous field instead of at the end of this one):
+    if ((cursorPos ?? -1) >= lookOffset) {
+        cursorOffset += (code.length - untrimmedTailCode.length);
+    }
     closeBracketCharacters.forEach((closingBracket) => {
         code = code.replaceAll(closingBracket, "");
     });
@@ -1866,9 +1940,8 @@ const getParsingStringContentAndFocusOffset = (quote: string, content: string): 
     //  ‘$strype_StrDbQuote_placeholder$this is Strype's string$strype_StrDbQuote_placeholder$’
     // We need to have:
     //  ‘"this is Strype\'s string"’
-    const quotesPlaceholdersExp = "(" + STRING_SINGLEQUOTE_PLACERHOLDER.replaceAll("$","\\$") + "|" + STRING_DOUBLEQUOTE_PLACERHOLDER.replaceAll("$","\\$") + ")";
     let cursorOffset = 0;
-    content = content.replaceAll(new RegExp(quotesPlaceholdersExp, "g"), (placeholder) => {
+    content = content.replaceAll(new RegExp(quotesPlaceholderRegExStr, "g"), (placeholder) => {
         return (placeholder == STRING_DOUBLEQUOTE_PLACERHOLDER) ? "\"" : "'";
     });
     
@@ -1897,6 +1970,56 @@ export function getNumPrecedingBackslashes(content: string, cursorPos : number) 
         }
     }
     return count;
+}
+
+/**
+ * Waits until the splitpanes divider panes' sizes stop changing. Programmatically changing a pane's
+ * size (e.g. after loading a project) animates via a CSS transition and can cascade into other nested
+ * panes resizing too, so there's no fixed delay that reliably covers every case -- this polls the
+ * actual bounding rects of all panes each animation frame and resolves once they've been unchanged
+ * for stableMs, with timeoutMs as a safety net so a caller can never hang indefinitely on this.
+ */
+export function waitForPanesSettled(stableMs = 150, timeoutMs = 5000): Promise<void> {
+    return new Promise((resolve) => {
+        let settled = false;
+        const finish = () => {
+            if (!settled) {
+                settled = true;
+                resolve();
+            }
+        };
+        // requestAnimationFrame can stop firing altogether (e.g. right after a full page
+        // navigation, before the new document's first paint) rather than merely running slowly --
+        // in that case check() below would never run again, so timeoutMs would never be reached.
+        // This setTimeout doesn't depend on rAF at all, so it's a genuine backstop:
+        const hardTimeout = setTimeout(finish, timeoutMs);
+        const start = Date.now();
+        let stableSince = Date.now();
+        let lastSizes = "";
+        const check = () => {
+            if (settled) {
+                return;
+            }
+            const sizes = Array.from(document.getElementsByClassName("splitpanes__pane"))
+                .map((pane) => {
+                    const rect = pane.getBoundingClientRect();
+                    return Math.round(rect.width) + "x" + Math.round(rect.height);
+                })
+                .join(",");
+            const now = Date.now();
+            if (sizes !== lastSizes) {
+                stableSince = now;
+                lastSizes = sizes;
+            }
+            if (now - stableSince >= stableMs || now - start >= timeoutMs) {
+                clearTimeout(hardTimeout);
+                finish();
+                return;
+            }
+            requestAnimationFrame(check);
+        };
+        requestAnimationFrame(check);
+    });
 }
 
 /**
@@ -1996,7 +2119,7 @@ export function setPythonExecAreaLayoutButtonPos(): void{
     }, 100);
 }
 
-/** 
+/**
  * These methods are used to control the height of the "Add frame" commands,
  * to allow the commands to be displayed in columns when they can't be shown as one column.
  * See Commands.vue for the HTML template logics.

@@ -5,16 +5,16 @@
             <div v-if="showAppProgress || setAppNotOnTop" :class="{'app-overlay-pane': true, 'app-overlay-pane-absolute': showAppProgress, 'app-progress-pane': showAppProgress}" @contextmenu="handleOverlayRightClick">
                 <div v-if="showAppProgress" class="app-progress-container">
                     <div class="progress">
-                        <div 
-                            class="progress-bar progress-bar-striped bg-info progress-bar-animated" 
+                        <div
+                            class="progress-bar progress-bar-striped bg-info progress-bar-animated"
                             role="progressbar"
                             style="width: 100%"
                             aria-valuenow="100"
                             aria-valuemin="0"
                             aria-valuemax="100"
                             >
-                            <span class="progress-bar-text">{{progressbarMessage}}</span>
                         </div>
+                        <span class="progress-bar-text">{{progressbarMessage}}</span>
                     </div>
                 </div>
             </div>
@@ -36,7 +36,7 @@
                     <Splitpanes @resize=onStrypeCommandsSplitPaneResize>
                         <Pane key="1" :size="100 - editorCommandsSplitterPane2Size" min-size="33" max-size="90">
                             <!-- These data items are to enable testing: -->
-                            <div :id="editorId" :data-slot-focus-id="slotFocusId" :data-slot-cursor="slotCursorPos" class="print-full-height">
+                            <div :id="editorId" :data-slot-focus-id="slotFocusId" :data-slot-cursor="slotCursorPos" :data-pending-slot-conversion="pendingSlotConversion" class="print-full-height">
                                 <div class="top no-print">
                                     <MessageBanner 
                                         v-if="showMessage"
@@ -91,7 +91,7 @@
             </div>
             <SimpleMsgModalDlg :dlgId="simpleMsgModalDlgId"/>
             <ModalDlg :dlgId="importDiffVersionModalDlgId" :okCustomTitle="$t('buttonLabel.continue')">
-                <span>{{ $t("appMessage.editorFileUploadWrongVersion") }}</span>                
+                <span>{{ $t("appMessage.loadEditorFileWrongVersion") }}</span>                
             </ModalDlg>
             <ModalDlg :dlgId="resyncToCloudDriveAtStartupModalDlgId" :elementToFocusId="resyncSaveToCloudDriveAtStartupButtonId" size="lg">
                 <span style="white-space:pre-wrap" v-html="resyncToCloudDriveAtStartupDetailsMessage"></span>
@@ -103,8 +103,10 @@
                 </template>
             </ModalDlg>
             <MediaPreviewPopup ref="mediaPreviewPopup" />
-            <EditImageDlg dlgId="editImageDlg" ref="editImageDlg" :imgToEdit="imgToEditInDialog" :showImgPreview="showImgPreview" />
-            <EditSoundDlg dlgId="editSoundDlg" ref="editSoundDlg" :soundToEdit="soundToEditInDialog" />
+            <EditImageDlg dlgId="editImageDlg" ref="editImageDlg" :imgToEdit="imgToEditInDialog" :showImgPreview="showImgPreview" :showReRecordButton="editImageDlgShowReRecord" />
+            <EditSoundDlg dlgId="editSoundDlg" ref="editSoundDlg" :soundToEdit="soundToEditInDialog" :showReRecordButton="editSoundDlgShowReRecord" />
+            <RecordImageDlg dlgId="recordImageDlg" ref="recordImageDlg" :dlgTitle="$t('media.recordImageTitle')" />
+            <RecordSoundDlg dlgId="recordSoundDlg" ref="recordSoundDlg" :dlgTitle="$t('media.recordSoundTitle')" />
             <canvas v-show="appStore.isDraggingFrame" :id="getCompanionDndCanvasId" class="companion-canvas-dnd"/>
             <ModalDlg :dlgId="confirmNewProjectModalDlgId" :okCustomTitle="$t('buttonLabel.continue')">
                 <span style="white-space:pre-wrap" v-html="$t('appMessage.newProjectConfirmation')"></span>
@@ -128,7 +130,7 @@ import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane} from "splitpanes";
 import { useStore, settingsStore, getEditorTabId } from "@/store/store";
-import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, FrozenState, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition, CollapsedState, LoadRequestReason, StateAppObject, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders } from "@/types/types";
+import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, FrozenState, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, RecordNewImageInDialogFunction, RecordNewSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition, CollapsedState, LoadRequestReason, StateAppObject, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders } from "@/types/types";
 import { CloudDriveAPIState, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
 import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getActiveContextMenu, actOnGraphicsImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames, getFrameHeaderUID, closeRenameIdentifierPopups, newStrypeProject } from "./helpers/editor";
 import { AllFrameTypesIdentifier} from "@/types/types";
@@ -145,6 +147,8 @@ import {pasteMixedPython} from "@/helpers/pythonToFrames";
 import MediaPreviewPopup from "@/components/MediaPreviewPopup.vue";
 import EditImageDlg from "@/components/EditImageDlg.vue";
 import EditSoundDlg from "@/components/EditSoundDlg.vue";
+import RecordImageDlg from "@/components/RecordImageDlg.vue";
+import RecordSoundDlg from "@/components/RecordSoundDlg.vue";
 import axios from "axios";
 import scssVars from "@/assets/style/_export.module.scss";
 import {loadDivider} from "@/helpers/load-save";
@@ -197,6 +201,8 @@ export default defineComponent({
         Commands,
         EditImageDlg,
         EditSoundDlg,
+        RecordImageDlg,
+        RecordSoundDlg,
         MediaPreviewPopup,
         Menu,
         ModalDlg,
@@ -219,6 +225,12 @@ export default defineComponent({
             imgToEditInDialog: "",
             soundToEditInDialog: null as AudioBuffer | null,
             showImgPreview: (() => {}) as (dataURL: string) => void,
+            editImageDlgShowReRecord: false,
+            editSoundDlgShowReRecord: false,
+            // Guards against a second Ctrl-Shift-I/U re-entering the record flow while one is
+            // already in progress, which would otherwise register a second competing
+            // strypeModalHidden listener chain:
+            isRecordingMediaFlowActive: false,
         };
     },
 
@@ -249,6 +261,12 @@ export default defineComponent({
         
         slotCursorPos() : number {
             return useStore().focusSlotCursorInfos?.cursorPos ?? -1;
+        },
+
+        // Exposed for tests: whether a debounced funccall->keyword-frame/varassign conversion is
+        // currently pending (see LabelSlotsStructure.vue's cancelPendingConversion()).
+        pendingSlotConversion() : boolean {
+            return this.appStore.pendingSlotConversionCount > 0;
         },
 
         showMessage(): boolean {
@@ -437,6 +455,17 @@ export default defineComponent({
                 return;
             }
 
+            // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
+            // Handle the keyboard shortcuts for the PEA console copy (when the PEA console is visible).
+            if((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() == "c" && vueComponentsAPIHandler.peaComponentAPI?.getIsConsoleAreaShowing()){
+                vueComponentsAPIHandler.peaComponentAPI?.copyConsoleText(new Event(CustomEventTypes.copyPEAConsoleText));
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                event.stopPropagation();
+                return;            
+            }
+            // #v-endif
+
             // Close the rename identifiers popup on most keys:
             // to simplify the event registration on when we close the popup, we close it on almost all key hits except navigation keys:
             // they will be handled in watch() via the change of frame and we do allow navigation when the popup is showing.
@@ -526,8 +555,12 @@ export default defineComponent({
             
             // We need to register if the keyboard shortcut has been used to get the context menu
             // so we set the flag here. It will be reset when the context menu actions are consumed.
-            // Case for allowing macOS to have a context menu shortcut:
-            if(this.appStore.selectedFrames.length > 0 &&  (event.key == " " || event.key.toLowerCase() == "enter")){
+            // Case for allowing macOS to have a context menu shortcut. Space is deliberately not
+            // included here any more: with a frame selection active, Space is now the frame-commands
+            // prefix key (for wrapping the selection, e.g. Space then "i" for if) -- see the matching
+            // removal of the selectedFrames.length === 0 restriction in Commands.vue's Tab/Space
+            // pane-opening branch. Enter still opens the context menu as before.
+            if(this.appStore.selectedFrames.length > 0 && event.key.toLowerCase() == "enter"){
                 // Wait a bit to process keys before showing the context menu
                 setTimeout(() => {
                     this.appStore.isContextMenuKeyboardShortcutUsed = true;
@@ -793,7 +826,7 @@ export default defineComponent({
             }
             else{
                 // Show a progress indication on the editor
-                vueComponentsAPIHandler.appComponentAPI?.applyShowAppProgress({requestAttention: true, message: this.$t("appMessage.editorFileUpload")});
+                vueComponentsAPIHandler.appComponentAPI?.applyShowAppProgress({requestAttention: true, message: this.$t("appMessage.loadEditorFile")});
                 axios.get<string>(shareProjectId)
                     .then((resp) => {
                         if(resp.status == 200){
@@ -903,6 +936,19 @@ export default defineComponent({
             }
         });
 
+        // Listen for a request to back up the current project to the webstorage/IndexedDB backup
+        // ONLY (never the real FS/cloud target), before it's about to be discarded in favour of a
+        // different project (e.g. "Discard changes" on the load/demo/book dialogs). Deliberately
+        // does not go via requestEditorProjectSaveNow: that event either shows an interactive save
+        // dialog (if unsynced) or silently re-saves to the real external target (if synced) --
+        // both wrong here, since discarding is supposed to skip any save prompt or side effect
+        // other than keeping our own internal recovery copy. Reason loadProject marks the backup
+        // stillAlive="false", i.e. immediately recoverable via the banner/Open Recent menu, same
+        // as if the tab had been closed:
+        eventBus.on(CustomEventTypes.backupEditorProjectBeforeDiscard, (payload?: {projectNameOverride?: string}) => {
+            this.autoSaveStateToWebLocalStorage(SaveRequestReason.loadProject, true, payload?.projectNameOverride);
+        });
+
         // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
         // This case may not happen, but if we had a Strype version that contains a default initial state working with Turtle,
         // the UI should reflect it (showing the Turtle tab) so we look for Turtle in any case.
@@ -923,7 +969,7 @@ export default defineComponent({
             }, autoSaveFreqMins * 60000);
         },
         
-        autoSaveStateToWebLocalStorage(reason: SaveRequestReason) : void {
+        autoSaveStateToWebLocalStorage(reason: SaveRequestReason, suppressLoadDoneEvent = false, projectNameOverride?: string) : void {
             // save the project to the localStorage (WebStorage)
             if (!this.appStore.debugging && typeof(Storage) !== "undefined") {
                 if(reason == SaveRequestReason.saveSettings){
@@ -932,18 +978,24 @@ export default defineComponent({
                 }
                 else{
                     const stateJSONStrWithCheckpoint = this.appStore.generateStateJSONStrWithCheckpoint(true);
+                    // projectNameOverride lets a discard-backup be labelled distinctly from the project's
+                    // real name (e.g. "My project (local edits)"), so it doesn't get confused in the
+                    // recent-states banner/Open Recent menu with the official copy of the same project:
+                    const projectNameForSave = projectNameOverride ?? this.appStore.projectName;
                     if (reason !== SaveRequestReason.unloadPage && reason !== SaveRequestReason.reloadBrowser) {
                         // We have time, so we save normally (which is async):
-                        saveSessionState(getEditorTabId(), this.appStore.projectName, stateJSONStrWithCheckpoint, reason == SaveRequestReason.loadProject ? "false" : "maybe", this.appStore.isEditorContentModified, this.appStore.editorLastModificationAt)
+                        saveSessionState(getEditorTabId(), projectNameForSave, stateJSONStrWithCheckpoint, reason == SaveRequestReason.loadProject ? "false" : "maybe", this.appStore.isEditorContentModified, this.appStore.editorLastModificationAt)
                             .catch(showIndexDBError);
                     }
                     else {
                         // Async might get killed during the closing process so we save to local storage as an alternative:
-                        emergencySaveSessionState(getEditorTabId(), this.appStore.projectName, stateJSONStrWithCheckpoint, this.appStore.editorLastModificationAt, this.appStore.isEditorContentModified);
+                        emergencySaveSessionState(getEditorTabId(), projectNameForSave, stateJSONStrWithCheckpoint, this.appStore.editorLastModificationAt, this.appStore.isEditorContentModified);
                     }
                     
                     // If that's the only element of the auto save functions, then we can notify we're done when we save for loading
-                    if(reason==SaveRequestReason.loadProject && projectSaveFunctionsState.length == 1){
+                    // (suppressLoadDoneEvent is used when we're only taking an internal backup before a discard, not actually
+                    // proceeding to load anything as a result of this particular save -- the caller handles that itself):
+                    if(reason==SaveRequestReason.loadProject && projectSaveFunctionsState.length == 1 && !suppressLoadDoneEvent){
                         eventBus.emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
                     }
                 }
@@ -1060,9 +1112,14 @@ export default defineComponent({
                     if (typeof(Storage) !== "undefined") {
                         sessionStorage.removeItem(AutoSaveKeyNames.strypeEditorTabId);
                     }
-                    // We need to set this flag so that the browser doesn't then show a "Leave page" dialog because
-                    // the project is modified
-                    this.appStore.isEditorContentModified = false;
+                    // We need to stop the browser from showing a "Leave page" dialog for this
+                    // deliberate reload. We do that by removing the beforeunload listener directly,
+                    // rather than clearing isEditorContentModified -- that flag also feeds
+                    // modifiedSinceExternalSave in the close-time save a moment from now, so forcing
+                    // it false here would wrongly mark the discarded project as already saved
+                    // externally, hiding it from the recent-states banner/Open Recent menu even
+                    // though (per the comment above) it's meant to still be retrievable.
+                    window.removeEventListener("beforeunload", this.beforeUnloadHandler);
                     // ... and reload the page to reload the Strype default project (removing potential query parameters)
                     window.location.href = window.location.pathname + "?" + newStrypeProject;
                 }
@@ -1751,55 +1808,172 @@ export default defineComponent({
         getPeaComponent() {
             return (this.$refs[this.strypeCommandsRefId] as any).$refs[getPEAComponentRefId()];
         },
-        editImageInDialog(imageDataURL: string, showPreview: (dataURL: string) => void, callback: (replacement: {code: string, mediaType: string}) => void) {
+        editImageInDialog(imageDataURL: string, showPreview: (dataURL: string) => void, callback: (replacement: {code: string, mediaType: string}) => void, recordOptions?: {onReRecord: () => void}, onCancelled?: () => void) {
             const editImageDlgComponentAPI = vueComponentsAPIHandler.editImageDlgComponentAPI;
             this.imgToEditInDialog = imageDataURL;
             this.showImgPreview = showPreview;
+            this.editImageDlgShowReRecord = recordOptions != undefined;
 
             const editedImage = (event: BvTriggerableEvent) => {
-                const dlgId = event.componentId;
-                if((event.trigger == "ok" || event.trigger=="event") && dlgId == "editImageDlg"){
+                if (event.componentId != "editImageDlg") {
+                    return;
+                }
+                // Always unregister once the dialog closes, regardless of how it closed
+                // (previously this only happened on "ok"/"event", leaking a stale listener
+                // whenever the dialog was cancelled):
+                eventBus.off(CustomEventTypes.strypeModalHidden, editedImage);
+
+                // Reset the image to edit to make sure we always start from a good start when opening modals again
+                this.imgToEditInDialog = "";
+                this.editImageDlgShowReRecord = false;
+
+                if(event.trigger == "ok" || event.trigger=="event"){
                     // Call the callback:
                     editImageDlgComponentAPI?.getUpdatedMedia().then(callback);
-
-                    eventBus.off(CustomEventTypes.strypeModalHidden, editedImage);
-
-                    // Reset the image to edit to make sure we always start from a good start when opening modals again
-                    this.imgToEditInDialog = "";
+                    // If we got here via the record flow, this is where it terminates (successfully):
+                    if (recordOptions) {
+                        this.isRecordingMediaFlowActive = false;
+                    }
+                }
+                else if (event.trigger == "reRecord" && recordOptions) {
+                    // Nothing is inserted; loop back to the record dialog with the same outer
+                    // callback -- isRecordingMediaFlowActive deliberately stays true, the flow continues:
+                    recordOptions.onReRecord();
+                }
+                else {
+                    // Any other trigger ("cancel", backdrop, Esc): nothing further, capture (if
+                    // any) is discarded. If we got here via the record flow, it terminates here too:
+                    if (recordOptions) {
+                        this.isRecordingMediaFlowActive = false;
+                    }
+                    onCancelled?.();
                 }
             };
             eventBus.on(CustomEventTypes.strypeModalHidden, editedImage);
 
             eventBus.emit(CustomEventTypes.showStrypeModal, "editImageDlg");
         },
-        editSoundInDialog(audioBuffer: AudioBuffer, callback: (replacement: {code: string, mediaType: string}) => void) {
+        editSoundInDialog(audioBuffer: AudioBuffer, callback: (replacement: {code: string, mediaType: string}) => void, recordOptions?: {onReRecord: () => void}, onCancelled?: () => void) {
             const editSoundDlgComponentAPI = vueComponentsAPIHandler.editSoundDlgComponentAPI;
             this.soundToEditInDialog = audioBuffer;
+            this.editSoundDlgShowReRecord = recordOptions != undefined;
 
             const editedSound = (event: BvTriggerableEvent) => {
-                const dlgId = event.componentId;
-                if((event.trigger == "ok" || event.trigger=="event") && dlgId == "editSoundDlg"){
+                if (event.componentId != "editSoundDlg") {
+                    return;
+                }
+                // Always unregister once the dialog closes, regardless of how it closed
+                // (previously this only happened on "ok"/"event", leaking a stale listener
+                // whenever the dialog was cancelled):
+                eventBus.off(CustomEventTypes.strypeModalHidden, editedSound);
+
+                // Reset the sound to edit to make sure we always start from a good start when opening modals again
+                this.soundToEditInDialog = null;
+                this.editSoundDlgShowReRecord = false;
+
+                if(event.trigger == "ok" || event.trigger=="event"){
                     // Call the callback:
                     editSoundDlgComponentAPI?.getUpdatedMedia().then(callback);
-
-                    eventBus.off(CustomEventTypes.strypeModalHidden, editedSound);
-
-                    // Reset the sound to edit to make sure we always start from a good start when opening modals again
-                    this.soundToEditInDialog = null;
+                    // If we got here via the record flow, this is where it terminates (successfully):
+                    if (recordOptions) {
+                        this.isRecordingMediaFlowActive = false;
+                    }
+                }
+                else if (event.trigger == "reRecord" && recordOptions) {
+                    // Nothing is inserted; loop back to the record dialog with the same outer
+                    // callback -- isRecordingMediaFlowActive deliberately stays true, the flow continues:
+                    recordOptions.onReRecord();
+                }
+                else {
+                    // Any other trigger ("cancel", backdrop, Esc): nothing further, capture (if
+                    // any) is discarded. If we got here via the record flow, it terminates here too:
+                    if (recordOptions) {
+                        this.isRecordingMediaFlowActive = false;
+                    }
+                    onCancelled?.();
                 }
             };
             eventBus.on(CustomEventTypes.strypeModalHidden, editedSound);
 
             eventBus.emit(CustomEventTypes.showStrypeModal, "editSoundDlg");
         },
+        // Public entry point for the record-new-image flow (Ctrl-Shift-I). callback is only ever
+        // called if the user completes the whole flow with "OK" on the edit dialog; onCancelled is
+        // called instead if the user cancels at any point.
+        recordNewImageInDialog(callback: (replacement: {code: string, mediaType: string}) => void, onCancelled: () => void) {
+            if (this.isRecordingMediaFlowActive) {
+                // A shortcut-triggered flow (or another modal) is already in progress; ignore:
+                return;
+            }
+            this.isRecordingMediaFlowActive = true;
+            this.startRecordImageDlg(callback, onCancelled);
+        },
+        // Internal: (re-)opens the record dialog without touching isRecordingMediaFlowActive, so
+        // it can be safely called again from "Re-record" without the guard above rejecting it.
+        startRecordImageDlg(callback: (replacement: {code: string, mediaType: string}) => void, onCancelled: () => void) {
+            const recordImageDlgComponentAPI = vueComponentsAPIHandler.recordImageDlgComponentAPI;
+
+            const recorded = (event: BvTriggerableEvent) => {
+                if (event.componentId != "recordImageDlg") {
+                    return;
+                }
+                eventBus.off(CustomEventTypes.strypeModalHidden, recorded);
+
+                const capturedDataURL = event.trigger == "captured" ? recordImageDlgComponentAPI?.getCapturedImageDataURL() : null;
+                if (capturedDataURL) {
+                    this.editImageInDialog(capturedDataURL, () => {}, callback, {onReRecord: () => this.startRecordImageDlg(callback, onCancelled)}, onCancelled);
+                    // The flow continues into the edit dialog; isRecordingMediaFlowActive stays true.
+                }
+                else {
+                    // Cancelled (or, defensively, no captured data somehow): the flow ends here.
+                    this.isRecordingMediaFlowActive = false;
+                    onCancelled();
+                }
+            };
+            eventBus.on(CustomEventTypes.strypeModalHidden, recorded);
+
+            eventBus.emit(CustomEventTypes.showStrypeModal, "recordImageDlg");
+        },
+        // Public entry point for the record-new-sound flow (Ctrl-Shift-U). Mirrors recordNewImageInDialog.
+        recordNewSoundInDialog(callback: (replacement: {code: string, mediaType: string}) => void, onCancelled: () => void) {
+            if (this.isRecordingMediaFlowActive) {
+                return;
+            }
+            this.isRecordingMediaFlowActive = true;
+            this.startRecordSoundDlg(callback, onCancelled);
+        },
+        startRecordSoundDlg(callback: (replacement: {code: string, mediaType: string}) => void, onCancelled: () => void) {
+            const recordSoundDlgComponentAPI = vueComponentsAPIHandler.recordSoundDlgComponentAPI;
+
+            const recorded = (event: BvTriggerableEvent) => {
+                if (event.componentId != "recordSoundDlg") {
+                    return;
+                }
+                eventBus.off(CustomEventTypes.strypeModalHidden, recorded);
+
+                const capturedAudioBuffer = event.trigger == "captured" ? recordSoundDlgComponentAPI?.getCapturedAudioBuffer() : null;
+                if (capturedAudioBuffer) {
+                    this.editSoundInDialog(capturedAudioBuffer, callback, {onReRecord: () => this.startRecordSoundDlg(callback, onCancelled)}, onCancelled);
+                }
+                else {
+                    this.isRecordingMediaFlowActive = false;
+                    onCancelled();
+                }
+            };
+            eventBus.on(CustomEventTypes.strypeModalHidden, recorded);
+
+            eventBus.emit(CustomEventTypes.showStrypeModal, "recordSoundDlg");
+        },
     },
 
-    provide() : { peaComponent: any, editImageInDialog : EditImageInDialogFunction, editSoundInDialog : EditSoundInDialogFunction} {
+    provide() : { peaComponent: any, editImageInDialog : EditImageInDialogFunction, editSoundInDialog : EditSoundInDialogFunction, recordNewImageInDialog : RecordNewImageInDialogFunction, recordNewSoundInDialog : RecordNewSoundInDialogFunction} {
         return {
             peaComponent: this.getPeaComponent,
             // Note, this provides the function:
             editImageInDialog: this.editImageInDialog,
             editSoundInDialog: this.editSoundInDialog,
+            recordNewImageInDialog: this.recordNewImageInDialog,
+            recordNewSoundInDialog: this.recordNewSoundInDialog,
         };
     },
 });

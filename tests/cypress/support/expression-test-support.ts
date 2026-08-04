@@ -1,7 +1,8 @@
 // To avoid passing arguments in all the functions defined in this file, we fetch the shared IDs
 // and CSS class names of Strype (we only do it if they are not already saved in this file)
+// We also set the set the 'paste' command via standard-setup
 import { isMacOSPlatform } from "@/helpers/common";
-import {cleanFromHTML} from "../support/test-support";
+import {cleanFromHTML, pressFrameShortcut, waitForEditorSettled} from "../support/test-support";
 import { scssVars, strypeElIds } from "./standard-setup";
 
 export function assertState(expectedState : string, assertMessage?: string) : void {
@@ -43,40 +44,18 @@ export function assertState(expectedState : string, assertMessage?: string) : vo
 }
 
 function withSelection(inner : (arg0: { id: string, cursorPos : number }) => void) : void {
-    // We need a delay to make sure last DOM update has occurred:
-    cy.wait(200);
+    // We need to make sure last DOM update has occurred:
+    waitForEditorSettled();
     cy.get("#" + strypeElIds.getEditorID()).then((eds) => {
         const ed = eds.get()[0];
         inner({id : ed.getAttribute("data-slot-focus-id") || "", cursorPos : parseInt(ed.getAttribute("data-slot-cursor") || "-2")});
     });
 }
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-Cypress.Commands.add("paste",
-    {prevSubject : true},
-    ($element, data) => {
-        const clipboardData = new DataTransfer();
-        clipboardData.setData("text", data);
-        const pasteEvent = new ClipboardEvent("paste", {
-            bubbles: true,
-            cancelable: true,
-            clipboardData,
-        });
-
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        cy.get($element).then(() => {
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore
-            $element[0].dispatchEvent(pasteEvent);
-        });
-    });
-
 export function testInsert(insertion : string, result : string, canBeTestedWithPaste?: boolean) : void {
     it("Tests " + insertion, () => {
         focusEditor();
-        cy.get("body").type("i");
+        pressFrameShortcut("i");
         assertState("{$}");
         cy.get("body").type(" " + insertion);
         assertState(result);
@@ -96,6 +75,19 @@ export function testInsert(insertion : string, result : string, canBeTestedWithP
     }
 }
 
+export function testInsertMediaThenExp(mediaPath: string, mediaMIME: string, exp: string, result: string): void {
+    it("Tests Media followed by " + exp, () => {
+        focusEditor();
+        pressFrameShortcut("i");
+        assertState("{$}");
+        cy.readFile(mediaPath, null).then((mediaContent) => {
+            (cy.focused() as any).paste(mediaContent, mediaMIME);
+            cy.wait(1000);
+            cy.get("body").type(" " + exp);
+            assertState(result);
+        });        
+    });
+}
 // Moves until the position within the slot is the given cursor pos, then executes the given function
 function moveToPositionThen(cursorPos: number, runAfterPositionReached: () => void) {
     // This is awkward, but cypress doesn't let us set or query the cursor position directly so we have to
@@ -175,7 +167,7 @@ export function testMultiInsert(multiInsertion : string, firstResult : string, s
         const nest = multiInsertion.substring(startNest + 1, endNest);
         const after = multiInsertion.substring(endNest + 1);
 
-        cy.get("body").type("i");
+        pressFrameShortcut("i");
         assertState("{$}");
         if (before.length > 0) {
             cy.get("body").type(before);
@@ -209,7 +201,7 @@ export function testInsertExisting(original : string, toInsert : string, expecte
         const before = original.substring(0, cursorIndex);
         const after = original.substring(cursorIndex + 1);
 
-        cy.get("body").type("i");
+        pressFrameShortcut("i");
         assertState("{$}");
         if (before.length > 0) {
             cy.get("body").type(before);
@@ -243,7 +235,7 @@ export function testBackspace(originalInclBksp : string, expectedResult : string
             const before = originalInclBksp.substring(0, bkspIndex);
             const after = originalInclBksp.substring(bkspIndex + 1);
 
-            cy.get("body").type("i");
+            pressFrameShortcut("i");
             assertState("{$}");
             if (before.length > 0) {
                 cy.get("body").type(before);
@@ -275,7 +267,7 @@ export function testBackspace(originalInclBksp : string, expectedResult : string
             const before = originalInclBksp.substring(0, bkspIndex - 1);
             const after = originalInclBksp.substring(bkspIndex - 1, bkspIndex) + originalInclBksp.substring(bkspIndex + 1);
 
-            cy.get("body").type("i");
+            pressFrameShortcut("i");
             assertState("{$}");
             if (before.length > 0) {
                 cy.get("body").type(before);
@@ -335,15 +327,15 @@ export function testPushBracket(original: string, expectedResults: string[], pus
         if(withMediaSlots){
             // With media slots, "writing" direct code in the frame isn't working to generate the media slots: paste works so we use this approach
             (cy.get("body") as any).paste(original);
-            cy.wait(2000);
+            waitForEditorSettled();
             // Bring the caret to the end of the slots
             cy.get("body").type("{leftArrow}");
-            cy.wait(200);
+            waitForEditorSettled();
             // And do the tests: 
             doTestPushBracket(original, expectedResults, pushSequence);
         }
         else{ 
-            cy.get("body").type("i");
+            pressFrameShortcut("i");
             assertState("{$}");
 
             const cursorIndex = original.indexOf("$");

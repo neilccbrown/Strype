@@ -2,16 +2,16 @@ import { nextTick} from "vue";
 import { FrameObject, CollapsedState, CurrentFrame, CaretPosition, FrozenState, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, DefsContainerDefinition, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode, SaveRequestReason, RootContainerFrameDefinition, StrypeLayoutDividerSettings, MediaSlot, SlotInfosOptionalMedia, ModifierKeyCode } from "@/types/types";
 import { getObjectPropertiesDifferences } from "@/helpers/common";
 import i18n from "@/i18n";
-import {calculateNextCollapseState, checkCodeErrors, checkStateDataIntegrity, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getFrameSectionIdFromFrameId, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
+import {calculateNextCollapseState, checkCodeErrors, checkStateDataIntegrity, evaluateSlotType, filterAllowedJointChildrenAfter, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getFrameSectionIdFromFrameId, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isAncestorGatedFrameTypeAllowed, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
 import { AppPlatform, AppVersion, eventBus, projectDocumentationFrameId } from "@/helpers/appContext";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
-import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, getCaretContainerUID, AutoSaveKeyNames, isFullyInViewport, copyFrameTextReadyForClipboard } from "@/helpers/editor";
+import { bumpCaretRequestSeq, CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, getCaretContainerUID, AutoSaveKeyNames, isFullyInViewport, copyFrameTextReadyForClipboard, waitForElementId } from "@/helpers/editor";
 import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
 import {cloneDeep, isEqual} from "lodash";
-import { TPyParser } from "tigerpython-parser";
+import { TPyParser } from "@tigerpython/tpparser";
 import emptyState from "@/store/initial-states/empty-state";
 import { BvTriggerableEvent } from "bootstrap-vue-next";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
@@ -33,6 +33,7 @@ import {
     type AnalyticsFlushReason,
 } from "@/store/analytics";
 export type { AnalyticsEvent, AnalyticsFlushReason } from "@/store/analytics";
+import { waitForPanesSettled } from "@/helpers/editor";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import { actOnGraphicsImport } from "@/helpers/editor";
 // #v-endif
@@ -101,6 +102,12 @@ export const useStore = defineStore("app", {
 
             // Are we editing a text slot?
             isEditing: false,
+
+            // How many LabelSlotsStructure.vue instances currently have a debounced funccall->keyword-
+            // frame/varassign conversion pending (see checkSlotRefactoring() there). Exposed via a data
+            // attribute in App.vue so tests can tell such a conversion is still in flight even though the
+            // focus/cursor deliberately don't change during its delay (see cancelPendingConversion()).
+            pendingSlotConversionCount: 0,
 
             // Timestamp used to manage when to discard the rename identifier popup 
             renameIdentifierPopupShownTimestamp: 0,
@@ -212,6 +219,10 @@ export const useStore = defineStore("app", {
             tigerPythonLang: "en", // The locale for TigerPython, see parser.ts as to why it's here
 
             isAppMenuOpened: false,
+
+            // Whether the frame command pane is currently focused for keyboard-driven frame insertion
+            // (entered via Tab/Space at the frame caret, see Commands.vue's keydown handler)
+            isFrameCommandsPaneActive: false,
 
             isModalDlgShown: false,
 
@@ -376,59 +387,21 @@ export const useStore = defineStore("app", {
 
                 // If (c) was true
                 if(allowedJointChildren.length>0) {
-
-                    const uniqueJointFrameTypes = [AllFrameTypesIdentifier.else, AllFrameTypesIdentifier.finally];
-
                     // -100 means there is no next Joint Child => focused is the last joint or end of joint structure (i.e. below root)
-                    if(nextJointChildID === -100){
-                        // Below the root, no joint frame can be added (unless in the programmatic case of drag and drop, see above)
-                        if(!state.isDraggingFrame && frameId == focusedFrame.id && caretPosition == CaretPosition.below && !!focusedFrame.frameType.allowJointChildren){
-                            allowedJointChildren.splice(0, allowedJointChildren.length);
-                        }
-                        else{
-                            // If the focused Joint is a unique, we need to show the available uniques that can go after it (i.e. show FINALLY or nothing)
-                            //    OR special case if we are in TRY statement: we can't show ELSE at any case
-                            // else show them all
-                            if(focusedFrame.frameType.type === AllFrameTypesIdentifier.try){
-                                allowedJointChildren.splice(allowedJointChildren.indexOf(AllFrameTypesIdentifier.else), 1); 
-                            }
-                            else if(uniqueJointFrameTypes.includes(focusedFrame.frameType.type)){
-                                allowedJointChildren.splice(
-                                    0,
-                                    allowedJointChildren.indexOf(focusedFrame.frameType.type)+1 //delete from the beginning to the current frame type
-                                );                        
-                            } 
-                        }
+                    // Below the root, no joint frame can be added (unless in the programmatic case of drag and drop, see above)
+                    if(nextJointChildID === -100 && !state.isDraggingFrame && frameId == focusedFrame.id && caretPosition == CaretPosition.below && !!focusedFrame.frameType.allowJointChildren){
+                        allowedJointChildren.splice(0, allowedJointChildren.length);
                     }
-                    // on the presence of a next child
                     else{
-                        const nextJointChild = state.frameObjects[nextJointChildID];          
-
-                        // if the next is not unique, show all non-uniques ()
-                        if(!uniqueJointFrameTypes.includes(nextJointChild.frameType.type)) {
-                            allowedJointChildren = allowedJointChildren.filter( (x) => !uniqueJointFrameTypes.includes(x)); // difference
-                        }
-                        // else if the next AND the current are uniques (i.e. I am in an ELSE and there is a FINALLY after me)
-                        else if(uniqueJointFrameTypes.includes(focusedFrame.frameType.type)) {
-                            allowedJointChildren = [];
-                        }
-                        // In the case where only the next is unique
-                        // show all but the available up to before the existing unique (i.e. at most up to ELSE)
-                        // Special case: if we are in a TRY statement (and since we passed the condition above, next is unique (i.e. FINALLY)) --> we can't show ELSE
-                        else {
-                            if(focusedFrame.frameType.type === AllFrameTypesIdentifier.try){
-                                allowedJointChildren.splice(
-                                    allowedJointChildren.indexOf(AllFrameTypesIdentifier.else),
-                                    1
-                                );
-                            }
-                            else{
-                                allowedJointChildren.splice(
-                                    allowedJointChildren.indexOf(nextJointChild.frameType.type),
-                                    allowedJointChildren.length - allowedJointChildren.indexOf(nextJointChild.frameType.type) //delete from the index of the nextJointChild to the end
-                                );
-                            }
-                        }
+                        // The "RULE FOR THE JOINTS": narrow allowedJointChildren based on what (if
+                        // anything) already follows focusedFrame in the same joint chain -- shared with
+                        // LabelSlotsStructure.vue's computeJointAttachmentAfter (see filterAllowedJointChildrenAfter's
+                        // own comment for why this can't just be called from there directly).
+                        allowedJointChildren = filterAllowedJointChildrenAfter(
+                            focusedFrame.frameType.type,
+                            allowedJointChildren,
+                            (nextJointChildID === -100) ? undefined : state.frameObjects[nextJointChildID]
+                        );
                     }
                 }
             }
@@ -441,7 +414,9 @@ export const useStore = defineStore("app", {
             //as there is no static rule for showing the "break" or "continue" statements,
             //we need to check if the current frame is within a "for" or a "while" loop.
             //if we are not into a nested for/while --> we add "break" and "continue" in the forbidden frames list
-            const canShowLoopBreakers = isContainedInFrame(frameId,caretPosition, [AllFrameTypesIdentifier.for, AllFrameTypesIdentifier.while]);
+            // (isAncestorGatedFrameTypeAllowed's break/continue cases are identical, so checking one covers both --
+            // shared with LabelSlotsStructure.vue's isKeywordFrameConversionValid, which needs this same ancestor rule.)
+            const canShowLoopBreakers = isAncestorGatedFrameTypeAllowed(frameId, caretPosition, AllFrameTypesIdentifier.break);
             if(!canShowLoopBreakers){
                 //by default, "break" and "continue" are NOT forbidden to any frame which can host children frames,
                 //so if we cannot show "break" and "continue" : we add them from the list of forbidden
@@ -455,8 +430,8 @@ export const useStore = defineStore("app", {
             //"return" and "global" statements can't be added when in the main container frame, except if in a case block for "return"
             // We don't forbid them to be in the main container, but we don't provide a way to add them directly.
             // They can be added when in the function definition container though.
-            const canShowGlobalStatement = isContainedInFrame(frameId,caretPosition, [DefsContainerDefinition.type]);
-            const canShowReturnStatement = canShowGlobalStatement || isContainedInFrame(frameId,caretPosition, [AllFrameTypesIdentifier.case]);
+            const canShowGlobalStatement = isAncestorGatedFrameTypeAllowed(frameId, caretPosition, AllFrameTypesIdentifier.global);
+            const canShowReturnStatement = isAncestorGatedFrameTypeAllowed(frameId, caretPosition, AllFrameTypesIdentifier.return);
             const extraForbiddenTypes = [...(!canShowGlobalStatement ? [AllFrameTypesIdentifier.global] : []), ...(!canShowReturnStatement ? [AllFrameTypesIdentifier.return] : [])];
             if(extraForbiddenTypes.length > 0){
                 //by default, "break" and "continue" are NOT forbidden to any frame which can host children frames,
@@ -807,8 +782,10 @@ export const useStore = defineStore("app", {
                     removeFrameInFrameList(payload.frameToDeleteId);
                 }
                 else{
-                    //we "replace" the frame to delete by its content in its parent's location
-                    //note: the content is its children and the children of its potential joint frames
+                    // We "replace" the frame to delete by its content in its parent's location
+                    // Note: the content is its children and the children of its potential joint frames
+                    // For the special case of match frames, we bring up the content of all cases 
+                    // to the level of the match frame (match and case frames will be deleted)
                     const frameToDelete = this.frameObjects[payload.frameToDeleteId];
                     const isFrameToDeleteJointFrame = (frameToDelete.jointParentId > 0);
                     const isFrameToDeleteRootJointFrame = (frameToDelete.jointParentId === 0 && frameToDelete.frameType.jointFrameTypes.length > 0);
@@ -821,7 +798,18 @@ export const useStore = defineStore("app", {
                             this.frameObjects[payload.frameToDeleteId].jointParentId;     
                     }
 
-                    const listOfChildrenToMove = this.frameObjects[payload.frameToDeleteId].childrenIds;
+                    const listOfChildrenToMove = (frameToDelete.frameType.type != AllFrameTypesIdentifier.match) 
+                        ? this.frameObjects[payload.frameToDeleteId].childrenIds
+                        : this.frameObjects[payload.frameToDeleteId].childrenIds.flatMap((matchChildId) => {
+                            // When we delete from the body of a match or of a case, we bring back all the bodies' content 
+                            // to the current level (which is above match).
+                            if(this.frameObjects[matchChildId].frameType.type == AllFrameTypesIdentifier.case){
+                                return this.frameObjects[matchChildId].childrenIds;
+                            }
+                            else{
+                                return  matchChildId;
+                            }
+                        });
                     //if the frame to remove is the root of a joint frames structure, we include all the joint frames' children in the list of children to remove
                     if(isFrameToDeleteRootJointFrame){
                         this.frameObjects[payload.frameToDeleteId]
@@ -849,7 +837,14 @@ export const useStore = defineStore("app", {
                             1
                         );
                     }
-                    //and finally, delete the frame
+                    //and finally, delete the frame, and in the case of a match frame we delete the case frames left dangling too
+                    if(frameToDelete.frameType.type == AllFrameTypesIdentifier.match){
+                        this.frameObjects[payload.frameToDeleteId].childrenIds.forEach((matchChildId) => {
+                            if(this.frameObjects[matchChildId].frameType.type == AllFrameTypesIdentifier.case) {
+                                delete this.frameObjects[matchChildId];
+                            }
+                        });
+                    }
                     delete this.frameObjects[payload.frameToDeleteId];
                 }
             }
@@ -1315,6 +1310,7 @@ export const useStore = defineStore("app", {
             this.simpleModalDlgMsg = "";
             this.currentModalDlgId = "";
             this.isAppMenuOpened = false;
+            this.isFrameCommandsPaneActive = false;
             this.bypassEditableSlotBlurErrorCheck = false;
 
             // Should show editing mode
@@ -1700,6 +1696,19 @@ export const useStore = defineStore("app", {
             this.saveStateChanges(stateBeforeChanges);
         },
 
+        // Explicitely selects the add frames tab (index 0) in the Commands panel, for whenever we leave
+        // an editable slot or otherwise move to a frame caret -- called from validateSlot(),
+        // changeCaretPosition(), and leftRightKey(). Deferred to nextTick(): this is always called in the
+        // same tick as `isEditing` flipping to false elsewhere (LabelSlotsStructure.vue/Commands.vue), and
+        // the "Add Frame" tab is :disabled="isEditing", so BootstrapVueNext's internal index watcher
+        // (default flush:"pre") can still see it as disabled and revert the switch if this isn't deferred
+        // a tick -- waiting lets isEditing's render pass land first.
+        resetCommandsTabToAddFrame() {
+            nextTick(() => {
+                this.commandsTabIndex = 0; //0 is the index of the add frame tab
+            });
+        },
+
         validateSlot(frameSlotInfos: SlotInfos, keepEditingModeOn?: boolean) {
             if(!keepEditingModeOn){
                 this.isEditing = false;
@@ -1712,11 +1721,11 @@ export const useStore = defineStore("app", {
                         focused: false,
                     }
                 );
-                
-                // When we leave an editable slot, we explicitely select the add frames tab in the Commands panel
-                this.commandsTabIndex = 0; //0 is the index of the add frame tab
 
-                this.setCurrentInitCodeValue(frameSlotInfos);       
+                // When we leave an editable slot, we explicitely select the add frames tab in the Commands panel.
+                this.resetCommandsTabToAddFrame();
+
+                this.setCurrentInitCodeValue(frameSlotInfos);
             }
         },
 
@@ -1774,16 +1783,28 @@ export const useStore = defineStore("app", {
         },
 
         changeCaretPosition(key: string, isLevelScopeChange?: boolean) {
-            // When the caret is being moved, we explicitely select the add frames tab in the Commands panel
-            this.commandsTabIndex = 0; //0 is the index of the add frame tab
+            // When the caret is being moved, we explicitely select the add frames tab in the Commands panel.
+            this.resetCommandsTabToAddFrame();
 
             this.changeCaretWithKeyboard(key, isLevelScopeChange);
             
             this.unselectAllFrames();
         },
 
-        // Returns the id of the newly added frame
-        async addFrameWithCommand(frame: FramesDefinitions, hiddenShorthandFrameDetails?: AddShorthandFrameCommandDef, skipFuncCallBracketsAndCaretSet?: boolean) : Promise<number> {
+        // Returns the id of the newly added frame. skipFuncCallBrackets and skipCaretSet are independent:
+        // skipFuncCallBrackets skips the default "()" content of a new func-call frame -- used when bare
+        // typing at the frame caret creates a func-call frame from the typed character: unlike the
+        // explicit "c" pane command, that's not necessarily going to end up as a function call once the
+        // user finishes typing (see createFuncCallFrameFromTypedChar() in Commands.vue), so it shouldn't
+        // presuppose a call's brackets. skipCaretSet skips the usual post-insertion caret placement --
+        // used when the caller sets that up itself afterwards (e.g. media paste, which also passes
+        // skipFuncCallBrackets since its own content replaces the default "()" too).
+        async addFrameWithCommand(frame: FramesDefinitions, hiddenShorthandFrameDetails?: AddShorthandFrameCommandDef, skipFuncCallBrackets?: boolean, skipCaretSet?: boolean) : Promise<number> {
+            // Any insertion path (direct shortcut, frame commands pane shortcut/Enter-confirm, or a mouse
+            // click on an AddFrameCommand) converges here, so this is the one place needed to guarantee
+            // the frame commands pane mode flag never outlives an insertion.
+            this.isFrameCommandsPaneActive = false;
+
             const stateBeforeChanges = cloneDeep(this.$state);
             const currentFrame = this.frameObjects[this.currentFrame.id];
             const addingJointFrame = frame.isJointFrame;
@@ -1848,7 +1869,7 @@ export const useStore = defineStore("app", {
                             }
                             const labelContent: LabelSlotsContent = {
                                 shown: (!cur.hidableLabelSlots),
-                                slotStructures: (frame.type == AllFrameTypesIdentifier.funccall && !skipFuncCallBracketsAndCaretSet) 
+                                slotStructures: (frame.type == AllFrameTypesIdentifier.funccall && !skipFuncCallBrackets)
                                     ? {fields: [{code: ""},{openingBracketValue:"(", fields: [{code: ""}], operators: []},{code: ""}], operators: [{code: ""}, {code: ""}]}
                                     : {fields: [{code: ""}], operators: []},
                             };
@@ -1962,7 +1983,7 @@ export const useStore = defineStore("app", {
 
             this.updateNextAvailableId();
             
-            if (skipFuncCallBracketsAndCaretSet) {
+            if (skipCaretSet) {
                 return newFrame.id;
             }
         
@@ -2020,10 +2041,10 @@ export const useStore = defineStore("app", {
         // Note: this will not always do the delete, for example if frozen frames are involved
         // Returns true if the deletion ocurred or false if it did not.
         deleteFrames(key: string, ignoreBackState?: boolean) : boolean {
-            // If we are trying to delete a match or case frame from its body, the action is cancelled if this body isn't empty-like (i.e. if not empty, or only containing comments/blanks): 
+            // If we are trying to delete a case frame from its body, the action is cancelled if this body isn't empty-like (i.e. if not empty, or only containing comments/blanks): 
             // catch statements cannot live outside a match statement and match statements cannot contain anything but cases or comments/blanks
             if(this.selectedFrames.length == 0 && key == "Backspace" && this.currentFrame.caretPosition == CaretPosition.body 
-                && (this.frameObjects[this.currentFrame.id].frameType.type == AllFrameTypesIdentifier.match || this.frameObjects[this.currentFrame.id].frameType.type == AllFrameTypesIdentifier.case) 
+                && this.frameObjects[this.currentFrame.id].frameType.type == AllFrameTypesIdentifier.case
                 && this.frameObjects[this.currentFrame.id].childrenIds.length > 0 
                     && this.frameObjects[this.currentFrame.id].childrenIds.map((childFrameId) => this.frameObjects[childFrameId].frameType.type).some((frameType) => frameType != AllFrameTypesIdentifier.comment && frameType != AllFrameTypesIdentifier.blank)){
                 return false;
@@ -2080,7 +2101,7 @@ export const useStore = defineStore("app", {
                 // we need to delete the next joint frame that is visually below us.
                 //if backspace is pressed
                 //  case current frame is Container --> do nothing, a container cannot be deleted
-                //  case cursor is body: cursor needs to move one level up, and the current frame's children + all siblings replace its parent (except for function definitions frames)
+                //  case cursor is body: cursor needs to move one level up, and the current frame's children + all siblings replace its parent (except for function definitions frames) - match frames are a bit specific (see below)
                 //  case cursor is below: cursor needs to move to bottom of previous sibling (or body of parent if first child) and the current frame (*) is deleted
                 //(*) with all sub levels children
 
@@ -2116,13 +2137,13 @@ export const useStore = defineStore("app", {
                     if(!foundDisabledJointFrameToDelete) {
                         const indexOfCurrentInAvailables = availablePositions.findIndex((e)=> e.frameId === currentFrame.id && e.caretPosition === this.currentFrame.caretPosition);
                         // the "next" position of the current
-                        frameToDelete = availablePositions[indexOfCurrentInAvailables+1]??{id:-100, isSlotNavigationPosition: false};
+                        frameToDelete = availablePositions[indexOfCurrentInAvailables+1]??{frameId:-100, isSlotNavigationPosition: false};
                     }
                     // The only times to prevent deletion with 'delete' is when we are inside a body that has no children (except in Joint frames)
                     // or when the next position is a joint root's below OR a strict* block frame below - both enabled (* = that cannot take joint frame, like a function definition, a class definition or "with")
-                    if((framesIdToDelete.length==1 && this.frameObjects[framesIdToDelete[0]]?.frameType.allowChildren && !this.frameObjects[frameToDelete.frameId]?.frameType.isJointFrame 
+                    if((framesIdToDelete.length==1 && this.frameObjects[framesIdToDelete[0]]?.frameType.allowChildren && !this.frameObjects[frameToDelete.frameId]?.frameType.isJointFrame
                             && this.currentFrame.caretPosition == CaretPosition.body && this.frameObjects[framesIdToDelete[0]]?.childrenIds.length == 0)
-                        || (!this.frameObjects[frameToDelete.frameId].isDisabled && (!!this.frameObjects[frameToDelete.frameId]?.frameType.allowJointChildren || (this.frameObjects[frameToDelete.frameId]?.frameType.allowChildren && !this.frameObjects[frameToDelete.frameId]?.frameType.allowJointChildren))
+                        || (!this.frameObjects[frameToDelete.frameId]?.isDisabled && (!!this.frameObjects[frameToDelete.frameId]?.frameType.allowJointChildren || (this.frameObjects[frameToDelete.frameId]?.frameType.allowChildren && !this.frameObjects[frameToDelete.frameId]?.frameType.allowJointChildren))
                             && (frameToDelete.caretPosition??"") === CaretPosition.below)){
                         frameToDelete.frameId = -100;
                     }
@@ -2238,14 +2259,23 @@ export const useStore = defineStore("app", {
         },
 
         async leftRightKey(payload: {key: string, isShiftKeyHold?: boolean, availablePositions?: NavigationPosition[]}) {
+            // Moving via the keyboard supersedes any earlier, still-pending LabelSlot.vue
+            // onGetCaret() request (see bumpCaretRequestSeq() doc) -- otherwise a slot's deferred
+            // "got caret" callback from before this move can fire after we've already navigated
+            // away and blindly re-focus the slot we just left.
+            bumpCaretRequestSeq();
             //  used for moving index up (+1) or down (-1)
             const directionDown = payload.key === "ArrowRight" || payload.key === "Enter" || (payload.key === "Tab" && !payload.isShiftKeyHold);
             const directionDelta = (directionDown)?+1:-1;
             // if the available positions are not passed as argument, we compute them from the DOM
             const availablePositions = payload.availablePositions??getAvailableNavigationPositions();
             let currentFramePosition: number;
+            // Set below when moving into a slot; awaited at the end so this function's own promise
+            // only resolves once the cursor is genuinely restored (see the comment at its assignment).
+            let cursorRestorePromise: Promise<void> | undefined;
+            const wasEditing = this.isEditing;
 
-            if (this.isEditing){ 
+            if (this.isEditing){
                 // Retrieve the slot that currently has focus in the current frame by looking up in the DOM
                 const foundSlotCoreInfos = this.focusSlotCursorInfos?.slotInfos as SlotCoreInfos;
                 currentFramePosition = availablePositions.findIndex((e) => e.isSlotNavigationPosition && e.frameId === this.currentFrame.id 
@@ -2270,8 +2300,8 @@ export const useStore = defineStore("app", {
             // The next position depends whether we are selection text:
             // if not, we just get to the following/previous available position
             // if so, the next position is either the following/previous available position within *a same* structure.
-            let nextPosition = (availablePositions[currentFramePosition+directionDelta]??availablePositions[currentFramePosition]);    
-            let multiSlotSelNotChanging = false;   
+            let nextPosition = (availablePositions[currentFramePosition+directionDelta]??availablePositions[currentFramePosition]);
+            let multiSlotSelNotChanging = false;
             if(payload.isShiftKeyHold && payload.key != "Tab"){
                 const currentSlotInfos = this.focusSlotCursorInfos?.slotInfos as SlotCoreInfos;
                 const currentSlotInfosLevel = currentSlotInfos.slotId.split(",").length;
@@ -2324,25 +2354,32 @@ export const useStore = defineStore("app", {
                 );
                 
                 // Restore the text cursor, the anchor is the same as the focus if we are not selecting text
-                // (as the slot may have not yet be renderered in the UI, for example when adding a new frame, we do it later)
+                // (the slot may not yet be rendered in the UI, for example when adding a new frame --
+                // waitForElementId polls for it rather than assuming a single tick is always enough, see
+                // its doc comment for why: a single tick used to be able to leave the editor cursorless).
+                // This is awaited (not fire-and-forget) so that leftRightKey()'s own returned promise only
+                // resolves once the cursor is genuinely restored -- callers that chain off it (e.g.
+                // addFrameWithCommand(), and in turn Commands.vue's ctrl-space-at-a-frame-caret handler,
+                // which re-dispatches a synthetic ctrl-space after just one more tick) previously could run
+                // before this had finished, silently missing the newly-focused slot entirely.
                 // If we are reaching a comment frame, coming from the blue caret underneath, we neeed to check if there is a terminating line return:
                 // if that's the case, we do not get just after it, but before it; see LabelSlot.vue onEnterOrTabKeyUp() for why.
-                nextTick(() => {
+                cursorRestorePromise = waitForElementId(getLabelSlotUID(nextSlotCoreInfos)).then(() => {
                     let textCursorPos = (directionDelta == 1) ? 0 : (document.getElementById(getLabelSlotUID(nextSlotCoreInfos))?.textContent?.replace(/\u200B/, "")?.length)??0;
                     const isCommentFrame = this.frameObjects[nextSlotCoreInfos.frameId as number].frameType.type == AllFrameTypesIdentifier.comment;
                     if(isCommentFrame && (document.getElementById(getLabelSlotUID(nextSlotCoreInfos))?.textContent??"").endsWith("\n") && directionDelta == -1){
                         textCursorPos--;
                     }
-                  
+
                     const anchorCursorInfos = (payload.isShiftKeyHold && payload.key != "Tab") ? this.anchorSlotCursorInfos : {slotInfos: nextSlotCoreInfos, cursorPos: textCursorPos};
-                    const focusCursorInfos = (multiSlotSelNotChanging) ? this.focusSlotCursorInfos : {slotInfos: nextSlotCoreInfos, cursorPos: textCursorPos}; 
+                    const focusCursorInfos = (multiSlotSelNotChanging) ? this.focusSlotCursorInfos : {slotInfos: nextSlotCoreInfos, cursorPos: textCursorPos};
                     this.setSlotTextCursors(anchorCursorInfos, focusCursorInfos);
                     setDocumentSelection(anchorCursorInfos as SlotCursorInfos, focusCursorInfos as SlotCursorInfos);
                     if(focusCursorInfos){
                         document.getElementById(getLabelSlotUID(focusCursorInfos.slotInfos))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
                     }
                 });
-                
+
                 // As we may have moved from a blue caret position, we make sure that we are always setting the caret position to the next available caret position possible.
                 // (which should be "below" for a statement frame, and "body" for a block frame)
                 this.currentFrame.caretPosition = (this.frameObjects[nextPosition.frameId].frameType.allowChildren) ? CaretPosition.body : CaretPosition.below;
@@ -2351,6 +2388,24 @@ export const useStore = defineStore("app", {
                 // else we set editFlag to false as we are moving to a caret position
                 this.isEditing = false;
                 this.frameObjects[nextPosition.frameId].caretVisibility = nextPosition.caretPosition as CaretPosition;
+
+                // Moving to a frame caret should always show the "add frame" commands tab (matching
+                // changeCaretPosition()'s behaviour for arrow up/down at a caret), needed right away if
+                // this caret is then used to open the frame commands pane (Tab/Space): its buttons live
+                // in that tab, so they can't be focused if the "API discovery" tab (set by
+                // setFocusEditableSlot() while editing) is still the one showing.
+                this.resetCommandsTabToAddFrame();
+
+                // If we were editing a slot, the contenteditable label-slots-structure still holds the
+                // real DOM focus at this point (nothing above moves it). Explicitly focusing the
+                // destination caret container here -- before clearing the selection below -- mirrors what
+                // onEscKeyUp() already does (LabelSlot.vue) and avoids leaving that contenteditable region
+                // focused with no selection: otherwise the browser can auto-generate a fresh selection
+                // inside it, which handleDocumentSelectionChange() (App.vue) then reads as the user having
+                // moved the caret back into the slot we just left, immediately undoing this navigation.
+                if(wasEditing){
+                    document.getElementById(getCaretContainerUID(nextPosition.caretPosition as CaretPosition, nextPosition.frameId))?.focus();
+                }
 
                 // Scroll it into view:
                 nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));
@@ -2371,6 +2426,10 @@ export const useStore = defineStore("app", {
 
             //In any case change the current frame
             this.currentFrame.id = nextPosition.frameId;
+
+            // See the comment where cursorRestorePromise is assigned above -- awaited last so every
+            // other synchronous update in this function above still happens at the same point as before.
+            await cursorRestorePromise;
         },
 
         generateStateJSONStrWithCheckpoint(compress?: boolean) : string {
@@ -2532,63 +2591,60 @@ export const useStore = defineStore("app", {
             });
         },
 
-        setDividerStates(newEditorCommandsSplitterPane2Size: StrypeLayoutDividerSettings | undefined, newPEALayout: StrypePEALayoutMode, newPEACommandsSplitterPane2Size: StrypeLayoutDividerSettings | undefined, newPEASplitViewSplitterPane1Size: StrypeLayoutDividerSettings | undefined, newPEAExpandedSplitterPane2Size: StrypeLayoutDividerSettings | undefined, resolve: (value: (PromiseLike<void> | void)) => void, forceSetUndefined?: boolean) {
-            setTimeout(() => {
-                let chainedTimeOuts = 400;
-                // Now we can restore the backuped properties of the new state related to the layout.
-                // If any of the properties for layout changes was updated, the PEA 4:3 ratio isn't any longer meaningful.
-                if (forceSetUndefined || (newEditorCommandsSplitterPane2Size != undefined && newEditorCommandsSplitterPane2Size[newPEALayout ?? StrypePEALayoutMode.tabsCollapsed] != undefined)) {
-                    this.editorCommandsSplitterPane2Size = newEditorCommandsSplitterPane2Size;
-                    // If this splitter was changed, the PEA needs to be resized once the splitter has updated
-                    setTimeout(() => {
-                        if (this.editorCommandsSplitterPane2Size != undefined && this.editorCommandsSplitterPane2Size[newPEALayout ?? StrypePEALayoutMode.tabsCollapsed] != undefined) {
-                            vueComponentsAPIHandler.appComponentAPI?.onStrypeCommandsSplitPaneResize({panes: [{}, {size: this.editorCommandsSplitterPane2Size[newPEALayout ?? StrypePEALayoutMode.tabsCollapsed]}]}, newPEALayout);
-                        }
-                    }, chainedTimeOuts);
-                }
-                if (this.peaLayoutMode != newPEALayout) {
-                    setTimeout(() => {
-                        this.peaLayoutMode = newPEALayout;
-                        // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
-                        vueComponentsAPIHandler.peaComponentAPI?.togglePEALayout(newPEALayout);
-                        // #v-endif
-                    }, chainedTimeOuts += 200);
-                }
+        async setDividerStates(newEditorCommandsSplitterPane2Size: StrypeLayoutDividerSettings | undefined, newPEALayout: StrypePEALayoutMode, newPEACommandsSplitterPane2Size: StrypeLayoutDividerSettings | undefined, newPEASplitViewSplitterPane1Size: StrypeLayoutDividerSettings | undefined, newPEAExpandedSplitterPane2Size: StrypeLayoutDividerSettings | undefined, resolve: (value: (PromiseLike<void> | void)) => void, forceSetUndefined?: boolean): Promise<void> {
+            // Each divider change below can cascade into other panes resizing (they animate via a CSS
+            // transition), and a later change's correct end state depends on an earlier one having
+            // fully settled first -- so we wait for the actual DOM to stop moving between each step
+            // (see waitForPanesSettled()) instead of guessing a delay that's long enough.
+            await waitForPanesSettled();
 
-                if (forceSetUndefined || newPEACommandsSplitterPane2Size) {
-                    this.peaCommandsSplitterPane2Size = newPEACommandsSplitterPane2Size;
-                    // If this splitter was changed, the PEA needs to be resized once the splitter has updated
-                    if (forceSetUndefined || (newPEACommandsSplitterPane2Size && newPEACommandsSplitterPane2Size[newPEALayout] != undefined)) {
-                        setTimeout(() => {
-                            if (this.peaCommandsSplitterPane2Size && this.peaCommandsSplitterPane2Size[newPEALayout] != undefined) {
-                                vueComponentsAPIHandler.commandsComponentAPI?.onCommandsSplitterResize({panes: [{}, {size: this.peaCommandsSplitterPane2Size[newPEALayout]}]});
-                            }
-                        }, (chainedTimeOuts += 200));
+            // Now we can restore the backuped properties of the new state related to the layout.
+            // If any of the properties for layout changes was updated, the PEA 4:3 ratio isn't any longer meaningful.
+            if (forceSetUndefined || (newEditorCommandsSplitterPane2Size != undefined && newEditorCommandsSplitterPane2Size[newPEALayout ?? StrypePEALayoutMode.tabsCollapsed] != undefined)) {
+                this.editorCommandsSplitterPane2Size = newEditorCommandsSplitterPane2Size;
+                // If this splitter was changed, the PEA needs to be resized once the splitter has updated
+                await waitForPanesSettled();
+                if (this.editorCommandsSplitterPane2Size != undefined && this.editorCommandsSplitterPane2Size[newPEALayout ?? StrypePEALayoutMode.tabsCollapsed] != undefined) {
+                    vueComponentsAPIHandler.appComponentAPI?.onStrypeCommandsSplitPaneResize({panes: [{}, {size: this.editorCommandsSplitterPane2Size[newPEALayout ?? StrypePEALayoutMode.tabsCollapsed]}]}, newPEALayout);
+                }
+            }
+            if (this.peaLayoutMode != newPEALayout) {
+                this.peaLayoutMode = newPEALayout;
+                // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
+                vueComponentsAPIHandler.peaComponentAPI?.togglePEALayout(newPEALayout);
+                // #v-endif
+                await waitForPanesSettled();
+            }
+
+            if (forceSetUndefined || newPEACommandsSplitterPane2Size) {
+                this.peaCommandsSplitterPane2Size = newPEACommandsSplitterPane2Size;
+                // If this splitter was changed, the PEA needs to be resized once the splitter has updated
+                if (forceSetUndefined || (newPEACommandsSplitterPane2Size && newPEACommandsSplitterPane2Size[newPEALayout] != undefined)) {
+                    await waitForPanesSettled();
+                    if (this.peaCommandsSplitterPane2Size && this.peaCommandsSplitterPane2Size[newPEALayout] != undefined) {
+                        vueComponentsAPIHandler.commandsComponentAPI?.onCommandsSplitterResize({panes: [{}, {size: this.peaCommandsSplitterPane2Size[newPEALayout]}]});
                     }
                 }
+            }
 
-                if (forceSetUndefined || (newPEASplitViewSplitterPane1Size != undefined && newPEALayout != undefined && newPEASplitViewSplitterPane1Size[newPEALayout] != undefined)) {
-                    this.peaSplitViewSplitterPane1Size = newPEASplitViewSplitterPane1Size;
-                }
+            if (forceSetUndefined || (newPEASplitViewSplitterPane1Size != undefined && newPEALayout != undefined && newPEASplitViewSplitterPane1Size[newPEALayout] != undefined)) {
+                this.peaSplitViewSplitterPane1Size = newPEASplitViewSplitterPane1Size;
+            }
 
-                if (forceSetUndefined || newPEAExpandedSplitterPane2Size != undefined) {
-                    this.peaExpandedSplitterPane2Size = newPEAExpandedSplitterPane2Size;
-                    // If this splitter was changed, the PEA needs to be resized once the splitter has updated
-
-                    if (forceSetUndefined || (newPEAExpandedSplitterPane2Size != undefined && newPEAExpandedSplitterPane2Size[newPEALayout] != undefined)) {
-                        setTimeout(() => {
-                            if (this.peaExpandedSplitterPane2Size != undefined && this.peaExpandedSplitterPane2Size[newPEALayout] != undefined) {
-                                vueComponentsAPIHandler.appComponentAPI?.onExpandedPythonExecAreaSplitPaneResize({panes: [{}, {size: this.peaExpandedSplitterPane2Size[newPEALayout]}]});
-                            }
-                        }, (chainedTimeOuts += 200));
+            if (forceSetUndefined || newPEAExpandedSplitterPane2Size != undefined) {
+                this.peaExpandedSplitterPane2Size = newPEAExpandedSplitterPane2Size;
+                // If this splitter was changed, the PEA needs to be resized once the splitter has updated
+                if (forceSetUndefined || (newPEAExpandedSplitterPane2Size != undefined && newPEAExpandedSplitterPane2Size[newPEALayout] != undefined)) {
+                    await waitForPanesSettled();
+                    if (this.peaExpandedSplitterPane2Size != undefined && this.peaExpandedSplitterPane2Size[newPEALayout] != undefined) {
+                        vueComponentsAPIHandler.appComponentAPI?.onExpandedPythonExecAreaSplitPaneResize({panes: [{}, {size: this.peaExpandedSplitterPane2Size[newPEALayout]}]});
                     }
                 }
+            }
 
-                // We can resolve the promise when all the changes for the UI have been done
-                setTimeout(() => {
-                    resolve();
-                }, chainedTimeOuts + 100);
-            }, 1000);
+            // We can resolve the promise when all the changes for the UI have been done
+            await waitForPanesSettled();
+            resolve();
         },
         
         doSetStateFromJSONStr(stateJSONStr: string): Promise<void>{
@@ -2621,8 +2677,8 @@ export const useStore = defineStore("app", {
 
                 vueComponentsAPIHandler.commandsComponentAPI?.resetPEACommmandsSplitterDefaultState().then(() => {
                     this.updateState(JSON.parse(JSON.stringify(newState)));
-                    // Wait a bit after we have reset everything for the UI to get ready, then affect backed up changes
-                    this.setDividerStates(newEditorCommandsSplitterPane2Size, newPEALayout ?? StrypePEALayoutMode.tabsCollapsed, newPEACommandsSplitterPane2Size, newPEASplitViewSplitterPane1Size, newPEAExpandedSplitterPane2Size, resolve, true);
+                    // Now the UI is ready (the splitters have settled), affect the backed-up changes
+                    void this.setDividerStates(newEditorCommandsSplitterPane2Size, newPEALayout ?? StrypePEALayoutMode.tabsCollapsed, newPEACommandsSplitterPane2Size, newPEASplitViewSplitterPane1Size, newPEAExpandedSplitterPane2Size, resolve, true);
                 });
                 // #v-else
                 this.updateState(JSON.parse(stateJSONStr));
@@ -2644,19 +2700,33 @@ export const useStore = defineStore("app", {
             const areFramesJoint = payload.sourceFrames.frames[payload.sourceFrames.frameIds[0]].frameType.isJointFrame;
             if (areFramesJoint) {
                 // Joint frames.  We can only paste if we're inside the body of the joint parent
-                // or one of its joint frames, at the last position of the body:
-                let parentId: number;
-                if (payload.target.caretPosition == CaretPosition.body) {
-                    parentId = payload.target.id;
+                // or one of its joint frames, at the last position of the body -- or immediately
+                // below the joint parent's own frame, which is where the caret naturally ends up
+                // once nothing follows its whole chain (e.g. pasting a trailing "else" right after
+                // finishing an if/elif with nothing else in the body).  That's the joint parent's
+                // own "below" position, not one of its children's, so it needs to append after any
+                // existing joint children rather than being treated as "top of its body":
+                let jointParentId: number;
+                let newIndex: number;
+                if (payload.target.caretPosition == CaretPosition.below
+                    && this.frameObjects[payload.target.id].frameType.allowJointChildren
+                    && !this.frameObjects[payload.target.id].frameType.isJointFrame) {
+                    jointParentId = payload.target.id;
+                    newIndex = this.frameObjects[jointParentId].jointFrameIds.length;
                 }
                 else {
-                    parentId = getParentOrJointParent(payload.target.id);
+                    let parentId: number;
+                    if (payload.target.caretPosition == CaretPosition.body) {
+                        parentId = payload.target.id;
+                    }
+                    else {
+                        parentId = getParentOrJointParent(payload.target.id);
+                    }
+
+                    const insideJointParentBody = !this.frameObjects[parentId].frameType.isJointFrame;
+                    newIndex = insideJointParentBody ? 0 : this.getIndexInParent(parentId) + 1;
+                    jointParentId = insideJointParentBody ? parentId : getParentOrJointParent(parentId);
                 }
-                
-                const insideJointParentBody = !this.frameObjects[parentId].frameType.isJointFrame;
-                const newIndex = insideJointParentBody ? 0 : this.getIndexInParent(parentId) + 1;
-                
-                const jointParentId = insideJointParentBody ? parentId : getParentOrJointParent(parentId);
                 if (!this.frameObjects[jointParentId].frameType.allowJointChildren) {
                     // This frame doesn't allow joint children; bail out instantly
                     return null;

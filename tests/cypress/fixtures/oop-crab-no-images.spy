@@ -27,7 +27,7 @@ class Lobster(Actor)  :
         self.set_location(choice([randint(-350,-200),randint(200,350)]),choice([randint(-250,-100),randint(100,250)])) 
     def act (self, ) :
         self.move(4) 
-        if randint(1,10)==1  :
+        if randint(1,10) == 1  :
             self.turn(randint(-20,20)) 
         if self.is_at_edge()  :
             self.turn(20) 
