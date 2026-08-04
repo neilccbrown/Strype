@@ -751,7 +751,12 @@ export default defineComponent({
                     // We always restart Pyodide for a clean state, regardless of whether we still
                     // need to wait below for sounds to finish -- the worker itself is done either way:
                     void terminateAndRestartPyodide();
-                    if (wasStoppedByUser || possibleError != null) {
+                    // strype.graphics.stop() raises SystemExit to end the program early -- handleErrorTrace()
+                    // (above) already treats that as a deliberate, silent exit rather than a real runtime
+                    // error, and we do the same here: it's not "wasStoppedByUser" (the Stop button), so it
+                    // should still wait for sounds below, just like a normal fall-off-the-end completion:
+                    const hadRealError = possibleError != null && !possibleError.text.startsWith("SystemExit");
+                    if (wasStoppedByUser || hadRealError) {
                         // Either the user already clicked Stop (which already stopped the sounds
                         // and set NotRunning), or the code ended with an uncaught error, in which
                         // case we stop any sounds immediately rather than waiting for them:

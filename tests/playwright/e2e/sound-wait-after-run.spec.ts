@@ -56,4 +56,30 @@ print("done")`]);
         await expect(button).toHaveText("Run", {timeout: 5000});
         await checkFrameErrorCount(page, 0);
     });
+
+    test("strype.graphics.stop() still waits for a still-playing sound to finish", async ({page}) => {
+        // stop() ends the program early by raising SystemExit -- this must be treated like a normal
+        // completion for sound-waiting purposes (not like an uncaught error, and not like the user's
+        // own Stop button click), so the run should still wait for the ~0.5s sound below rather than
+        // cutting it off immediately:
+        await enterCode(page, ["from strype.sound import *\nfrom strype.graphics import stop", "", `
+s = Sound([0] * 22050)
+s.play()
+print("done")
+stop()
+print("never printed")`]);
+        const button = await startRunning(page);
+        await checkConsoleContent(page, "done\n");
+
+        // The program has ended via stop(), but the sound is still playing, so the button must
+        // still say Stop rather than having already flipped back to Run:
+        await expect(button).toHaveText(/Stop/);
+
+        // Once the sound finishes on its own, the run should end without any further user action:
+        await expect(button).toHaveText("Run", {timeout: 5000});
+        // stop() must not be reported as a runtime error:
+        await checkFrameErrorCount(page, 0);
+        // Nothing after stop() should have run:
+        await checkConsoleContent(page, "done\n");
+    });
 });
