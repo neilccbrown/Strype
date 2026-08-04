@@ -387,9 +387,9 @@ describe("Classes", () => {
         // "from...import" here (unlike in "my code", where it needs disambiguating from "for"):
         clearDefaultImports();
         pressFrameShortcutThenType("f", "microbit Foo");
-        checkCodeEquals([
+        checkCodeEquals(([
             /from\s+microbit\s+import\s+Foo/,
-        ].concat(defaultMyCode));
+        ] as CodeMatch[]).concat(defaultMyCode));
     });
 });
 
