@@ -916,6 +916,11 @@ test.describe("Enters, saves and loads specific frames", () => {
             {frameType: "funccall", slotContent: [" not foo( not bar)"]},
         ]]);
     });
+    test("Valid lambda", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "funccall", slotContent: ["foo( lambda x:x)"]},
+        ]]);
+    });
     test("Invalid not #1", async ({page}) => {
         await testSpecific(page, [[], [], [
             {frameType: "funccall", slotContent: ["bar not foo(foo not bar)"]},

@@ -9,7 +9,7 @@ import { cloneDeep, isEqual } from "lodash";
 import scssVars from "@/assets/style/_export.module.scss";
 import { $enum } from "ts-enum-util";
 import { getUserDefinedSignature } from "@/autocompletion/acManager";
-import { calculatePrecedenceTiers } from "@/helpers/operatorPrecedence";
+import { calculatePrecedenceTiers, UNARY_PREFIX_OPERATORS } from "@/helpers/operatorPrecedence";
 
 export const retrieveSlotFromSlotInfos = (slotCoreInfos: SlotCoreInfos): FieldSlot => {
     // Retrieve the slot from its id (used for UI), check generateFlatSlotBases() for IDs explanation    
@@ -139,7 +139,7 @@ export const generateFlatSlotBases = (slot: { allowedSlotContent?: AllowedSlotCo
             const adjacentOp =
                 (operatorSlot.code !== "" || (operatorSlot.code === "" && opBefore === ".")) &&
                 (index == 0 || opBefore !== "") &&
-                !["not", "~"].includes(operatorSlot.code.trim());
+                !UNARY_PREFIX_OPERATORS.has(operatorSlot.code.trim());
             addFlatSlot({...(fieldSlot as BaseSlot), id: slotId, type: evaluateSlotType(slot, fieldSlot)}, adjacentOp, opBefore, operatorSlot.code);
         }   
 
