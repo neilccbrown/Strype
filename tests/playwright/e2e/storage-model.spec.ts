@@ -385,7 +385,7 @@ async function assertRecentStatesShowing(page: Page, expectedProjectNames: RegEx
 async function revealRecentUnsavedPane(page: Page) : Promise<void> {
     const scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
     await expect(async () => {
-        await page.keyboard.press("Control+u");
+        await page.keyboard.press("ControlOrMeta+u");
         await expect(page.locator("." + scssVars.projectRecentStateLabel).first()).toBeVisible({timeout: 300});
     }).toPass({timeout: 5000});
 }
@@ -522,11 +522,11 @@ test.describe("Offer to reload unsaved backups", () => {
         await assertRecentStatesShowing(page, [/^My project \(/]);
 
         // Pressing it again hides it:
-        await page.keyboard.press("Control+u");
+        await page.keyboard.press("ControlOrMeta+u");
         await expect(recentPane).not.toBeVisible();
 
         // Reveal it once more, then close and reopen the dialog -- it should reset to hidden:
-        await page.keyboard.press("Control+u");
+        await page.keyboard.press("ControlOrMeta+u");
         await assertRecentStatesShowing(page, [/^My project \(/]);
         await page.locator("#load-strype-project-modal-dlg .btn-close").click();
         await page.click("#" + await strypeElIds(page).getEditorMenuUID());
