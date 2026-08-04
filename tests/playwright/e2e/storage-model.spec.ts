@@ -377,9 +377,25 @@ async function assertRecentStatesShowing(page: Page, expectedProjectNames: RegEx
     await expect(page.locator("." + scssVars.projectRecentStateLabel)).toHaveText(expectedProjectNames);
 }
 
+// The "recent unsaved projects" pane is hidden by default in the load dialog; Ctrl+U reveals it.
+// The shortcut is only armed once the dialog has fully finished its "shown" transition (a Bootstrap
+// event that fires a little after the dialog becomes visible to Playwright), so a single press right
+// after opening the dialog can race that transition. Presses before the dialog is armed are harmless
+// no-ops, so we just retry the press until the pane shows up:
+async function revealRecentUnsavedPane(page: Page) : Promise<void> {
+    const scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
+    await expect(async () => {
+        await page.keyboard.press("ControlOrMeta+u");
+        await expect(page.locator("." + scssVars.projectRecentStateLabel).first()).toBeVisible({timeout: 300});
+    }).toPass({timeout: 5000});
+}
+
 async function assertOpenRecentMenu(page: Page, expectedProjectNames: RegExp[]) : Promise<void> {
     await page.click("#" + await strypeElIds(page).getEditorMenuUID());
     await page.click("#" + await strypeElIds(page).getLoadProjectLinkId());
+    if (expectedProjectNames.length > 0) {
+        await revealRecentUnsavedPane(page);
+    }
     await assertRecentStatesShowing(page, expectedProjectNames);
 }
 
@@ -477,6 +493,47 @@ test.describe("Offer to reload unsaved backups", () => {
         await assertOpenRecentMenu(page, [/^My project \(/]);
     });
 
+    // Regression test for the Ctrl+U secret-shortcut behaviour: the recent-unsaved-projects pane
+    // (and its divider) must be hidden by default, only appear once Ctrl+U is pressed, toggle off
+    // again on a second press, and reset back to hidden the next time the dialog is opened:
+    test("The recent unsaved projects pane is hidden until Ctrl+U is pressed", async ({page}) => {
+        await loadAndWaitForEditor(page);
+        const str = "Modifying before starting a new project";
+        await appendContent(page, str);
+
+        await page.click("#" + await strypeElIds(page).getEditorMenuUID());
+        await page.click("#" + await strypeElIds(page).getNewProjectLinkId());
+        await page.locator("*[id='confirmNewProjectModalDlg'] button", {hasText: "Continue"}).click();
+        await waitForNewProjectReload(page);
+        await assertStartingProject(page);
+
+        // Open the load dialog directly (not via assertOpenRecentMenu, which presses Ctrl+U itself):
+        await page.click("#" + await strypeElIds(page).getEditorMenuUID());
+        await page.click("#" + await strypeElIds(page).getLoadProjectLinkId());
+        await page.locator("#load-strype-project-modal-dlg").waitFor({state: "visible"});
+        const scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
+        const recentPane = page.locator("." + scssVars.projectRecentStateLabel);
+
+        // Hidden by default, even though there is a recent unsaved project to show:
+        await expect(recentPane).not.toBeVisible();
+
+        // Ctrl+U reveals it:
+        await revealRecentUnsavedPane(page);
+        await assertRecentStatesShowing(page, [/^My project \(/]);
+
+        // Pressing it again hides it:
+        await page.keyboard.press("ControlOrMeta+u");
+        await expect(recentPane).not.toBeVisible();
+
+        // Reveal it once more, then close and reopen the dialog -- it should reset to hidden:
+        await page.keyboard.press("ControlOrMeta+u");
+        await assertRecentStatesShowing(page, [/^My project \(/]);
+        await page.locator("#load-strype-project-modal-dlg .btn-close").click();
+        await page.click("#" + await strypeElIds(page).getEditorMenuUID());
+        await page.click("#" + await strypeElIds(page).getLoadProjectLinkId());
+        await expect(recentPane).not.toBeVisible();
+    });
+
     // Regression test: discarding changes via the "save changes before loading?" dialog (shown
     // when opening a different project, a demo, or a book chapter while the current one is
     // modified) used to never back up the outgoing project at all -- unlike the "Save changes"
@@ -514,7 +571,9 @@ test.describe("Offer to reload unsaved backups", () => {
         await page.click("#" + await strypeElIds(page).getLoadProjectLinkId());
         await page.locator("button", {hasText: "Discard changes"}).filter({visible: true}).click();
 
-        // The discarded project should still be recoverable:
+        // The discarded project should still be recoverable. This dialog was opened directly rather
+        // than via assertOpenRecentMenu(), so we need to reveal the recent-unsaved-projects pane ourselves:
+        await revealRecentUnsavedPane(page);
         await assertRecentStatesShowing(page, [/^My project \(/]);
     });
 
