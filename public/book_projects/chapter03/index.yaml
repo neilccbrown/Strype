@@ -14,3 +14,7 @@
 - asset: au.wav
 - asset: slurp.wav
 - asset: fanfare.wav
+
+- file: space.spy
+  image: space.png
+  description: A demo of four-directional movement
