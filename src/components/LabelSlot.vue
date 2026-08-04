@@ -1068,6 +1068,14 @@ export default defineComponent({
             }
         },
 
+        // Checks whether the label immediately following this one is a plain ":" label with no slot of its own
+        // (e.g. the " :" label of if/elif/for/while/except/class frames), which is the case we want to treat
+        // a trailing ":" keypress as overtyping rather than insertion.
+        isNextLabelColon() : boolean {
+            const nextLabel = this.appStore.frameObjects[this.frameId].frameType.labels[this.labelSlotsIndex + 1];
+            return nextLabel != undefined && nextLabel.showSlots === false && nextLabel.label.replace(/&nbsp;/g, "").trim() === ":";
+        },
+
         doArrowRightNextTick() {
             this.$nextTick(() => {
                 document.getElementById(getFrameLabelSlotsStructureUID(this.frameId, this.labelSlotsIndex))?.dispatchEvent(
@@ -1147,6 +1155,18 @@ export default defineComponent({
                 }
                 return;
             }
+            // If the frame is a "for" or "with" frame and we are in the first top-level slot (the loop target
+            // for "for", the expression for "with"), pressing space at the end of that slot moves to the
+            // second slot (the iterable for "for", the "as" target for "with"), just like it does for the
+            // LHS of a variable assignment frame above.
+            else if(this.labelSlotsIndex === 0 && this.slotId.indexOf(",") == -1 && !hasTextSelection &&
+                inputString === " " && (this.frameType === AllFrameTypesIdentifier.for || this.frameType === AllFrameTypesIdentifier.with)){
+                this.removeLastInput(inputString);
+                if (isAtEndOfLastSlot) {
+                    this.doArrowRightNextTick();
+                }
+                return;
+            }
             // If the frame is an import frame, pressing space will automatically add the "as" operator when it makes sense to do so (see details below),
             // when we press space and we are just before  an "as", we go to the next slot.
             // In other cases and anywhere for "from... import" frames, pressing space will result in no action.
@@ -1180,9 +1200,33 @@ export default defineComponent({
             else if(inputString === " " && this.frameType !== AllFrameTypesIdentifier.comment && this.slotType != SlotType.string && cursorPos == 0){
                 this.removeLastInput(inputString);
             }
+            // If we type ":" as the very first character of a function/class definition's docs field, we
+            // discard it: the user has just overtyped the closing bracket/name (which moves the cursor past
+            // the frame's own " :" label and into the docs field), so this ":" is almost certainly a leftover
+            // keystroke from habitually typing "def foo():"/"class Foo:" rather than text intended for the docs.
+            else if(inputString === ":" && cursorPos == 0 && (this.frameType === AllFrameTypesIdentifier.funcdef || this.frameType === AllFrameTypesIdentifier.classdef) && this.allowedSlotContent == AllowedSlotContent.FREE_TEXT_DOCUMENTATION){
+                this.removeLastInput(inputString);
+            }
             // On comments, we do not need multislots and parsing any code, we just let any key go through
             else if(this.allowedSlotContent == AllowedSlotContent.LIBRARY_ADDRESS || this.allowedSlotContent == AllowedSlotContent.FREE_TEXT_DOCUMENTATION){
                 // Do nothing
+            }
+            // If we type ":" at the very end of a top-level slot structure (not inside a bracket or quote), and the
+            // next label of this frame is just a colon label (e.g. "if <cond>:", "while <cond>:"...), we treat this
+            // as overtyping that colon label rather than inserting a new one:
+            else if(inputString === ":" && isAtEndOfLastSlot && !isFieldStringSlot(currentSlot) && !this.coreSlotInfo.slotId.includes(",") && this.isNextLabelColon()){
+                this.removeLastInput(inputString);
+                // There is no further slot to move the focus to within this frame's own label slots (the
+                // ":" label that follows has no slot of its own), so unlike the other overtyping cases in
+                // this method we can't just dispatch a synthetic ArrowRight to the label-slots-structure
+                // element -- we need to actually leave the frame's header, so we call the store action
+                // that performs this navigation directly instead:
+                this.$nextTick(() => {
+                    this.$nextTick(() => {
+                        this.appStore.leftRightKey({key: "ArrowRight"});
+                    });
+                });
+                return;
             }
             // Finally, we check the case an operator, bracket or quote has been typed and the slots within this frame need update
             // First we check closing brackets or quote as they have a specifc behaviour, then keep working out the other things
@@ -1216,9 +1260,15 @@ export default defineComponent({
                 else{
                     // It's not a string, check for bracket
                     const parentBracketSlot = (parentSlot && isFieldBracketedSlot(parentSlot)) ? parentSlot as SlotsStructure : undefined;
+                    // A function definition's parameter list isn't stored as a bracketed field slot like a normal
+                    // "(...)" expression -- its surrounding brackets are just the frame label's own static text
+                    // (labels "(" and ") :"), so there is no bracketed parent slot to find via parentBracketSlot
+                    // above. We special-case it here so overtyping its closing ")" still moves to the next slot:
+                    const isFuncDefParamsRoot = !this.coreSlotInfo.slotId.includes(",") && this.allowedSlotContent == AllowedSlotContent.ONLY_FORMAL_PARAMS;
                     shouldMoveToNextSlot = inputSpanFieldContent.substring(cursorPos).replace(/\u200B/g, "").trim() == inputString
                         // make sure we are inside a bracketed structure and that the opening bracket is the counterpart of the key value (closing bracket)
-                        && parentBracketSlot != undefined && parentBracketSlot.openingBracketValue == getMatchingBracket(inputString, false)
+                        && ((parentBracketSlot != undefined && parentBracketSlot.openingBracketValue == getMatchingBracket(inputString, false))
+                            || (isFuncDefParamsRoot && inputString == ")"))
                         && !hasTextSelection;
                     checkMultidimBrackets = !shouldMoveToNextSlot && !hasTextSelection;
                 }
