@@ -5,16 +5,16 @@
             <div v-if="showAppProgress || setAppNotOnTop" :class="{'app-overlay-pane': true, 'app-overlay-pane-absolute': showAppProgress, 'app-progress-pane': showAppProgress}" @contextmenu="handleOverlayRightClick">
                 <div v-if="showAppProgress" class="app-progress-container">
                     <div class="progress">
-                        <div 
-                            class="progress-bar progress-bar-striped bg-info progress-bar-animated" 
+                        <div
+                            class="progress-bar progress-bar-striped bg-info progress-bar-animated"
                             role="progressbar"
                             style="width: 100%"
                             aria-valuenow="100"
                             aria-valuemin="0"
                             aria-valuemax="100"
                             >
-                            <span class="progress-bar-text">{{progressbarMessage}}</span>
                         </div>
+                        <span class="progress-bar-text">{{progressbarMessage}}</span>
                     </div>
                 </div>
             </div>
@@ -91,7 +91,7 @@
             </div>
             <SimpleMsgModalDlg :dlgId="simpleMsgModalDlgId"/>
             <ModalDlg :dlgId="importDiffVersionModalDlgId" :okCustomTitle="$t('buttonLabel.continue')">
-                <span>{{ $t("appMessage.editorFileUploadWrongVersion") }}</span>                
+                <span>{{ $t("appMessage.loadEditorFileWrongVersion") }}</span>                
             </ModalDlg>
             <ModalDlg :dlgId="resyncToCloudDriveAtStartupModalDlgId" :elementToFocusId="resyncSaveToCloudDriveAtStartupButtonId" size="lg">
                 <span style="white-space:pre-wrap" v-html="resyncToCloudDriveAtStartupDetailsMessage"></span>
@@ -826,7 +826,7 @@ export default defineComponent({
             }
             else{
                 // Show a progress indication on the editor
-                vueComponentsAPIHandler.appComponentAPI?.applyShowAppProgress({requestAttention: true, message: this.$t("appMessage.editorFileUpload")});
+                vueComponentsAPIHandler.appComponentAPI?.applyShowAppProgress({requestAttention: true, message: this.$t("appMessage.loadEditorFile")});
                 axios.get<string>(shareProjectId)
                     .then((resp) => {
                         if(resp.status == 200){

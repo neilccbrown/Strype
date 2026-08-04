@@ -126,16 +126,16 @@
         <!-- #v-else -->
         <div :class="scssVars.peaContainerClassName">  
             <div v-if="showProgress" class="progress cmd-progress-container">
-                <div 
-                    class="progress-bar progress-bar-striped bg-info" 
+                <div
+                    class="progress-bar progress-bar-striped bg-info"
                     role="progressbar"
-                    :style="progressPercentWidthStyle" 
+                    :style="progressPercentWidthStyle"
                     aria-valuenow="progressPercent"
                     aria-valuemin="0"
                     aria-valuemax="100"
                     >
-                    <span class="progress-bar-text">{{ $t("action.uploadingToMicrobit") }}</span>
                 </div>
+                <span class="progress-bar-text">{{ $t("action.uploadingToMicrobit") }}</span>
             </div>
             <div class="commands-container">    
                 <iframe id="mbSimulatorIframe" src="https://python-simulator.usermbit.org/v/0.1/simulator.html?color=%2300FF00" frameborder="0" scrolling="no" sandbox="allow-scripts allow-same-origin"></iframe>
@@ -1354,12 +1354,6 @@ export default defineComponent({
     width: 100%;
 }
 
-@mixin centerer {
-  position: absolute;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-
 .#{$strype-classname-no-pea-commands} {
     // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
     overflow-y: hidden;
@@ -1371,10 +1365,23 @@ export default defineComponent({
     // #v-endif
 }
 
+// The bar's own width changes as progress advances, so the label is a sibling
+// overlay spanning the whole track (not a child of .progress-bar) - that way it
+// stays centred on the full bar instead of drifting with the fill.
+.progress {
+    position: relative;
+}
+
 .progress-bar-text {
-    @include centerer;
-    color:#fefefe !important;
-    text-align: left !important;
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    white-space: nowrap;
+    pointer-events: none;
+    color: #fefefe !important;
     font-weight: bold;
 }
 

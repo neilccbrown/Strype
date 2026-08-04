@@ -74,8 +74,8 @@
     "unexpectedCharsPython": "Unerwartete Zeichen"
   },
   "appMessage": {
-    "editorFileUpload": "Deine Datei wird in den Editor geladen...",
-    "editorFileUploadWrongVersion": "Dieser Code wurde mit einer anderen Version des Editors erstellt.\nImportieren kann womöglich Fehler beinhalten.\n\nFortfahren?",
+    "loadEditorFile": "Deine Datei wird in den Editor geladen...",
+    "loadEditorFileWrongVersion": "Dieser Code wurde mit einer anderen Version des Editors erstellt.\nImportieren kann womöglich Fehler beinhalten.\n\nFortfahren?",
     "importsContainer": "Importe:",
     "defsContainer": "Definitionen:",
     "mainContainer": "Mein Code:",

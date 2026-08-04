@@ -131,9 +131,9 @@
     }
   },
   "appMessage": {
-    "editorFileUpload": "Uploading your file to the editor...",
+    "loadEditorFile": "Loading your file to the editor...",
     "editorAskSaveChangedCode": "Your project contains unsaved changes.\nSave before closing?",
-    "editorFileUploadWrongVersion": "This code has been produced with a different version of the editor.\nImporting may result in errors.\n\nDo you still want to continue?",
+    "loadEditorFileWrongVersion": "This code has been produced with a different version of the editor.\nImporting may result in errors.\n\nDo you still want to continue?",
     "newProjectConfirmation":"Unsaved changes will be lost.",
     "importsContainer": "Imports:",
     "defsContainer": "Definitions:",
