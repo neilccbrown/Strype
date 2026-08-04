@@ -1193,8 +1193,14 @@ export default defineComponent({
                 }
                 return;
             }
+            // For "from ... import ...", pressing space at the end of the first slot (the module name) moves
+            // to the second slot (the imported part), just like it does for "for"/"with" above. Elsewhere in
+            // a from-import frame, pressing space does nothing.
             else if (inputString === " " && this.frameType === AllFrameTypesIdentifier.fromimport){
                 this.removeLastInput(inputString);
+                if (this.labelSlotsIndex === 0 && this.slotId.indexOf(",") == -1 && !hasTextSelection && isAtEndOfLastSlot) {
+                    this.doArrowRightNextTick();
+                }
             }
             // We also prevent start trailing spaces on all slots except comments and string content, to avoid indentation errors
             else if(inputString === " " && this.frameType !== AllFrameTypesIdentifier.comment && this.slotType != SlotType.string && cursorPos == 0){
