@@ -45,4 +45,16 @@ describe("Test colon overtyping", () => {
             cy.get("#" + focusId.replaceAll(",", "\\,")).should("have.text", "Explanation");
         });
     });
+
+    // Same as above, but for a class definition's docs field:
+    it("Discards a colon typed at the start of a class definition's docs field", () => {
+        focusEditor();
+        pressFrameShortcut("c");
+        cy.get("body").type("Foo{rightarrow}");
+        cy.get("body").type(":Explanation");
+        cy.get("#" + strypeElIds.getEditorID()).then((eds) => {
+            const focusId = eds.get()[0].getAttribute("data-slot-focus-id") || "";
+            cy.get("#" + focusId.replaceAll(",", "\\,")).should("have.text", "Explanation");
+        });
+    });
 });

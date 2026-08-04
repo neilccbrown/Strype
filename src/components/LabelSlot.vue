@@ -1200,11 +1200,11 @@ export default defineComponent({
             else if(inputString === " " && this.frameType !== AllFrameTypesIdentifier.comment && this.slotType != SlotType.string && cursorPos == 0){
                 this.removeLastInput(inputString);
             }
-            // If we type ":" as the very first character of a function definition's docs field, we discard it:
-            // the user has just overtyped the closing bracket of the parameter list (which moves the cursor
-            // past the "):" and into the docs field), so this ":" is almost certainly a leftover keystroke
-            // from habitually typing "def foo():" rather than text intended for the docs.
-            else if(inputString === ":" && cursorPos == 0 && this.frameType === AllFrameTypesIdentifier.funcdef && this.allowedSlotContent == AllowedSlotContent.FREE_TEXT_DOCUMENTATION){
+            // If we type ":" as the very first character of a function/class definition's docs field, we
+            // discard it: the user has just overtyped the closing bracket/name (which moves the cursor past
+            // the frame's own " :" label and into the docs field), so this ":" is almost certainly a leftover
+            // keystroke from habitually typing "def foo():"/"class Foo:" rather than text intended for the docs.
+            else if(inputString === ":" && cursorPos == 0 && (this.frameType === AllFrameTypesIdentifier.funcdef || this.frameType === AllFrameTypesIdentifier.classdef) && this.allowedSlotContent == AllowedSlotContent.FREE_TEXT_DOCUMENTATION){
                 this.removeLastInput(inputString);
             }
             // On comments, we do not need multislots and parsing any code, we just let any key go through
@@ -1260,9 +1260,15 @@ export default defineComponent({
                 else{
                     // It's not a string, check for bracket
                     const parentBracketSlot = (parentSlot && isFieldBracketedSlot(parentSlot)) ? parentSlot as SlotsStructure : undefined;
+                    // A function definition's parameter list isn't stored as a bracketed field slot like a normal
+                    // "(...)" expression -- its surrounding brackets are just the frame label's own static text
+                    // (labels "(" and ") :"), so there is no bracketed parent slot to find via parentBracketSlot
+                    // above. We special-case it here so overtyping its closing ")" still moves to the next slot:
+                    const isFuncDefParamsRoot = !this.coreSlotInfo.slotId.includes(",") && this.allowedSlotContent == AllowedSlotContent.ONLY_FORMAL_PARAMS;
                     shouldMoveToNextSlot = inputSpanFieldContent.substring(cursorPos).replace(/\u200B/g, "").trim() == inputString
                         // make sure we are inside a bracketed structure and that the opening bracket is the counterpart of the key value (closing bracket)
-                        && parentBracketSlot != undefined && parentBracketSlot.openingBracketValue == getMatchingBracket(inputString, false)
+                        && ((parentBracketSlot != undefined && parentBracketSlot.openingBracketValue == getMatchingBracket(inputString, false))
+                            || (isFuncDefParamsRoot && inputString == ")"))
                         && !hasTextSelection;
                     checkMultidimBrackets = !shouldMoveToNextSlot && !hasTextSelection;
                 }
