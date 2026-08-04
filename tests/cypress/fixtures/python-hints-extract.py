@@ -19,23 +19,23 @@ for filename in os.listdir("."):
             for row in reader:
                 # Find the index of the last non-empty cell in the row, excluding the last one for the model files:
                 if filename.startswith("Human"):
-                    rindex = len(row)-1
+                    rindex = len(row) - 1
                 else:
-                    rindex = len(row)-2
-                while rindex>=0 and (( not row[rindex].strip()) or row[rindex].strip()=="NA"):
-                    rindex = rindex-1
+                    rindex = len(row) - 2
+                while rindex >= 0 and (( not row[rindex].strip()) or row[rindex].strip() == "NA"):
+                    rindex = rindex - 1
 
-                if rindex<0:
+                if rindex < 0:
                     # Skip rows with no non-empty cells
                     continue
 
                 if filename.startswith("Human"):
-                    header = "# "+basename+" $$$ "+row[0]
+                    header = "# " + basename + " $$$ " + row[0]
                 else:
-                    header = "# "+basename+" $$$ Prompt"+row[0]+" $$$ "+row[1]
+                    header = "# " + basename + " $$$ Prompt" + row[0] + " $$$ " + row[1]
 
-                result.append(header+"\n"+row[rindex])
+                result.append(header + "\n" + row[rindex])
 
         # Output the result to a text file with the same name stem
-        with open("raw-"+basename+".md","w",encoding="utf8") as f:
+        with open("raw-" + basename + ".md","w",encoding="utf8") as f:
             f.write("\n\n".join(result))

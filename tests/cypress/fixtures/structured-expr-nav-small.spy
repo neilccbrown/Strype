@@ -10,16 +10,16 @@ class C  :
         d  = {"x":1}
         for i  in ls  :
             try :
-                d["x"]  = d["x"]+i
+                d["x"]  = d["x"] + i
             except   :
                 pass
         t  = 0
-        while t<self.n  :
-            t  = t+1
+        while t < self.n  :
+            t  = t + 1
 def f (a,b ) :
-    if a>b  :
+    if a > b  :
         return a
-    elif a==b  :
+    elif a == b  :
         return 0
     else :
         return b

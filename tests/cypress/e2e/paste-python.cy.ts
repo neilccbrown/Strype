@@ -21,42 +21,47 @@ describe("Python round-trip", () => {
     //const unary_operators = ["not ", "~", "-"];
     const terminals = ["0", "5.2", "-6.7", "\"hi\"", "'bye'", "True", "False", "None", "foo", "bar_baz"];
     
-    const basics = [
-        "raise 0\n",
-        "raise 0+1\n",
-        "raise 0 and 3\n",
-        "raise 0 is not 3\n",
-        "raise 0 not in 3\n",
-        "raise (1+2-3)\n",
-        "raise (1+2-3)==(4*5/6)\n",
-        // ** binds tighter than unary -, hence the space before:
-        "raise foo**-6.7**False**True**'bye'\n",
+    // Each entry is [pasted input, expected downloaded output]. The pasted input can stay tight
+    // around symbol operators (that's still valid Python to paste in); the expected output must
+    // reflect the generator's new behaviour of always spacing a genuine binary operator, while
+    // leaving structural tokens (. , : =) and unary operator uses tight against their operand.
+    const basics: [string, string][] = [
+        ["raise 0\n", "raise 0\n"],
+        ["raise 0+1\n", "raise 0 + 1\n"],
+        ["raise 0 and 3\n", "raise 0 and 3\n"],
+        ["raise 0 is not 3\n", "raise 0 is not 3\n"],
+        ["raise 0 not in 3\n", "raise 0 not in 3\n"],
+        ["raise (1+2-3)\n", "raise (1 + 2 - 3)\n"],
+        ["raise (1+2-3)==(4*5/6)\n", "raise (1 + 2 - 3) == (4 * 5 / 6)\n"],
+        // ** binds tighter than unary -, hence the space before (binary ** is now spaced too):
+        ["raise foo**-6.7**False**True**'bye'\n", "raise foo ** -6.7 ** False ** True ** 'bye'\n"],
         // Unary ~ (bitwise not) directly followed by a binary operator, with no
         // parentheses to separate them -- regression test for a paste-import bug
         // where parseNextTerm() didn't recognise "~" as a unary prefix, so it
         // consumed "~" as a whole term on its own and then choked on the operand
         // that follows, expecting an operator there instead:
-        "raise ~a&b\n",
-        "raise ~a\n",
+        ["raise ~a&b\n", "raise ~a & b\n"],
+        ["raise ~a\n", "raise ~a\n"],
         // "lambda" has no semantic support (no parameter-list awareness) -- it's a
         // pass-through prefix keyword operator, like "not". Regression coverage for
         // a paste-import crash ("Unknown operator ... varargslist") since lambdef
-        // wasn't handled by parseNextTerm() at all:
-        "raise lambda n:-n\n",
-        "raise lambda :x\n",
-        "raise sorted(x,key= lambda n:-n,reverse=True)\n",
-        "try:\n    x = 0\nexcept:\n    x = 1\n",
+        // wasn't handled by parseNextTerm() at all. ":" is structural (tight) and the
+        // "-n" after it is a unary minus (tight), so these stay unspaced:
+        ["raise lambda n:-n\n", "raise lambda n:-n\n"],
+        ["raise lambda :x\n", "raise lambda :x\n"],
+        ["raise sorted(x,key= lambda n:-n,reverse=True)\n", "raise sorted(x,key= lambda n:-n,reverse=True)\n"],
+        ["try:\n    x = 0\nexcept:\n    x = 1\n", "try:\n    x = 0\nexcept:\n    x = 1\n"],
         // Expand operator:
-        "f(*a)\n",
-        "x = [*a]\n",
-        "first,*rest = x\n",
+        ["f(*a)\n", "f(*a)\n"],
+        ["x = [*a]\n", "x = [*a]\n"],
+        ["first,*rest = x\n", "first,*rest = x\n"],
         // Single element tuples (made using a trailing comma in a bracket):
-        "(x,) = a\n",
-        "print((100,))\n",        
+        ["(x,) = a\n", "(x,) = a\n"],
+        ["print((100,))\n", "print((100,))\n"],
     ];
-    for (const basic of basics) {
+    for (const [basic, expectedBasic] of basics) {
         // Since basics paste code from the default state, we need to include the default project documentation to the code
-        it("Supports pasting: " + basic, () => testRoundTripPasteAndDownload(basic, undefined, defaultProjectDocFullLine + basic));
+        it("Supports pasting: " + basic, () => testRoundTripPasteAndDownload(basic, undefined, defaultProjectDocFullLine + expectedBasic));
     }
     it("Allows pasting fixture file with functions", () => {
         // Since the default code contains a project doc, we need to include it to the code
@@ -193,20 +198,31 @@ from a.b.c import *
     for (const op of sampleSize(binary_operators, 3)) {
         for (const lhs of sampleSize(terminals, 2)) {
             for (const rhs of sampleSize(terminals, 3)) {
-                // Keep a space between operands only for keyword operators (they all contains "i")
+                // Keep a space between operands in the pasted *input* only for keyword operators
+                // (they all contain "i") -- tight symbol operators are still valid Python to paste.
                 const operatorSpacing = (op.includes("i")) ? " " : "";
                 // Since the default code contains a project doc, we need to include it to the code
                 const code = "raise " + lhs + operatorSpacing + op + operatorSpacing + rhs + "\n";
-                it("Supports basic binary operator combination: " + code.trim(), () => testRoundTripPasteAndDownload(code, undefined, defaultProjectDocFullLine + code));
+                // The generator now always surrounds a genuine binary operator (symbol or keyword)
+                // with spaces in its *output*, regardless of what spacing the input used:
+                const expectedCode = "raise " + lhs + " " + op + " " + rhs + "\n";
+                it("Supports basic binary operator combination: " + code.trim(), () => testRoundTripPasteAndDownload(code, undefined, defaultProjectDocFullLine + expectedCode));
             }
         }
     }
     for (const op of sampleSize(nary_operators, 5)) {
-        // Keep a space between operands only for keyword operators (they all contains "i")
+        // Keep a space between operands in the pasted *input* only for keyword operators
+        // (they all contain "i") -- tight symbol operators are still valid Python to paste.
         const operatorSpacing = (["and", "or"].includes(op)) ? " " : "";
+        const operands = sampleSize(terminals, 5);
         // Since the default code contains a project doc, we need to include it to the code
-        const code = "raise " + sampleSize(terminals, 5).join(operatorSpacing + op + operatorSpacing) + "\n";
-        it("Supports basic n-ary operator combination: " + code.trim(), () => testRoundTripPasteAndDownload(code, undefined, defaultProjectDocFullLine + code));
+        const code = "raise " + operands.join(operatorSpacing + op + operatorSpacing) + "\n";
+        // The generator now always surrounds a genuine binary operator (symbol or keyword) with
+        // spaces in its output, regardless of what spacing the input used. Note: "-" between two
+        // terminals here is always used as a binary operator (there's an operand on both sides),
+        // so it always gets spaced even though "-" can also be unary elsewhere:
+        const expectedCode = "raise " + operands.join(" " + op + " ") + "\n";
+        it("Supports basic n-ary operator combination: " + code.trim(), () => testRoundTripPasteAndDownload(code, undefined, defaultProjectDocFullLine + expectedCode));
     }
     
     // Check that if you paste something that already has indent on every line, we manage to preserve
@@ -221,12 +237,12 @@ from a.b.c import *
                         x = -1
                     x = x * x
 `.slice(1), "", `
-${defaultProjectDocFullLine}if x>0:
+${defaultProjectDocFullLine}if x > 0:
     x = 0
     x = 1
 else:
     x = -1
-x = x*x
+x = x * x
 `.slice(1));
     });
     it("Handles multiple functions that are all indented the same amount", () => {
@@ -362,11 +378,14 @@ finally:
         // Since the default code contains a project doc, we need to include it to the code (and all check downloads)
         testRoundTripPasteAndDownload(ifCode, undefined, defaultProjectDocFullLine + ifCode);
         const elseCode = "else:\n    x = -9\n";
-        // Parameterise, to be able to tell them apart:
+        // Parameterise, to be able to tell them apart. Pasted input can stay tight around "==";
+        // the downloaded output always spaces a genuine binary operator like "==", so we need a
+        // separate expected-output variant:
         const elifCode = (x : number) => "elif x==" + x + ":\n    x = -" + x + "\n";
+        const elifCodeExpected = (x : number) => "elif x == " + x + ":\n    x = -" + x + "\n";
 
 
-        
+
         // Test just the else after if:
         cy.get("body").type("{end}{uparrow}");
         (cy.get("body") as any).paste(elseCode);
@@ -375,18 +394,18 @@ finally:
         cy.get("body").type("{end}{backspace}");
         cy.wait(500);
         cy.get("body").type("{uparrow}");
-        
+
         // Test with one elif
         (cy.get("body") as any).paste(elifCode(0));
-        checkDownloadedCodeEquals(defaultProjectDocFullLine + ifCode + elifCode(0));
+        checkDownloadedCodeEquals(defaultProjectDocFullLine + ifCode + elifCodeExpected(0));
         // Delete just the elif:
         cy.get("body").type("{end}{backspace}");
         cy.wait(500);
         cy.get("body").type("{uparrow}");
-        
+
         // Clear and try if with two elif:
         (cy.get("body") as any).paste(elifCode(0) + elifCode(1));
-        checkDownloadedCodeEquals(defaultProjectDocFullLine + ifCode + elifCode(0) + elifCode(1));
+        checkDownloadedCodeEquals(defaultProjectDocFullLine + ifCode + elifCodeExpected(0) + elifCodeExpected(1));
         // Delete just the two elif:
         cy.get("body").type("{end}{backspace}");
         cy.wait(500);
@@ -395,7 +414,7 @@ finally:
         // Now if with three elif and an else:
         cy.get("body").type("{end}{uparrow}");
         (cy.get("body") as any).paste(elifCode(0) + elifCode(1) + elifCode(2) + elseCode);
-        checkDownloadedCodeEquals(defaultProjectDocFullLine + ifCode + elifCode(0) + elifCode(1) + elifCode(2) + elseCode);
+        checkDownloadedCodeEquals(defaultProjectDocFullLine + ifCode + elifCodeExpected(0) + elifCodeExpected(1) + elifCodeExpected(2) + elseCode);
         // Check deletion works:
         cy.get("body").type("{end}{backspace}");
         cy.wait(500);
@@ -526,16 +545,16 @@ describe("Python complex function", () => {
         print(letter,end=' ')
     print()
 `, "{uparrow}",`${defaultProjectDocFullLine}def displayBoard (missedLetters,correctLetters,secretWord):
-    print("Misses:"+str(len(missedLetters)))
+    print("Misses:" + str(len(missedLetters)))
     print()
     print("Missed letters:",end=' ')
     for letter in missedLetters:
         print(letter,end=' ')
     print()
-    blanks = '_'*len(secretWord)
+    blanks = '_' * len(secretWord)
     for i in range(len(secretWord)):
         if secretWord[i] in correctLetters:
-            blanks = blanks[:i]+secretWord[i]+blanks[i+1:]
+            blanks = blanks[:i] + secretWord[i] + blanks[i + 1:]
     for letter in blanks:
         print(letter,end=' ')
     print()

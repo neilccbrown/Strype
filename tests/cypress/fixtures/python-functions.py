@@ -7,7 +7,7 @@ def availability (name,checked_buildings):
 
     best = Availability.never_available
     # Farm fields don't have a collector, they are implicitly available to buildings that consume them:
-    if name==FARM_FIELD:
+    if name == FARM_FIELD:
         if name in resources:
             return Availability.available
         else:
@@ -17,7 +17,7 @@ def availability (name,checked_buildings):
     if name in resources:
         for building_name,recipes in BUILDINGS_TO_RECIPES.items():
             for recipe in recipes:
-                if not isinstance(recipe,tuple) and recipe==name:
+                if not isinstance(recipe,tuple) and recipe == name:
                     if building_name in available_buildings:
                         best = max(best,Availability.available)
                     elif building_name in available_blueprints:
@@ -31,7 +31,7 @@ def availability (name,checked_buildings):
             # Only look at production buildings, not raw gatherers (which are already checked above):
             if isinstance(recipe,tuple):
                 # Check RHS (outcome):
-                if recipe[1][1]==name:
+                if recipe[1][1] == name:
                     if (building_name,name) in checked_buildings:
                         continue
                     else:
@@ -39,9 +39,9 @@ def availability (name,checked_buildings):
                     # It's a recipe for the good we want!
                     # Go through LHS (ingredients):
                     recipe_input_availability = input_availability(recipe[0],checked_buildings)
-                    if recipe_input_availability==Availability.never_available:
+                    if recipe_input_availability == Availability.never_available:
                         pass
-                    elif recipe_input_availability==Availability.with_blueprint:
+                    elif recipe_input_availability == Availability.with_blueprint:
                         best = max(best,Availability.with_blueprint)
                     else:
                         if building_name in available_buildings:

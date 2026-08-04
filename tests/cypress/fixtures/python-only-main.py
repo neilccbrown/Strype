@@ -9,4 +9,4 @@ z = 5
 # Several blanks
 x = 2
 for a in b:
-    x = x+1
+    x = x + 1

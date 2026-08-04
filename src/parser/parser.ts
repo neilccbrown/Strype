@@ -1,5 +1,6 @@
 import Compiler from "@/compiler/compiler";
 import {hasEditorCodeErrors, trimmedKeywordOperators} from "@/helpers/editor";
+import { UNARY_PREFIX_OPERATORS } from "@/helpers/operatorPrecedence";
 import { generateFlatSlotBases, getParentOrJointParent, retrieveSlotByPredicate } from "@/helpers/storeMethods";
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
@@ -845,11 +846,25 @@ export default class Parser {
                 startOfTopLevelParamName = false;
             }
             else if(flatSlot.type == SlotType.operator){
-                // an operator, if not blank, is shown in the code and we keep spaces surrounding it (for keyword operators)
+                // an operator, if not blank, is shown in the code and we keep spaces surrounding it:
+                // keyword operators always did; symbol operators now do too when used as a binary
+                // operator, so that e.g. a binary "-" immediately followed by a unary "-" doesn't
+                // glue into "--" (which TigerPython/Python then misparses as a single token).
+                // Structural/delimiter tokens (dot, comma, colon, kwarg "=") and unary uses of an
+                // operator (detected via the "sign-medium" precedence tier, or always-unary "~"/
+                // "not"/"lambda") are left tight against their operand, as before.
                 // there could be an error on an operator, so we included it in the slot positions
                 if(flatSlot.code.length > 0){
+                    // The expand/unpack "*" (e.g. f(*a), [*a], first,*rest = x) has no dedicated
+                    // precedence tier of its own (unlike unary +/-, it's not part of
+                    // calculatePrecedenceTiers' isUnarySignAt handling), so detect it the same way
+                    // structurally: it's unary whenever nothing but an opening bracket or a comma
+                    // (or the very start of the expression) precedes it:
+                    const isExpandStar = flatSlot.code === "*" && /(^|[([,])\s*$/.test(code);
+                    const isUnary = flatSlot.operatorPrecedenceTier === "sign-medium" || UNARY_PREFIX_OPERATORS.has(flatSlot.code) || isExpandStar;
+                    const isStructural = [".", ",", ":", "="].includes(flatSlot.code);
                     // Add extra 2 characters for the surrounding spaces
-                    const operatorSpace = (trimmedKeywordOperators.includes(flatSlot.code)) ? " " : "";
+                    const operatorSpace = (trimmedKeywordOperators.includes(flatSlot.code) || (!isUnary && !isStructural)) ? " " : "";
                     addSlotInPositionLengths(flatSlot.code.length + 2, flatSlot.id, operatorSpace + flatSlot.code + operatorSpace, flatSlot.type);
                 }
                 startOfTopLevelParamName = flatSlot.code === "," && nestingLevel == 0;
