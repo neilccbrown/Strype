@@ -884,7 +884,7 @@ export default defineComponent({
                 const binary = Base64.toUint8Array(param);
                 const spyContent = inflateRaw(binary, { to: "string" });
 
-                this.setStateFromPythonFile(spyContent, this.$t("defaultProjName"), 0, false, "import");
+                this.setStateFromPythonFile(spyContent, this.$t("defaultProjName"), 0, false, "import").catch(() => { /* error message already shown by pasteMixedPython() */ });
                 // We want to clear the query parameters of the URL:
                 this.finaliseOpenShareProject();
             }
@@ -1766,7 +1766,7 @@ export default defineComponent({
         },
         
         setStateFromPythonFile(completeSource: string, fileName: string, lastSaveDate: number, requestFSFileLoadedNotification: boolean, fileLocation: FileSystemFileHandle | "local" | "cloud" | "import") : Promise<void> {
-            return new Promise((resolve) => {
+            return new Promise((resolve, reject) => {
                 const s = pasteMixedPython(completeSource, {id: useStore().getMainCodeFrameContainerId, caretPosition: CaretPosition.body}, true);
                 if (s != null) {
                     // Now we can clear other non-frame related elements
@@ -1801,7 +1801,12 @@ export default defineComponent({
                     );
                     
                     // Check for errors (could be that we loaded something with blanks or syntax errors):
-                    this.$nextTick(() => checkCodeErrors());                    
+                    this.$nextTick(() => checkCodeErrors());
+                }
+                else {
+                    // pasteMixedPython() already showed an error message; reject so callers
+                    // (e.g. the loading overlay) don't wait on a promise that never settles.
+                    reject(new Error("Failed to parse Python file"));
                 }
             });
         },
