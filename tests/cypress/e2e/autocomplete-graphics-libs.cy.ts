@@ -1,5 +1,5 @@
 import { scssVars } from "../support/standard-setup";
-import { clearDefaultImports, pressFrameShortcut, pressFrameShortcutThenType } from "../support/test-support";
+import {clearDefaultImports, pressFrameShortcut, pressFrameShortcutThenType, waitForEditorSettled} from "../support/test-support";
 
 require("cypress-terminal-report/src/installLogsCollector")();
 import "@testing-library/cypress/add-commands";
@@ -201,14 +201,17 @@ describe("Graphics library", () => {
         focusEditorAC();
         // Add graphics import:
         clearDefaultImports();
-        cy.get("body").type("fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
+        cy.get("body").type("from strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         // Make an actor, then fetch the list of all actors:
-        cy.get("body").type("=a=Actor('cat-test.jpg'){rightarrow}");
-        cy.get("body").type("=all_actors=get_actors(){rightarrow}");
-        // Add a function frame and trigger auto-complete after popping an item off the list:
-        cy.get("body").type(" ");
-        cy.wait(500);
-        cy.get("body").type("all_actors.pop().{ctrl} ");
+        cy.get("body").type(" =a=Actor('cat-test.jpg')");
+        cy.get("body").type("{rightarrow}");
+        waitForEditorSettled();
+        cy.get("body").type(" =all_actors=get_actors()");
+        cy.get("body").type("{rightarrow}");
+        waitForEditorSettled();
+        cy.get("body").type("all_actors.pop().");
+        waitForEditorSettled();
+        cy.get("body").type("{ctrl} ");
         withAC((acIDSel, frameId) => {
             cy.get(acIDSel).should("be.visible");
             checkExactlyOneItem(acIDSel, null, "is_at_edge(distance)");
