@@ -509,7 +509,8 @@ export default defineComponent({
                 soundManager?.stopAllSounds();
                 // Important to call this when responding to a click, because browser won't allow
                 // sound to start unless we create it in direct response to a user action:
-                soundManager = new SoundManager(createOrGetAudioContext(), this);
+                createOrGetAudioContext();
+                soundManager = new SoundManager(this);
                 // Note that any old SoundManager will then have its sounds garbage-collected
                 this.execPythonCode();
                 return;
@@ -1309,7 +1310,8 @@ export default defineComponent({
         downloadWAV(src: AudioBuffer, filenameStem: string) {
             if (soundManager == null) {
                 // Since downloadWAV is triggered by a mouse click we should be able to create the sound manager now:
-                soundManager = new SoundManager(createOrGetAudioContext(), this);
+                createOrGetAudioContext();
+                soundManager = new SoundManager(this);
             }
             soundManager?.downloadWAV(src, filenameStem);
         },

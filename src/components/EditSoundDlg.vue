@@ -16,7 +16,7 @@
             @change="change"
         ></cropper>
         <div class="EditSoundDlg-button-wrapper">
-            <BButton class="EditSoundDlg-play-button" :variant="playStopVariant" @click="doPlayStopPreview">{{playStopLabel}}</BButton>
+            <BButton class="EditSoundDlg-play-button" :class="{'EditSoundImageDlg-info-btn': stopPreview == null}" :variant="playStopVariant" @click="doPlayStopPreview">{{playStopLabel}}</BButton>
         </div>
         <div class="d-flex justify-content-center" style="margin-top: 10px;">
             <div class="d-flex position-relative" style="font-size: 80%;">
@@ -147,8 +147,10 @@ export default defineComponent({
         playStopLabel(): TranslateResult {
             return this.stopPreview == null ? this.$t("media.soundPlay") : this.$t("media.soundStop");
         },
-        playStopVariant() : "link-success" | "link-danger" {
-            return this.stopPreview == null ? "link-success" : "link-danger";
+        playStopVariant() : "secondary" | "danger" {
+            // "Play" gets its colour from the shared EditSoundImageDlg-info-btn class (like the
+            // Normalise button); "Stop" uses the danger variant for a solid red background:
+            return this.stopPreview == null ? "secondary" : "danger";
         },
     },
 

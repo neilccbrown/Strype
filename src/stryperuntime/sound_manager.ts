@@ -2,17 +2,23 @@ import {makeSoundHandle, RemoteSound} from "@/stryperuntime/worker_bridge_type";
 import audioBufferToWav from "audiobuffer-to-wav";
 import {saveAs} from "file-saver";
 import {getDateTimeFormatted} from "@/helpers/common";
+import {createOrGetAudioContext} from "@/helpers/audioContext";
 
 // A main thread class for handling all the sounds which Python code has asked us to load or play or stop
 export class SoundManager {
-    private audioContext : AudioContext;
     private loadedSounds: AudioBuffer[] = [];
     private bufferToSource = new Map<AudioBuffer, AudioBufferSourceNode>(); // Used to stop playing sounds
     private callbacks : { loadLibraryAsset : (libraryShortName: string, fileName: string) => Promise<string | undefined> };
-    
-    constructor(ctx: AudioContext, callbacks : { loadLibraryAsset : (libraryShortName: string, fileName: string) => Promise<string | undefined> }) {
-        this.audioContext = ctx;
+
+    constructor(callbacks : { loadLibraryAsset : (libraryShortName: string, fileName: string) => Promise<string | undefined> }) {
         this.callbacks = callbacks;
+    }
+
+    // Always fetch via this getter rather than caching the AudioContext ourselves: browsers can
+    // silently kill a backgrounded AudioContext, and createOrGetAudioContext() is what detects
+    // and recovers from that, handing back a fresh instance when needed.
+    private get audioContext() : AudioContext {
+        return createOrGetAudioContext();
     }
     
     async loadSound(url: string) : Promise<RemoteSound> {
