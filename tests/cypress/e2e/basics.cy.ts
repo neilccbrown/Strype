@@ -355,6 +355,30 @@ describe("Classes", () => {
             ]},
         ]).concat(defaultMyCode));
     });
+
+    it("Lets you use space to move to the next slot in a for frame", () => {
+        checkCodeEquals(defaultImports.concat(defaultMyCode));
+        // Go to the top of "my code" (just below the first default statement), where "for" is
+        // offered directly via its own shortcut rather than falling back to def's legacy "f" shortcut:
+        cy.get("#" + strypeElIds.getFrameUID(-3), {timeout: 15 * 1000}).focus();
+        cy.get("body").type("{downarrow}");
+        pressFrameShortcutThenType("f", "x range(5)");
+        checkCodeEquals(defaultImports.concat([
+            defaultMyCode[0],
+            {h: /for\s+x\s+in\s+range\(5\)\s*:/, b: []},
+        ]).concat(defaultMyCode.slice(1)));
+    });
+
+    it("Lets you use space to move to the next slot in a with frame", () => {
+        checkCodeEquals(defaultImports.concat(defaultMyCode));
+        cy.get("#" + strypeElIds.getFrameUID(-3), {timeout: 15 * 1000}).focus();
+        cy.get("body").type("{downarrow}");
+        pressFrameShortcutThenType("h", "f g");
+        checkCodeEquals(defaultImports.concat([
+            defaultMyCode[0],
+            {h: /with\s+f\s+as\s+g\s*:/, b: []},
+        ]).concat(defaultMyCode.slice(1)));
+    });
 });
 
 // Test that selecting and deleting frames using keyboard works properly:

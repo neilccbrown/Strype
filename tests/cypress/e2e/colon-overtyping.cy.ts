@@ -1,4 +1,4 @@
-import { standardBeforeEach } from "../support/standard-setup";
+import { standardBeforeEach, strypeElIds } from "../support/standard-setup";
 
 require("cypress-terminal-report/src/installLogsCollector")();
 import failOnConsoleError from "cypress-fail-on-console-error";
@@ -27,5 +27,22 @@ describe("Test colon overtyping", () => {
         assertState("{$}");
         cy.get("body").type("(x:");
         assertState("{}_({x}:{$})_{}");
+    });
+
+    // Typing ")" to overtype the closing bracket of a function definition's parameter list moves the
+    // cursor into the docs field (following the "):" label). Since the user has therefore effectively
+    // already "typed" the colon that ends the def line, a ":" typed as the very first character of the
+    // docs field is discarded rather than inserted:
+    it("Discards a colon typed at the start of a function definition's docs field", () => {
+        focusEditor();
+        pressFrameShortcut("d");
+        // "(x)" : the "(" auto-inserts the closing ")", "x" is the parameter name, and the final ")"
+        // overtypes the auto-inserted one, moving the cursor into the docs field:
+        cy.get("body").type("foo(x)");
+        cy.get("body").type(":Explanation");
+        cy.get("#" + strypeElIds.getEditorID()).then((eds) => {
+            const focusId = eds.get()[0].getAttribute("data-slot-focus-id") || "";
+            cy.get("#" + focusId.replaceAll(",", "\\,")).should("have.text", "Explanation");
+        });
     });
 });

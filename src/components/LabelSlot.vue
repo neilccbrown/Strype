@@ -1155,6 +1155,18 @@ export default defineComponent({
                 }
                 return;
             }
+            // If the frame is a "for" or "with" frame and we are in the first top-level slot (the loop target
+            // for "for", the expression for "with"), pressing space at the end of that slot moves to the
+            // second slot (the iterable for "for", the "as" target for "with"), just like it does for the
+            // LHS of a variable assignment frame above.
+            else if(this.labelSlotsIndex === 0 && this.slotId.indexOf(",") == -1 && !hasTextSelection &&
+                inputString === " " && (this.frameType === AllFrameTypesIdentifier.for || this.frameType === AllFrameTypesIdentifier.with)){
+                this.removeLastInput(inputString);
+                if (isAtEndOfLastSlot) {
+                    this.doArrowRightNextTick();
+                }
+                return;
+            }
             // If the frame is an import frame, pressing space will automatically add the "as" operator when it makes sense to do so (see details below),
             // when we press space and we are just before  an "as", we go to the next slot.
             // In other cases and anywhere for "from... import" frames, pressing space will result in no action.
@@ -1186,6 +1198,13 @@ export default defineComponent({
             }
             // We also prevent start trailing spaces on all slots except comments and string content, to avoid indentation errors
             else if(inputString === " " && this.frameType !== AllFrameTypesIdentifier.comment && this.slotType != SlotType.string && cursorPos == 0){
+                this.removeLastInput(inputString);
+            }
+            // If we type ":" as the very first character of a function definition's docs field, we discard it:
+            // the user has just overtyped the closing bracket of the parameter list (which moves the cursor
+            // past the "):" and into the docs field), so this ":" is almost certainly a leftover keystroke
+            // from habitually typing "def foo():" rather than text intended for the docs.
+            else if(inputString === ":" && cursorPos == 0 && this.frameType === AllFrameTypesIdentifier.funcdef && this.allowedSlotContent == AllowedSlotContent.FREE_TEXT_DOCUMENTATION){
                 this.removeLastInput(inputString);
             }
             // On comments, we do not need multislots and parsing any code, we just let any key go through
