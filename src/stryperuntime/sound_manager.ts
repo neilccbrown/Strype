@@ -219,4 +219,24 @@ export class SoundManager {
             }
         });
     }
+
+    // Resolves once every sound that is currently playing has finished (naturally, or because
+    // stopAllSounds()/stopAudioBuffer() was called on it). Sounds started after this is called
+    // are not waited for, matching the "invisible wait_for_all_sounds_to_finish() at the very
+    // end of the program" semantics this is used for.
+    waitForAllSoundsToFinish() : Promise<void> {
+        const stillPlaying = [...this.bufferToSource.values()];
+        return Promise.all(stillPlaying.map((source) => new Promise<void>((resolve) => {
+            // stopAudioBuffer()/stopAllSounds() calling source.stop() also fires "ended",
+            // so this resolves either way; if it already ended, onended has already run
+            // and been cleared, but the buffer would then no longer be in bufferToSource above.
+            const prevOnEnded = source.onended;
+            source.onended = (ev) => {
+                if (typeof prevOnEnded === "function") {
+                    prevOnEnded.call(source, ev);
+                }
+                resolve();
+            };
+        }))).then(() => undefined);
+    }
 }
