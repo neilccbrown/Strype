@@ -644,6 +644,10 @@ export default defineComponent({
                 // const reference to it for the duration of a Python run: 
                 const client = getPythonClient();
                 if (client == null) {
+                    // Shouldn't normally happen (the Run button is disabled while
+                    // isPythonWorkerReady is false), but if it does, don't leave the
+                    // button stuck showing "Stop" with nothing actually running:
+                    useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
                     return;
                 }
                 
