@@ -1,5 +1,5 @@
 import {test, expect, Page} from "@playwright/test";
-import {checkFrameXorTextCursor, doTextHomeEndKeyPress, getDefaultStrypeProjectImportsFullLine} from "../support/editor";
+import {checkFrameXorTextCursor, doTextHomeEndKeyPress, getDefaultStrypeProjectImportsFullLine, pressFrameShortcut} from "../support/editor";
 import {readFileSync} from "node:fs";
 import {loadContent, save, testPlaywrightRoundTripImportAndDownload} from "../support/loading-saving";
 import { setupStrypeTest } from "../support/general";
@@ -113,7 +113,7 @@ print(myString)
         await page.keyboard.type(". \"This is in double quotes\" and ''this is in doubled single quotes'' and this is an unmatched apostrophe of someone's.");
         await page.keyboard.press("ArrowRight");
         await enterEmptyDefinitionsSection(page);
-        await page.keyboard.type("f");
+        await pressFrameShortcut(page, "f");
         await page.keyboard.type("foo");
         await page.keyboard.press("ArrowRight");
         await page.keyboard.press("ArrowRight");
@@ -142,7 +142,7 @@ print(myString)
         await page.keyboard.type("lines.");
         await page.keyboard.press("ArrowRight");
         await enterEmptyDefinitionsSection(page);
-        await page.keyboard.type("f");
+        await pressFrameShortcut(page, "f");
         await page.keyboard.type("foo");
         await page.keyboard.press("ArrowRight");
         await page.keyboard.press("ArrowRight");

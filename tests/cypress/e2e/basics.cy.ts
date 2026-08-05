@@ -4,7 +4,7 @@ import {expect} from "chai";
 import en from "@/localisation/en/en_main.json";
 
 import failOnConsoleError from "cypress-fail-on-console-error";
-import {cleanFromHTML, getDefaultStrypeProjectDocumentationFullLine} from "../support/test-support";
+import {cleanFromHTML, clearDefaultImports, getDefaultStrypeProjectDocumentationFullLine, pressFrameShortcut, pressFrameShortcutThenType} from "../support/test-support";
 import { scssVars, standardBeforeEach, strypeElIds } from "../support/standard-setup";
 failOnConsoleError();
 require("cypress-terminal-report/src/installLogsCollector")();
@@ -252,15 +252,15 @@ Cypress.on("uncaught:exception", (err, runnable) => {
 describe("Adding frames", () => {
     it("Lets you add a frame", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode)).then(() => {
-            cy.get("body").type(" foo(");
+            cy.get("body").type("foo(");
             checkCodeEquals(defaultImports.concat([
                 "foo()",
             ]).concat(defaultMyCode));
-        });        
+        });
     });
     it("Lets you add multiple frames", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode)).then(() => {
-            cy.get("body").type(" foo({rightArrow}{enter} bar(3");
+            cy.get("body").type("foo({rightArrow}{enter}bar(3");
             checkCodeEquals(defaultImports.concat([
                 "foo()",
                 "bar(3)",
@@ -271,18 +271,18 @@ describe("Adding frames", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode)).then(() => {
             // i adds an if; add an if True with an if False inside:
             // (if is followed by a pause, because it can take a bit longer to add its body/joint section)
-            cy.get("body").type("i");
+            pressFrameShortcut("i");
             cy.wait(100);
             cy.get("body").type("True{rightArrow}");
-            cy.get("body").type("i");
+            pressFrameShortcut("i");
             cy.wait(100);
             cy.get("body").type("False{rightArrow}");            
             // Put a foo() in the inner body:
-            cy.get("body").type(" foo({rightArrow}{rightArrow}");
+            cy.get("body").type("foo({rightArrow}{rightArrow}");
             // Put a bar(3) in the outer if, just after the inner if:
-            cy.get("body").type("{downArrow} bar(3{rightArrow}{rightArrow}");
+            cy.get("body").type("{downArrow}bar(3{rightArrow}{rightArrow}");
             // And add baz(5) after the ifs:
-            cy.get("body").type("{downArrow} baz(5");
+            cy.get("body").type("{downArrow}baz(5");
             checkCodeEquals(defaultImports.concat([
                 {h: /if\s+True\s+:/, b:[
                     {h: /if\s+False\s+:/, b:[
@@ -299,8 +299,9 @@ describe("Adding frames", () => {
 describe("Classes", () => {
     it("Lets you add a class frame", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode));
-        cy.get("body").type("{uparrow}cFoo");
-        cy.get("body").type("{rightarrow}{rightarrow}{downarrow} foo()");
+        cy.get("body").type("{uparrow}");
+        pressFrameShortcutThenType("c", "Foo");
+        cy.get("body").type("{rightarrow}{rightarrow}{downarrow}foo()");
         checkCodeEquals(defaultImports.concat([
             {h: /class\s+Foo\s*:/, b: [
                 {h: /def\s+__init__\s*\((self,?)?\s*\)\s*:/, b: [
@@ -311,8 +312,9 @@ describe("Classes", () => {
     });
     it("Lets you add a class frame with a parent class", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode));
-        cy.get("body").type("{uparrow}cFoo(Bar");
-        cy.get("body").type("{rightarrow}{rightarrow}{rightarrow}{downarrow} foo()");
+        cy.get("body").type("{uparrow}");
+        pressFrameShortcutThenType("c", "Foo(Bar");
+        cy.get("body").type("{rightarrow}{rightarrow}{rightarrow}{downarrow}foo()");
         checkCodeEquals(defaultImports.concat([
             {h: /class\s+Foo\(Bar\)\s*:/, b: [
                 {h: /def\s+__init__\s*\((self,?)?\s*\)\s*:/, b: [
@@ -325,14 +327,19 @@ describe("Classes", () => {
     it("Lets you add a class frame with class attributes and methods", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode));
         // Class header:
-        cy.get("body").type("{uparrow}cFoo");
+        cy.get("body").type("{uparrow}");
+        pressFrameShortcutThenType("c", "Foo");
         // Constructor body:
-        cy.get("body").type("{rightarrow}{rightarrow}{downarrow} foo()");
+        cy.get("body").type("{rightarrow}{rightarrow}{downarrow}foo()");
         // Attribute:
         cy.get("body").type("{rightarrow}{downarrow}=myattr=5");
         // Methods:
-        cy.get("body").type("{rightarrow}ffoo{downarrow}{downArrow}r6");
-        cy.get("body").type("{rightarrow}{downarrow}fbar(x,y{downarrow}{downArrow}r7");
+        cy.get("body").type("{rightarrow}");
+        pressFrameShortcutThenType("f", "foo{downarrow}{downArrow}");
+        pressFrameShortcutThenType("r", "6");
+        cy.get("body").type("{rightarrow}{downarrow}");
+        pressFrameShortcutThenType("f", "bar(x,y{downarrow}{downArrow}");
+        pressFrameShortcutThenType("r", "7");
         checkCodeEquals(defaultImports.concat([
             {h: /class\s+Foo\s*:/, b: [
                 {h: /def\s+__init__\s*\((self,?)?\s*\)\s*:/, b: [
@@ -348,13 +355,49 @@ describe("Classes", () => {
             ]},
         ]).concat(defaultMyCode));
     });
+
+    it("Lets you use space to move to the next slot in a for frame", () => {
+        checkCodeEquals(defaultImports.concat(defaultMyCode));
+        // Go to the top of "my code" (just below the first default statement), where "for" is
+        // offered directly via its own shortcut rather than falling back to def's legacy "f" shortcut:
+        cy.get("#" + strypeElIds.getFrameUID(-3), {timeout: 15 * 1000}).focus();
+        cy.get("body").type("{downarrow}");
+        pressFrameShortcutThenType("f", "x range(5)");
+        checkCodeEquals(defaultImports.concat([
+            defaultMyCode[0],
+            {h: /for\s+x\s+in\s+range\(5\)\s*:/, b: []},
+        ]).concat(defaultMyCode.slice(1)));
+    });
+
+    it("Lets you use space to move to the next slot in a with frame", () => {
+        checkCodeEquals(defaultImports.concat(defaultMyCode));
+        cy.get("#" + strypeElIds.getFrameUID(-3), {timeout: 15 * 1000}).focus();
+        cy.get("body").type("{downarrow}");
+        pressFrameShortcutThenType("h", "f g");
+        checkCodeEquals(defaultImports.concat([
+            defaultMyCode[0],
+            {h: /with\s+f\s+as\s+g\s*:/, b: []},
+        ]).concat(defaultMyCode.slice(1)));
+    });
+
+    it("Lets you use space to move to the next slot in a from...import frame", () => {
+        checkCodeEquals(defaultImports.concat(defaultMyCode));
+        // Clear the default imports and add our own "from...import" there instead -- "for" isn't a
+        // valid command in the imports section, so the bare "f" shortcut resolves directly to
+        // "from...import" here (unlike in "my code", where it needs disambiguating from "for"):
+        clearDefaultImports();
+        pressFrameShortcutThenType("f", "microbit Foo");
+        checkCodeEquals(([
+            /from\s+microbit\s+import\s+Foo/,
+        ] as CodeMatch[]).concat(defaultMyCode));
+    });
 });
 
 // Test that selecting and deleting frames using keyboard works properly:
 describe("Deleting frames", () => {
     it("Lets you delete a frame with delete", () => {
         // Add three frames:
-        cy.get("body").type(" foo({rightArrow}{rightArrow} bar({rightArrow}{rightArrow} baz({rightArrow}{rightArrow}");
+        cy.get("body").type("foo({rightArrow}{rightArrow}bar({rightArrow}{rightArrow}baz({rightArrow}{rightArrow}");
         // Delete two:
         cy.get("body").type("{shift}", {release: false});
         cy.get("body").type("{upArrow}{upArrow}");
@@ -367,7 +410,8 @@ describe("Deleting frames", () => {
     it("Lets you delete a class member frame with delete", () => {
         // Makes a class with a constructor then we try to delete it:
         //(class followed by a pause, because it can take a bit longer to add its body/joint section)
-        cy.get("body").type("{upArrow}c");
+        cy.get("body").type("{upArrow}");
+        pressFrameShortcut("c");
         cy.wait(100);
         cy.get("body").type("A{rightArrow}{rightArrow}");
         cy.get("body").type("{del}");
@@ -377,7 +421,7 @@ describe("Deleting frames", () => {
     });
     it("Lets you delete a frame with backspace", () => {
         // Add three frames:
-        cy.get("body").type(" foo({rightArrow}{rightArrow} bar({rightArrow}{rightArrow} baz({rightArrow}{rightArrow}");
+        cy.get("body").type("foo({rightArrow}{rightArrow}bar({rightArrow}{rightArrow}baz({rightArrow}{rightArrow}");
         // Delete two:
         cy.get("body").type("{shift}", {release: false});
         cy.get("body").type("{upArrow}{upArrow}");
@@ -390,13 +434,17 @@ describe("Deleting frames", () => {
     it("Lets you delete joint frames with backspace", () => {
         // Add if, two elif and an else:
         //(if/elif/else are followed by a pause, because it can take a bit longer to add their body/joint sections)
-        cy.get("body").type("{end}{backspace}{backspace}i");
+        cy.get("body").type("{end}{backspace}{backspace}");
+        pressFrameShortcut("i");
         cy.wait(100);
-        cy.get("body").type("True{rightarrow}l");
+        cy.get("body").type("True{rightarrow}");
+        pressFrameShortcut("l");
         cy.wait(100);
-        cy.get("body").type("x==0{rightarrow}l");
+        cy.get("body").type("x==0{rightarrow}");
+        pressFrameShortcut("l");
         cy.wait(100);
-        cy.get("body").type("x==1{rightarrow}=x=0{rightarrow}e foo(){rightarrow}");
+        cy.get("body").type("x==1{rightarrow}=x=0{rightarrow}");
+        pressFrameShortcutThenType("e", "foo(){rightarrow}");
         checkCodeEquals(defaultImports.concat([
             {h: /if\s+True\s+:/, b:[]},
             {h: /elif\s+x\s*==\s*0\s*:/, b:[]},
@@ -448,12 +496,14 @@ describe("Deleting frames", () => {
 describe("Wrapping frames", () => {
     it("Lets you wrap a frame with an if", () => {
         // Add three frames:
-        cy.get("body").type(" foo({rightArrow}{rightArrow} bar({rightArrow}{rightArrow} baz({rightArrow}{rightArrow}");
+        cy.get("body").type("foo({rightArrow}{rightArrow}bar({rightArrow}{rightArrow}baz({rightArrow}{rightArrow}");
         // Delete two:
         cy.get("body").type("{shift}", {release: false});
         cy.get("body").type("{upArrow}{upArrow}");
         cy.get("body").type("{shift}");
-        cy.get("body").type("iTrue");
+        // Wrap the selection with an if (Space opens the frame commands pane instead of the
+        // frame context menu when a selection is active; "i" then selects "if" from it):
+        pressFrameShortcutThenType("i", "True");
         checkCodeEquals(defaultImports.concat([
             "foo()",
             {h: /if\s+True\s+:/, b:[
@@ -468,10 +518,13 @@ describe("Copying key combination", () => {
     it("Check C inserts a class", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode));
         cy.get("body").type("{upArrow}");
+        cy.get("body").trigger("keydown", {keycode: 32, key: " ", code: "Space"});
+        cy.get("body").trigger("keyup", {keycode: 32, key: " ", code: "Space"});
         cy.get("body").trigger("keydown", {keycode: 67, key: "c", code: "c"});
         cy.get("body").trigger("keyup", {keycode: 67, key: "c", code: "c"});
         // Empty body messes up test so make a body in constructor:
-        cy.get("body").type("Hello{downArrow}{downArrow}{downArrow}r42");
+        cy.get("body").type("Hello{downArrow}{downArrow}{downArrow}");
+        pressFrameShortcutThenType("r", "42");
         checkCodeEquals(defaultImports.concat([{
             h:/class +Hello *:/,
             b:[{h:/def *__init__ *\((self,?)? *\) *:/, b:[/return *42/]}]}]).concat(defaultMyCode));
@@ -479,7 +532,9 @@ describe("Copying key combination", () => {
     it("Does not insert a class frame on Ctrl+C, when C is released first", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode));
         // Make a function frame and select it:
-        cy.get("body").type("{upArrow}{f}foo{downArrow}{downArrow}r42{downArrow}{downArrow}{downArrow}{shift}{upArrow}");
+        cy.get("body").type("{upArrow}");
+        pressFrameShortcutThenType("f", "foo{downArrow}{downArrow}");
+        pressFrameShortcutThenType("r", "42{downArrow}{downArrow}{downArrow}{shift}{upArrow}");
         cy.get("body").trigger("keydown", {keycode: 17, key: "Control", code: "ControlLeft"});
         cy.get("body").trigger("keydown", {keycode: 67, key: "c", code: "c", ctrlKey: true});
         cy.get("body").trigger("keyup", {keycode: 67, key: "c", code: "c", ctrlKey: true});
@@ -489,7 +544,9 @@ describe("Copying key combination", () => {
     it("Does not insert a class frame on Ctrl+C, when C is released second", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode));
         // Make a function frame and select it:
-        cy.get("body").type("{upArrow}{f}foo{downArrow}{downArrow}r42{downArrow}{downArrow}{downArrow}{shift}{upArrow}");
+        cy.get("body").type("{upArrow}");
+        pressFrameShortcutThenType("f", "foo{downArrow}{downArrow}");
+        pressFrameShortcutThenType("r", "42{downArrow}{downArrow}{downArrow}{shift}{upArrow}");
         cy.get("body").trigger("keydown", {keycode: 17, key: "Control", code: "ControlLeft"});
         cy.get("body").trigger("keydown", {keycode: 67, key: "c", code: "c", ctrlKey: true});
         cy.get("body").trigger("keyup", {keycode: 17, key: "Control", code: "ControlLeft"}); // Release Ctrl

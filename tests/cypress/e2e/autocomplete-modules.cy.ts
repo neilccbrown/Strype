@@ -1,5 +1,5 @@
 import { scssVars } from "../support/standard-setup";
-import { clearDefaultImports } from "../support/test-support";
+import { clearDefaultImports, pressFrameShortcut, pressFrameShortcutThenType } from "../support/test-support";
 
 require("cypress-terminal-report/src/installLogsCollector")();
 import "@testing-library/cypress/add-commands";
@@ -17,7 +17,7 @@ describe("Modules", () => {
         focusEditorAC();
         // Go up to imports, add one, then trigger auto-complete:
         clearDefaultImports();
-        cy.get("body").type("i");
+        pressFrameShortcut("i");
         cy.wait(500);
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
@@ -82,7 +82,7 @@ describe("Modules", () => {
         focusEditorAC();
         // Go up to imports, add one, then trigger auto-complete:
         clearDefaultImports();
-        cy.get("body").type("f");
+        pressFrameShortcut("f");
         cy.wait(500);
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
@@ -150,7 +150,7 @@ describe("Modules", () => {
 
         // Go up to imports, add one, then trigger auto-complete:
         clearDefaultImports();
-        cy.get("body").type("f");
+        pressFrameShortcut("f");
         cy.wait(500);
         // Fill in time in the LHS then go across to the RHS:
         cy.get("body").type("time{rightarrow}");
@@ -203,7 +203,9 @@ describe("Modules", () => {
         }, false);
         // Now check in the body for docs on the autocomplete (we should be in a function call frame):
         cy.get("body").type("{rightarrow}{downarrow}{downarrow}");
-        cy.get("body").type(" {ctrl} ");
+        // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
+        // autocomplete in it in one go (see Commands.vue's Ctrl+Space handler):
+        cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             checkExactlyOneItem(acIDSel, "time", target + targetParams);
@@ -225,7 +227,7 @@ describe("Modules", () => {
         focusEditorAC();
         // Go up to imports and add an import frame:
         clearDefaultImports();
-        cy.get("body").type("i");
+        pressFrameShortcut("i");
         cy.wait(500);
         // Trigger autocomplete, type "tim" then press enter to complete and right arrow to leave frame:
         cy.get("body").type("{ctrl} ");
@@ -234,7 +236,7 @@ describe("Modules", () => {
         cy.get("body").type("{enter}{rightarrow}");
         // Back down to main body, add a function frame and type "time." then trigger auto-complete:
         cy.get("body").type("{downarrow}{downarrow}");
-        cy.get("body").type(" time.{ctrl} ");
+        cy.get("body").type("time.{ctrl} ");
         withAC((acIDSel) => {
             // Microbit and Python have different items in the time module, so pick accordingly:
             const target = Cypress.env("mode") == "microbit" ? "ticks_add(ticks, delta)" : "gmtime()";
@@ -262,7 +264,7 @@ describe("Modules", () => {
         focusEditorAC();
         // Go up to the imports and add a "from..import.." frame
         clearDefaultImports();
-        cy.get("body").type("f");
+        pressFrameShortcut("f");
         cy.wait(500);
         // Trigger autocomplete (in first section), type "tim" and hit enter to auto-complete, then right arrow to go across to the second part of the frame:
         cy.get("body").type("{ctrl} ");
@@ -272,7 +274,9 @@ describe("Modules", () => {
         // Put * in the second bit, then back down to main section, make a function frame and hit auto-complete:
         cy.get("body").type("*{rightarrow}");
         cy.get("body").type("{downarrow}{downarrow}");
-        cy.get("body").type(" {ctrl} ");
+        // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
+        // autocomplete in it in one go (see Commands.vue's Ctrl+Space handler):
+        cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             // Microbit and Python have different items in the time module, so pick accordingly:
             const target = Cypress.env("mode") == "microbit" ? "ticks_add(ticks, delta)" : "gmtime()";
@@ -303,8 +307,8 @@ describe("Versions", () => {
         it("Shows versions for relevant modules on function autocomplete", () => {
             focusEditorAC();
             // Add a function frame and trigger auto-complete:
-            cy.get("body").type(" ");
-            cy.wait(500);
+            // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
+            // autocomplete in it in one go (see Commands.vue's Ctrl+Space handler):
             cy.get("body").type("{ctrl} ");
             withAC((acIDSel) => {
                 cy.get(acIDSel).should("be.visible");
@@ -329,14 +333,14 @@ describe("Nested modules", () => {
         focusEditorAC();
         // Go up to imports and add an import frame:
         clearDefaultImports();
-        cy.get("body").type("i");
+        pressFrameShortcut("i");
         cy.wait(500);
         // Type whole module as one item:
         cy.get("body").type(targetModule);
         cy.get("body").type("{rightarrow}");
         // Back down to main body, add a function frame and type "<submodule>." then trigger auto-complete:
         cy.get("body").type("{downarrow}{downarrow}");
-        cy.get("body").type(" " + targetModule + ".{ctrl} ");
+        cy.get("body").type(targetModule + ".{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             // The modules we are retrieving are generated in our API files (see changes of commit 3073c074090c68dfb5cfc633686aa3916e55f0ca),
@@ -350,14 +354,16 @@ describe("Nested modules", () => {
         focusEditorAC();
         // Go up to imports and add a from import frame:
         clearDefaultImports();
-        cy.get("body").type("f");
+        pressFrameShortcut("f");
         cy.wait(500);
         // Type whole module as one item:
         cy.get("body").type(targetModule);
         cy.get("body").type("{rightarrow}*{rightarrow}");
         // Back down to main body, add a function frame and type "<submodule>." then trigger auto-complete:
         cy.get("body").type("{downarrow}{downarrow}");
-        cy.get("body").type(" {ctrl} ");
+        // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
+        // autocomplete in it in one go (see Commands.vue's Ctrl+Space handler):
+        cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             checkExactlyOneItem(acIDSel, targetModule, targetFunctionWithParam);
@@ -369,14 +375,16 @@ describe("Nested modules", () => {
         focusEditorAC();
         // Go up to imports and add a from import frame:
         clearDefaultImports();
-        cy.get("body").type("f");
+        pressFrameShortcut("f");
         cy.wait(500);
         // Type whole module as one item:
         cy.get("body").type(targetModule);
         cy.get("body").type("{rightarrow}" + targetFunction + "{rightarrow}");
         // Back down to main body, add a function frame and type "<submodule>." then trigger auto-complete:
         cy.get("body").type("{downarrow}{downarrow}");
-        cy.get("body").type(" {ctrl} ");
+        // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
+        // autocomplete in it in one go (see Commands.vue's Ctrl+Space handler):
+        cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             checkExactlyOneItem(acIDSel, targetModule, targetFunctionWithParam);
@@ -391,8 +399,8 @@ describe("Nested modules", () => {
             // Whereas button_a is an object in that module, but that should also be visible with the default import:
             focusEditorAC();
             // Add a function frame and trigger auto-complete:
-            cy.get("body").type(" ");
-            cy.wait(500);
+            // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
+            // autocomplete in it in one go (see Commands.vue's Ctrl+Space handler):
             cy.get("body").type("{ctrl} ");
             withAC((acIDSel) => {
                 cy.get(acIDSel).should("be.visible");
@@ -404,8 +412,8 @@ describe("Nested modules", () => {
             cy.get("body").type("{leftarrow}{uparrow}{uparrow}{backspace}");
             cy.get("body").type("{downarrow}{downarrow}");
             // Enter frame again:
-            cy.get("body").type(" ");
-            cy.wait(500);
+            // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
+            // autocomplete in it in one go (see Commands.vue's Ctrl+Space handler):
             cy.get("body").type("{ctrl} ");
             withAC((acIDSel) => {
                 cy.get(acIDSel).should("be.visible");
@@ -423,7 +431,7 @@ describe("Imported items", () => {
 
     it("Doesn't offer auto-complete when module is not imported", () => {
         focusEditorAC();
-        cy.get("body").type(" " + targetModule + ".{ctrl} ");
+        cy.get("body").type(targetModule + ".{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             // Should show nothing available if we haven't imported the module:
@@ -436,14 +444,14 @@ describe("Imported items", () => {
         focusEditorAC();
         // Go up to imports and add an import frame:
         clearDefaultImports();
-        cy.get("body").type("i");
+        pressFrameShortcut("i");
         cy.wait(500);
         // Type whole module as one item:
         cy.get("body").type(targetModule);
         cy.get("body").type("{rightarrow}");
         // Back down to main body, add a function frame and type "<submodule>." then trigger auto-complete:
         cy.get("body").type("{downarrow}{downarrow}");
-        cy.get("body").type(" " + targetModule + ".{ctrl} ");
+        cy.get("body").type(targetModule + ".{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             // Should show because it's imported:
@@ -456,13 +464,13 @@ describe("Imported items", () => {
         focusEditorAC();
         // Go up to imports and add an import frame:
         clearDefaultImports();
-        cy.get("body").type("i");
+        pressFrameShortcut("i");
         cy.wait(500);
         // Space bar alone should give us the "as", so this imports as "t":
         cy.get("body").type(targetModule + " t{rightarrow}");
         // Back down to main body, add a function frame and type "<module>." then trigger auto-complete:
         cy.get("body").type("{downarrow}{downarrow}");
-        cy.get("body").type(" " + targetModule + ".{ctrl} ");
+        cy.get("body").type(targetModule + ".{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             // Should show nothing available if we haven't imported the module itself, only used a from:
@@ -486,8 +494,8 @@ describe("Underscore handling", () => {
     it("Does not offer underscore items at top-level until typed", () => {
         focusEditorAC();
         // Add a function frame and trigger auto-complete:
-        cy.get("body").type(" ");
-        cy.wait(500);
+        // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
+        // autocomplete in it in one go (see Commands.vue's Ctrl+Space handler):
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel).should("be.visible");
@@ -514,12 +522,15 @@ describe("Underscore handling", () => {
         it("Does not offer underscore items on modules at all", () => {
             // Go up to imports and add a from time import *
             clearDefaultImports();
-            cy.get("body").type("fstrype.graphics{rightarrow}*{rightarrow}");
+            pressFrameShortcut("f");
+            cy.get("body").type("strype.graphics{rightarrow}*{rightarrow}");
             cy.get("body").type("{downarrow}{downarrow}");
 
             focusEditorAC();
             // Add a function frame and trigger auto-complete:
-            cy.get("body").type(" {ctrl} ");
+            // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
+            // autocomplete in it in one go (see Commands.vue's Ctrl+Space handler):
+            cy.get("body").type("{ctrl} ");
             withAC((acIDSel) => {
                 cy.get(acIDSel).should("be.visible");
                 checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");
@@ -575,13 +586,16 @@ describe("Underscore handling", () => {
     it("Offers user's own definitions, even if they start with underscores", () => {
         focusEditorAC();
         // Go up to functions section, add a function named "__myFunction" then come down the function definition:
-        cy.get("body").type("{uparrow}f__myFunction{rightarrow}myParam{downarrow}{downarrow}{downarrow}");
+        cy.get("body").type("{uparrow}");
+        pressFrameShortcutThenType("f", "__myFunction{rightarrow}myParam{downarrow}{downarrow}{downarrow}");
         // Make a class called _myClass then come back down the "my code" section
-        cy.get("body").type("c__myClass{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}");
+        pressFrameShortcutThenType("c", "__myClass{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}");
         // Make a variable called __myVar:
         cy.get("body").type("=__myVar=42{enter}");
         // Add a function frame and trigger auto-complete:
-        cy.get("body").type(" {ctrl} ");
+        // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
+        // autocomplete in it in one go (see Commands.vue's Ctrl+Space handler):
+        cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel).should("be.visible");
             checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");

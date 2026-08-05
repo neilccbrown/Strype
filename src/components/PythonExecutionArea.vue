@@ -111,6 +111,12 @@ let sendNextKey : ((s: string) => void) = () => {};
 const keyMapping = new Map<string, string>([["ArrowUp", "up"], ["ArrowDown", "down"], ["ArrowLeft", "left"], ["ArrowRight", "right"], [" ", "space"]]);
 let switchedToGraphicsTabAlreadyThisExecute = false;
 let switchedToConsoleTabAlreadyThisExecute = false;
+// True once the user's Python code has finished executing normally (no uncaught error, not
+// stopped by the user) but we are still waiting for any still-playing sounds to finish, as if
+// there were an invisible wait_for_all_sounds_to_finish() at the very end of the program. The
+// run button still shows "Stop" during this time; clicking it goes through runClicked()'s
+// "Running" case, which stops the sounds (resolving the wait below) and finalises the run.
+let waitingForSoundsAfterNormalCompletion = false;
 
 let soundManager : SoundManager | null = null; // Can't initialise this here as we need permissions for audio context
 const turtleCanvas = new OffscreenCanvas(800, 600);
@@ -509,13 +515,20 @@ export default defineComponent({
                 soundManager?.stopAllSounds();
                 // Important to call this when responding to a click, because browser won't allow
                 // sound to start unless we create it in direct response to a user action:
-                soundManager = new SoundManager(createOrGetAudioContext(), this);
+                createOrGetAudioContext();
+                soundManager = new SoundManager(this);
                 // Note that any old SoundManager will then have its sounds garbage-collected
                 this.execPythonCode();
                 return;
             case PythonExecRunningState.Running:
                 soundManager?.stopAllSounds();
-                void terminateAndRestartPyodide();
+                // If we're only here waiting for sounds to finish after the code itself already
+                // completed normally, Pyodide has already been restarted (see execPythonCode())
+                // and there is nothing left to interrupt:
+                if (!waitingForSoundsAfterNormalCompletion) {
+                    void terminateAndRestartPyodide();
+                }
+                waitingForSoundsAfterNormalCompletion = false;
                 useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
                 return;
             case PythonExecRunningState.RunningAwaitingStop:
@@ -731,14 +744,40 @@ export default defineComponent({
                             }
                         }, parser.getFramePositionMap());
                     }
-                    useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
                     setPythonExecAreaLayoutButtonPos();
                     // A runtime error may happen whenever the user code failed, therefore we should check if an error
                     // when Skulpt indicates the code execution has finished.
                     this.checkNonePrecompiledErrors();
-                    soundManager?.stopAllSounds();
-                    // We always restart Pyodide for a clean state:
+                    // We always restart Pyodide for a clean state, regardless of whether we still
+                    // need to wait below for sounds to finish -- the worker itself is done either way:
                     void terminateAndRestartPyodide();
+                    // strype.graphics.stop() raises SystemExit to end the program early -- handleErrorTrace()
+                    // (above) already treats that as a deliberate, silent exit rather than a real runtime
+                    // error, and we do the same here: it's not "wasStoppedByUser" (the Stop button), so it
+                    // should still wait for sounds below, just like a normal fall-off-the-end completion:
+                    const hadRealError = possibleError != null && !possibleError.text.startsWith("SystemExit");
+                    if (wasStoppedByUser || hadRealError) {
+                        // Either the user already clicked Stop (which already stopped the sounds
+                        // and set NotRunning), or the code ended with an uncaught error, in which
+                        // case we stop any sounds immediately rather than waiting for them:
+                        soundManager?.stopAllSounds();
+                        useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
+                    }
+                    else {
+                        // Normal completion with no error: keep showing "Stop" and wait for any
+                        // still-playing sounds to finish naturally, as if there were an invisible
+                        // wait_for_all_sounds_to_finish() at the end of the program. This must not
+                        // block the main thread, and clicking Stop during this time (handled in
+                        // runClicked()) will stop the sounds and resolve this early.
+                        waitingForSoundsAfterNormalCompletion = true;
+                        soundManager?.waitForAllSoundsToFinish().then(() => {
+                            if (waitingForSoundsAfterNormalCompletion) {
+                                waitingForSoundsAfterNormalCompletion = false;
+                                useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
+                                setPythonExecAreaLayoutButtonPos();
+                            }
+                        });
+                    }
                 });
                 
                 // We make sure the number of errors shown in the interface is in line with the current state of the code
@@ -1309,7 +1348,8 @@ export default defineComponent({
         downloadWAV(src: AudioBuffer, filenameStem: string) {
             if (soundManager == null) {
                 // Since downloadWAV is triggered by a mouse click we should be able to create the sound manager now:
-                soundManager = new SoundManager(createOrGetAudioContext(), this);
+                createOrGetAudioContext();
+                soundManager = new SoundManager(this);
             }
             soundManager?.downloadWAV(src, filenameStem);
         },

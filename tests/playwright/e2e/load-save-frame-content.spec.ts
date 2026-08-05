@@ -8,7 +8,7 @@ import en from "../../../src/localisation/en/en_main.json";
 import {WINDOW_STRYPE_HTMLIDS_PROPNAME} from "../../../src/helpers/sharedIdCssWithTests";
 import {Page, test, expect, ElementHandle, JSHandle} from "@playwright/test";
 import { rename } from "fs/promises";
-import {checkFrameXorTextCursor, clearDefaultProject, typeIndividually, waitForEditorSettled} from "../support/editor";
+import {checkFrameXorTextCursor, clearDefaultProject, pressFrameShortcut, typeIndividually, waitForEditorSettled} from "../support/editor";
 import {readFileSync} from "node:fs";
 import {createBrowserProxy} from "../support/proxy";
 import {load, save} from "../support/loading-saving";
@@ -17,12 +17,6 @@ import { DEFAULT_STARTING_FRAME_COUNT, setupStrypeTest } from "../support/genera
 let scssVars: {[varName: string]: string};
 let strypeElIds: {[varName: string]: (...args: any[]) => Promise<string>};
 test.beforeEach(async ({ page, browserName }, testInfo) => {
-    // With regards to Chromium: several of these tests fail on Chromium in Playwright on Mac and
-    // I can't figure out why.  I've tried them manually in Chrome and Chromium on the same
-    // machine and it works fine, but I see in the video that the test fails in Playwright
-    // (pressing right out of a comment frame puts the cursor at the beginning and makes a frame cursor).
-    // Since it works in the real browsers, and on Webkit and Firefox, we just skip the tests in Chromium
-    test.skip(testInfo.project.name == "chromium", "Cannot run in Chromium");
     await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 240000, skipPyodide: true});
     strypeElIds = createBrowserProxy(page, WINDOW_STRYPE_HTMLIDS_PROPNAME);
     scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
@@ -88,7 +82,7 @@ async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolea
             await page.keyboard.press("Enter");
         }
         else {
-            await page.keyboard.type(shortcut);
+            await pressFrameShortcut(page, shortcut);
         }
         await waitForEditorSettled(page);
         if (frame.frameType == "try") {
@@ -153,7 +147,9 @@ async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolea
         // With shift, one press should select whole frame, including any joint frames:
         await page.keyboard.press("Shift+ArrowUp");
         await waitForEditorSettled(page);
-        await page.keyboard.press(" ");
+        // Enter opens the frame context menu with a selection active; Space is now the frame-commands
+        // pane prefix instead (see App.vue/Commands.vue), so it no longer does this:
+        await page.keyboard.press("Enter");
         // No manual wait needed for the context menu to render -- click() below already waits for
         // the menu item to become actionable:
         await page.getByRole("menuitem", { name: en.contextMenu.disable }).click();

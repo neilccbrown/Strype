@@ -10,6 +10,7 @@ import {expect} from "chai";
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
 import { scssVars, standardBeforeEach, strypeElIds } from "../support/standard-setup";
+import { pressFrameShortcutThenType } from "../support/test-support";
 
 /**
  * Given a JQuery with multiple results and an array of expected string content,
@@ -66,11 +67,13 @@ function checkTranslationsForLocale(locale: string): void {
 
     // Check that sections in the autocomplete are translated:
     // Add a function:
-    cy.get("body").type("{uparrow}ffoo{downarrow}{downarrow}");
+    cy.get("body").type("{uparrow}");
+    pressFrameShortcutThenType("f", "foo{downarrow}{downarrow}");
     // And a variable:
     cy.get("body").type("{downarrow}=bar=3{rightarrow}");
-    // Then trigger autocomplete:
-    cy.get("body").type(" {ctrl} ");
+    // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
+    // autocomplete in it in one go (see Commands.vue's Ctrl+Space handler):
+    cy.get("body").type("{ctrl} ");
     // And check the sections:
     const expAuto = [getLocalisedString("autoCompletion.myVariables", locale), getLocalisedString("autoCompletion.myFunctions", locale)];
     if (Cypress.env("mode") === "microbit") {
@@ -206,7 +209,7 @@ describe("Locale persistence", () => {
         // Preparation 1 : we will need to check a file that was created while Strype was in English, later with another locale.
         // We just edit something (remove existing code, add a varassign and a function call) and save the converted Python file for reusing it later.
         // We make sure the frame cursor is back to the start of "my code".
-        changeCodeThenDownloadPy({renamedFileName:englishPyFileName, codeChangeStrSequence: "{del}{del}=testvar=\"this is done in English Strype.{downarrow} test{uparrow}{uparrow}"});
+        changeCodeThenDownloadPy({renamedFileName:englishPyFileName, codeChangeStrSequence: "{del}{del} =testvar=\"this is done in English Strype.{downarrow}test({uparrow}{uparrow}"});
         // Now save the spy project so we can reload it later. With Cypress, saving in the file system is directly saving in the download folder,
         // with the name of the project (so we keep it as "My project").
         cy.get("button#" + strypeElIds.getEditorMenuUID()).click({force: true}); 

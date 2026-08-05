@@ -16,6 +16,19 @@ London. See [README.md](README.md) for build/run basics.
 - Single Cypress file: open the Cypress runner (`npx cypress open`) against
   the already-running dev server, or filter via `cypress-split` env vars.
 
+When running `npm run test:cypress` / `start-server-and-test ... cy:run:*`
+(or the Playwright equivalent) in the background: this has repeatedly either
+sat producing no output at all (the dev server/browser never actually
+started, confirmed via `ps`/`lsof` showing nothing listening), or crashed
+with Cypress's Electron renderer ("Page.screencastFrameAck ... CRI connection
+has crashed") partway through a larger spec. Both have been seen across
+multiple machines running Claude Code on this project, so don't just wait
+indefinitely on a background run — if there's no output after ~60s, check
+`ps aux` / `lsof -i :8081 -i :8089` for the actual server/browser process
+before assuming it's still working, and don't treat an Electron-renderer
+crash as a real test failure (rerun, or narrow to a smaller spec) — it's an
+environment issue, not a code regression.
+
 ## Test layout
 
 - `tests/cypress/e2e/*.cy.ts` + `tests/cypress/support/*.ts` — Cypress specs

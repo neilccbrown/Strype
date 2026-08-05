@@ -28,7 +28,7 @@
       "case": "matching values"
     },
     "classdef_desc": "class definition",
-    "funcdef_desc": "function definition",
+    "funcdef_desc": "define function",
     "varassign_desc": "assignment",
     "funccall_desc": "function call",
     "blank_desc": "blank line",
@@ -106,6 +106,7 @@
     "clouldFileRestoreSharingStatus":"An error occurred when trying to restore the file sharing status in {drivename}.<br>Details: {errordetails}",
     "unexpectedCharsPython": "unexpected character(s)",
     "matchFrameWithoutCase": "A match frame must contain at least one case frame.",
+    "frameNotAllowedInParent": "This kind of frame is not allowed here.",
     "fileIO": {
       "openReadingError":"Strype ran into an internal error when opening the file (reading content issue).",
       "cannotCreateDirectory":  "Creating directories is not currently supported.",
@@ -130,9 +131,9 @@
     }
   },
   "appMessage": {
-    "editorFileUpload": "Uploading your file to the editor...",
+    "loadEditorFile": "Loading your file to the editor...",
     "editorAskSaveChangedCode": "Your project contains unsaved changes.\nSave before closing?",
-    "editorFileUploadWrongVersion": "This code has been produced with a different version of the editor.\nImporting may result in errors.\n\nDo you still want to continue?",
+    "loadEditorFileWrongVersion": "This code has been produced with a different version of the editor.\nImporting may result in errors.\n\nDo you still want to continue?",
     "newProjectConfirmation":"Unsaved changes will be lost.",
     "importsContainer": "Imports:",
     "defsContainer": "Definitions:",
@@ -261,6 +262,9 @@
   },
   "commandTabs": {
     "0": "Add Frame"
+  },
+  "commandsPane": {
+    "pressSpaceThenSuffix": "→"
   },
   "PEA": {
     "run": "Run",

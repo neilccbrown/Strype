@@ -1,6 +1,6 @@
 import {ElementHandle, expect, JSHandle, Page, test} from "@playwright/test";
 import { checkConsoleContent, runButtonShowsRun, runToFinish, startRunning } from "../support/execution";
-import {checkFrameXorTextCursor, clearDefaultProject, doPagePaste, pressN, waitForEditorSettled} from "../support/editor";
+import {checkFrameXorTextCursor, clearDefaultProject, doPagePaste, pressFrameShortcut, pressN, waitForEditorSettled} from "../support/editor";
 import {save} from "../support/loading-saving";
 import {readFileSync} from "node:fs";
 import {setupStrypeTest} from "../support/general";
@@ -108,7 +108,8 @@ test.describe("Runtime errors scroll into view", () => {
             // settle once at the end:
             await pressN("Enter", 40, false)(page);
             await waitForEditorSettled(page);
-            await page.keyboard.type("plen(None)");
+            await pressFrameShortcut(page, "p");
+            await page.keyboard.type("len(None)");
             await page.keyboard.press("Enter");
             await pressN("Enter", 40, false)(page);
             await waitForEditorSettled(page);

@@ -86,7 +86,7 @@ class Alpha  :
         self.x  = 7 
 class Beta  :
     def set_double (self,x ) :
-        self.x  = x*2 
+        self.x  = x * 2 
     def get_x (self, ) :
         return x 
     def set_x (self,x ) :
@@ -531,13 +531,13 @@ def func1 (x,y ) :
         - param x: The X coordinate
         - param y: The Y coordinate
         - returns: a magic number'''
-    if x<0  :
+    if x < 0  :
         return -1 
-    if y<0  :
+    if y < 0  :
         return -1 
-    if x>=800  :
+    if x >= 800  :
         return -1 
-    if y>=600  :
+    if y >= 600  :
         return -1 
     return 6 
 def func2 (a,b ) :

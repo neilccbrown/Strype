@@ -2,11 +2,11 @@ import { nextTick} from "vue";
 import { FrameObject, CollapsedState, CurrentFrame, CaretPosition, FrozenState, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, DefsContainerDefinition, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode, SaveRequestReason, RootContainerFrameDefinition, StrypeLayoutDividerSettings, MediaSlot, SlotInfosOptionalMedia, ModifierKeyCode } from "@/types/types";
 import { getObjectPropertiesDifferences } from "@/helpers/common";
 import i18n from "@/i18n";
-import {calculateNextCollapseState, checkCodeErrors, checkStateDataIntegrity, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getFrameSectionIdFromFrameId, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
+import {calculateNextCollapseState, checkCodeErrors, checkStateDataIntegrity, evaluateSlotType, filterAllowedJointChildrenAfter, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getFrameSectionIdFromFrameId, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isAncestorGatedFrameTypeAllowed, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
 import { AppPlatform, AppVersion, eventBus, projectDocumentationFrameId } from "@/helpers/appContext";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
-import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, getCaretContainerUID, AutoSaveKeyNames, isFullyInViewport, copyFrameTextReadyForClipboard, waitForElementId } from "@/helpers/editor";
+import { bumpCaretRequestSeq, CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, getCaretContainerUID, AutoSaveKeyNames, isFullyInViewport, copyFrameTextReadyForClipboard, waitForElementId } from "@/helpers/editor";
 import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
@@ -102,6 +102,12 @@ export const useStore = defineStore("app", {
 
             // Are we editing a text slot?
             isEditing: false,
+
+            // How many LabelSlotsStructure.vue instances currently have a debounced funccall->keyword-
+            // frame/varassign conversion pending (see checkSlotRefactoring() there). Exposed via a data
+            // attribute in App.vue so tests can tell such a conversion is still in flight even though the
+            // focus/cursor deliberately don't change during its delay (see cancelPendingConversion()).
+            pendingSlotConversionCount: 0,
 
             // Timestamp used to manage when to discard the rename identifier popup 
             renameIdentifierPopupShownTimestamp: 0,
@@ -213,6 +219,10 @@ export const useStore = defineStore("app", {
             tigerPythonLang: "en", // The locale for TigerPython, see parser.ts as to why it's here
 
             isAppMenuOpened: false,
+
+            // Whether the frame command pane is currently focused for keyboard-driven frame insertion
+            // (entered via Tab/Space at the frame caret, see Commands.vue's keydown handler)
+            isFrameCommandsPaneActive: false,
 
             isModalDlgShown: false,
 
@@ -377,59 +387,21 @@ export const useStore = defineStore("app", {
 
                 // If (c) was true
                 if(allowedJointChildren.length>0) {
-
-                    const uniqueJointFrameTypes = [AllFrameTypesIdentifier.else, AllFrameTypesIdentifier.finally];
-
                     // -100 means there is no next Joint Child => focused is the last joint or end of joint structure (i.e. below root)
-                    if(nextJointChildID === -100){
-                        // Below the root, no joint frame can be added (unless in the programmatic case of drag and drop, see above)
-                        if(!state.isDraggingFrame && frameId == focusedFrame.id && caretPosition == CaretPosition.below && !!focusedFrame.frameType.allowJointChildren){
-                            allowedJointChildren.splice(0, allowedJointChildren.length);
-                        }
-                        else{
-                            // If the focused Joint is a unique, we need to show the available uniques that can go after it (i.e. show FINALLY or nothing)
-                            //    OR special case if we are in TRY statement: we can't show ELSE at any case
-                            // else show them all
-                            if(focusedFrame.frameType.type === AllFrameTypesIdentifier.try){
-                                allowedJointChildren.splice(allowedJointChildren.indexOf(AllFrameTypesIdentifier.else), 1); 
-                            }
-                            else if(uniqueJointFrameTypes.includes(focusedFrame.frameType.type)){
-                                allowedJointChildren.splice(
-                                    0,
-                                    allowedJointChildren.indexOf(focusedFrame.frameType.type)+1 //delete from the beginning to the current frame type
-                                );                        
-                            } 
-                        }
+                    // Below the root, no joint frame can be added (unless in the programmatic case of drag and drop, see above)
+                    if(nextJointChildID === -100 && !state.isDraggingFrame && frameId == focusedFrame.id && caretPosition == CaretPosition.below && !!focusedFrame.frameType.allowJointChildren){
+                        allowedJointChildren.splice(0, allowedJointChildren.length);
                     }
-                    // on the presence of a next child
                     else{
-                        const nextJointChild = state.frameObjects[nextJointChildID];          
-
-                        // if the next is not unique, show all non-uniques ()
-                        if(!uniqueJointFrameTypes.includes(nextJointChild.frameType.type)) {
-                            allowedJointChildren = allowedJointChildren.filter( (x) => !uniqueJointFrameTypes.includes(x)); // difference
-                        }
-                        // else if the next AND the current are uniques (i.e. I am in an ELSE and there is a FINALLY after me)
-                        else if(uniqueJointFrameTypes.includes(focusedFrame.frameType.type)) {
-                            allowedJointChildren = [];
-                        }
-                        // In the case where only the next is unique
-                        // show all but the available up to before the existing unique (i.e. at most up to ELSE)
-                        // Special case: if we are in a TRY statement (and since we passed the condition above, next is unique (i.e. FINALLY)) --> we can't show ELSE
-                        else {
-                            if(focusedFrame.frameType.type === AllFrameTypesIdentifier.try){
-                                allowedJointChildren.splice(
-                                    allowedJointChildren.indexOf(AllFrameTypesIdentifier.else),
-                                    1
-                                );
-                            }
-                            else{
-                                allowedJointChildren.splice(
-                                    allowedJointChildren.indexOf(nextJointChild.frameType.type),
-                                    allowedJointChildren.length - allowedJointChildren.indexOf(nextJointChild.frameType.type) //delete from the index of the nextJointChild to the end
-                                );
-                            }
-                        }
+                        // The "RULE FOR THE JOINTS": narrow allowedJointChildren based on what (if
+                        // anything) already follows focusedFrame in the same joint chain -- shared with
+                        // LabelSlotsStructure.vue's computeJointAttachmentAfter (see filterAllowedJointChildrenAfter's
+                        // own comment for why this can't just be called from there directly).
+                        allowedJointChildren = filterAllowedJointChildrenAfter(
+                            focusedFrame.frameType.type,
+                            allowedJointChildren,
+                            (nextJointChildID === -100) ? undefined : state.frameObjects[nextJointChildID]
+                        );
                     }
                 }
             }
@@ -442,7 +414,9 @@ export const useStore = defineStore("app", {
             //as there is no static rule for showing the "break" or "continue" statements,
             //we need to check if the current frame is within a "for" or a "while" loop.
             //if we are not into a nested for/while --> we add "break" and "continue" in the forbidden frames list
-            const canShowLoopBreakers = isContainedInFrame(frameId,caretPosition, [AllFrameTypesIdentifier.for, AllFrameTypesIdentifier.while]);
+            // (isAncestorGatedFrameTypeAllowed's break/continue cases are identical, so checking one covers both --
+            // shared with LabelSlotsStructure.vue's isKeywordFrameConversionValid, which needs this same ancestor rule.)
+            const canShowLoopBreakers = isAncestorGatedFrameTypeAllowed(frameId, caretPosition, AllFrameTypesIdentifier.break);
             if(!canShowLoopBreakers){
                 //by default, "break" and "continue" are NOT forbidden to any frame which can host children frames,
                 //so if we cannot show "break" and "continue" : we add them from the list of forbidden
@@ -456,8 +430,8 @@ export const useStore = defineStore("app", {
             //"return" and "global" statements can't be added when in the main container frame, except if in a case block for "return"
             // We don't forbid them to be in the main container, but we don't provide a way to add them directly.
             // They can be added when in the function definition container though.
-            const canShowGlobalStatement = isContainedInFrame(frameId,caretPosition, [DefsContainerDefinition.type]);
-            const canShowReturnStatement = canShowGlobalStatement || isContainedInFrame(frameId,caretPosition, [AllFrameTypesIdentifier.case]);
+            const canShowGlobalStatement = isAncestorGatedFrameTypeAllowed(frameId, caretPosition, AllFrameTypesIdentifier.global);
+            const canShowReturnStatement = isAncestorGatedFrameTypeAllowed(frameId, caretPosition, AllFrameTypesIdentifier.return);
             const extraForbiddenTypes = [...(!canShowGlobalStatement ? [AllFrameTypesIdentifier.global] : []), ...(!canShowReturnStatement ? [AllFrameTypesIdentifier.return] : [])];
             if(extraForbiddenTypes.length > 0){
                 //by default, "break" and "continue" are NOT forbidden to any frame which can host children frames,
@@ -1336,6 +1310,7 @@ export const useStore = defineStore("app", {
             this.simpleModalDlgMsg = "";
             this.currentModalDlgId = "";
             this.isAppMenuOpened = false;
+            this.isFrameCommandsPaneActive = false;
             this.bypassEditableSlotBlurErrorCheck = false;
 
             // Should show editing mode
@@ -1721,6 +1696,19 @@ export const useStore = defineStore("app", {
             this.saveStateChanges(stateBeforeChanges);
         },
 
+        // Explicitely selects the add frames tab (index 0) in the Commands panel, for whenever we leave
+        // an editable slot or otherwise move to a frame caret -- called from validateSlot(),
+        // changeCaretPosition(), and leftRightKey(). Deferred to nextTick(): this is always called in the
+        // same tick as `isEditing` flipping to false elsewhere (LabelSlotsStructure.vue/Commands.vue), and
+        // the "Add Frame" tab is :disabled="isEditing", so BootstrapVueNext's internal index watcher
+        // (default flush:"pre") can still see it as disabled and revert the switch if this isn't deferred
+        // a tick -- waiting lets isEditing's render pass land first.
+        resetCommandsTabToAddFrame() {
+            nextTick(() => {
+                this.commandsTabIndex = 0; //0 is the index of the add frame tab
+            });
+        },
+
         validateSlot(frameSlotInfos: SlotInfos, keepEditingModeOn?: boolean) {
             if(!keepEditingModeOn){
                 this.isEditing = false;
@@ -1733,11 +1721,11 @@ export const useStore = defineStore("app", {
                         focused: false,
                     }
                 );
-                
-                // When we leave an editable slot, we explicitely select the add frames tab in the Commands panel
-                this.commandsTabIndex = 0; //0 is the index of the add frame tab
 
-                this.setCurrentInitCodeValue(frameSlotInfos);       
+                // When we leave an editable slot, we explicitely select the add frames tab in the Commands panel.
+                this.resetCommandsTabToAddFrame();
+
+                this.setCurrentInitCodeValue(frameSlotInfos);
             }
         },
 
@@ -1795,16 +1783,28 @@ export const useStore = defineStore("app", {
         },
 
         changeCaretPosition(key: string, isLevelScopeChange?: boolean) {
-            // When the caret is being moved, we explicitely select the add frames tab in the Commands panel
-            this.commandsTabIndex = 0; //0 is the index of the add frame tab
+            // When the caret is being moved, we explicitely select the add frames tab in the Commands panel.
+            this.resetCommandsTabToAddFrame();
 
             this.changeCaretWithKeyboard(key, isLevelScopeChange);
             
             this.unselectAllFrames();
         },
 
-        // Returns the id of the newly added frame
-        async addFrameWithCommand(frame: FramesDefinitions, hiddenShorthandFrameDetails?: AddShorthandFrameCommandDef, skipFuncCallBracketsAndCaretSet?: boolean) : Promise<number> {
+        // Returns the id of the newly added frame. skipFuncCallBrackets and skipCaretSet are independent:
+        // skipFuncCallBrackets skips the default "()" content of a new func-call frame -- used when bare
+        // typing at the frame caret creates a func-call frame from the typed character: unlike the
+        // explicit "c" pane command, that's not necessarily going to end up as a function call once the
+        // user finishes typing (see createFuncCallFrameFromTypedChar() in Commands.vue), so it shouldn't
+        // presuppose a call's brackets. skipCaretSet skips the usual post-insertion caret placement --
+        // used when the caller sets that up itself afterwards (e.g. media paste, which also passes
+        // skipFuncCallBrackets since its own content replaces the default "()" too).
+        async addFrameWithCommand(frame: FramesDefinitions, hiddenShorthandFrameDetails?: AddShorthandFrameCommandDef, skipFuncCallBrackets?: boolean, skipCaretSet?: boolean) : Promise<number> {
+            // Any insertion path (direct shortcut, frame commands pane shortcut/Enter-confirm, or a mouse
+            // click on an AddFrameCommand) converges here, so this is the one place needed to guarantee
+            // the frame commands pane mode flag never outlives an insertion.
+            this.isFrameCommandsPaneActive = false;
+
             const stateBeforeChanges = cloneDeep(this.$state);
             const currentFrame = this.frameObjects[this.currentFrame.id];
             const addingJointFrame = frame.isJointFrame;
@@ -1869,7 +1869,7 @@ export const useStore = defineStore("app", {
                             }
                             const labelContent: LabelSlotsContent = {
                                 shown: (!cur.hidableLabelSlots),
-                                slotStructures: (frame.type == AllFrameTypesIdentifier.funccall && !skipFuncCallBracketsAndCaretSet) 
+                                slotStructures: (frame.type == AllFrameTypesIdentifier.funccall && !skipFuncCallBrackets)
                                     ? {fields: [{code: ""},{openingBracketValue:"(", fields: [{code: ""}], operators: []},{code: ""}], operators: [{code: ""}, {code: ""}]}
                                     : {fields: [{code: ""}], operators: []},
                             };
@@ -1983,7 +1983,7 @@ export const useStore = defineStore("app", {
 
             this.updateNextAvailableId();
             
-            if (skipFuncCallBracketsAndCaretSet) {
+            if (skipCaretSet) {
                 return newFrame.id;
             }
         
@@ -2259,6 +2259,11 @@ export const useStore = defineStore("app", {
         },
 
         async leftRightKey(payload: {key: string, isShiftKeyHold?: boolean, availablePositions?: NavigationPosition[]}) {
+            // Moving via the keyboard supersedes any earlier, still-pending LabelSlot.vue
+            // onGetCaret() request (see bumpCaretRequestSeq() doc) -- otherwise a slot's deferred
+            // "got caret" callback from before this move can fire after we've already navigated
+            // away and blindly re-focus the slot we just left.
+            bumpCaretRequestSeq();
             //  used for moving index up (+1) or down (-1)
             const directionDown = payload.key === "ArrowRight" || payload.key === "Enter" || (payload.key === "Tab" && !payload.isShiftKeyHold);
             const directionDelta = (directionDown)?+1:-1;
@@ -2268,8 +2273,9 @@ export const useStore = defineStore("app", {
             // Set below when moving into a slot; awaited at the end so this function's own promise
             // only resolves once the cursor is genuinely restored (see the comment at its assignment).
             let cursorRestorePromise: Promise<void> | undefined;
+            const wasEditing = this.isEditing;
 
-            if (this.isEditing){ 
+            if (this.isEditing){
                 // Retrieve the slot that currently has focus in the current frame by looking up in the DOM
                 const foundSlotCoreInfos = this.focusSlotCursorInfos?.slotInfos as SlotCoreInfos;
                 currentFramePosition = availablePositions.findIndex((e) => e.isSlotNavigationPosition && e.frameId === this.currentFrame.id 
@@ -2294,8 +2300,8 @@ export const useStore = defineStore("app", {
             // The next position depends whether we are selection text:
             // if not, we just get to the following/previous available position
             // if so, the next position is either the following/previous available position within *a same* structure.
-            let nextPosition = (availablePositions[currentFramePosition+directionDelta]??availablePositions[currentFramePosition]);    
-            let multiSlotSelNotChanging = false;   
+            let nextPosition = (availablePositions[currentFramePosition+directionDelta]??availablePositions[currentFramePosition]);
+            let multiSlotSelNotChanging = false;
             if(payload.isShiftKeyHold && payload.key != "Tab"){
                 const currentSlotInfos = this.focusSlotCursorInfos?.slotInfos as SlotCoreInfos;
                 const currentSlotInfosLevel = currentSlotInfos.slotId.split(",").length;
@@ -2382,6 +2388,24 @@ export const useStore = defineStore("app", {
                 // else we set editFlag to false as we are moving to a caret position
                 this.isEditing = false;
                 this.frameObjects[nextPosition.frameId].caretVisibility = nextPosition.caretPosition as CaretPosition;
+
+                // Moving to a frame caret should always show the "add frame" commands tab (matching
+                // changeCaretPosition()'s behaviour for arrow up/down at a caret), needed right away if
+                // this caret is then used to open the frame commands pane (Tab/Space): its buttons live
+                // in that tab, so they can't be focused if the "API discovery" tab (set by
+                // setFocusEditableSlot() while editing) is still the one showing.
+                this.resetCommandsTabToAddFrame();
+
+                // If we were editing a slot, the contenteditable label-slots-structure still holds the
+                // real DOM focus at this point (nothing above moves it). Explicitly focusing the
+                // destination caret container here -- before clearing the selection below -- mirrors what
+                // onEscKeyUp() already does (LabelSlot.vue) and avoids leaving that contenteditable region
+                // focused with no selection: otherwise the browser can auto-generate a fresh selection
+                // inside it, which handleDocumentSelectionChange() (App.vue) then reads as the user having
+                // moved the caret back into the slot we just left, immediately undoing this navigation.
+                if(wasEditing){
+                    document.getElementById(getCaretContainerUID(nextPosition.caretPosition as CaretPosition, nextPosition.frameId))?.focus();
+                }
 
                 // Scroll it into view:
                 nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));

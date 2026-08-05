@@ -336,7 +336,7 @@ export default defineComponent({
                         let alertMsgKey = "", alertParams = "";
                         // Attempt the retrieval of the file, if the Cloud Drive supports it
                         // Show a progress indication on the editor
-                        vueComponentsAPIHandler.appComponentAPI?.applyShowAppProgress({requestAttention: true, message: this.$t("appMessage.editorFileUpload")});   
+                        vueComponentsAPIHandler.appComponentAPI?.applyShowAppProgress({requestAttention: true, message: this.$t("appMessage.loadEditorFile")});   
                         return cloudDriveComponent.getPublicSharedProjectContent(sharedFileID)
                             .then(({isSuccess, projectName, decodedURIFileContent, errorMsg}) => {
                                 if(isSuccess){
@@ -600,7 +600,7 @@ export default defineComponent({
             let lastSaveDate = -1; // Need to be kept on a temporary var as the file content will overwrite this.
             let otherParams = {fileName: fileName};
             // Show a progress indication on the editor
-            vueComponentsAPIHandler.appComponentAPI?.applyShowAppProgress({requestAttention: true, message: this.$t("appMessage.editorFileUpload")});
+            vueComponentsAPIHandler.appComponentAPI?.applyShowAppProgress({requestAttention: true, message: this.$t("appMessage.loadEditorFile")});
             // Get the file content
             const cloudDriveComponent = this.getSpecificCloudDriveComponent(cloudTarget);
             cloudDriveComponent?.loadPickedFileId(id, otherParams, (fileNameFromDrive: string, fileModifiedDateTime: string) => {

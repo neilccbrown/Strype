@@ -10,10 +10,10 @@ try:
     # Find all the resource nodes on the level and infer the resource type (see resources.py):
     resources = [WOOD,CLEARANCE,DRIZZLE,STORM]
     for glade in save["world"]["glades"]:
-        if len(glade["fields"])>0:
+        if len(glade["fields"]) > 0:
             resources.append(FARM_FIELD)
         for node in glade["ore"]:
-            if node["model"]=="Copper Ore":
+            if node["model"] == "Copper Ore":
                 resources.append(COPPER_ORE)
 
     for resource in save["world"]["resourcesDeposits"]:
@@ -26,11 +26,11 @@ try:
         if resource_name:
             resources.append(resource_name)
         else:
-            raise Exception("Unknown resource type: "+resource_type)
+            raise Exception("Unknown resource type: " + resource_type)
 
     content.insert("end","Resources on map:\n")
     for resource in list(set(resources)):
-        content.insert("end",resource+", ","available")
+        content.insert("end",resource + ", ","available")
     content.insert("end","\n")
 
     available_buildings = []
@@ -38,15 +38,15 @@ try:
         if building in BUILDINGS_TO_RECIPES:
             available_buildings.append(building)
         else:
-            raise Exception("Unknown building: "+building)
+            raise Exception("Unknown building: " + building)
 
     # For now, just assume all blueprints are available:
     available_blueprints = BUILDINGS_TO_RECIPES
 
     content.insert("end","Available buildings:\n")
     for building in list(set(available_buildings)):
-        if len(BUILDINGS_TO_RECIPES[building])>0:
-            content.insert("end",building+", ","available")
+        if len(BUILDINGS_TO_RECIPES[building]) > 0:
+            content.insert("end",building + ", ","available")
     content.insert("end","\n\n")
 
     current_choice = []
@@ -56,7 +56,7 @@ try:
         if option["building"] in BUILDINGS_TO_RECIPES:
             current_choice.append(option["building"])
         else:
-            raise Exception("Unknown building type: "+option["building"])
+            raise Exception("Unknown building type: " + option["building"])
 
     cached_availability = {}
 
@@ -79,12 +79,12 @@ try:
     content.insert("end","Key:\n")
     for a in Availability:
         content.insert("end"," \u2022 ")
-        if a==Availability.never_available:
-            content.insert("end",a.name+": No way it can be available on this map",a.name)
-        elif a==Availability.with_blueprint:
-            content.insert("end",a.name+": Available only if you unlock the right blueprint in future",a.name)
-        elif a==Availability.available:
-            content.insert("end",a.name+": Available with the currently available set of buildings",a.name)
+        if a == Availability.never_available:
+            content.insert("end",a.name + ": No way it can be available on this map",a.name)
+        elif a == Availability.with_blueprint:
+            content.insert("end",a.name + ": Available only if you unlock the right blueprint in future",a.name)
+        elif a == Availability.available:
+            content.insert("end",a.name + ": Available with the currently available set of buildings",a.name)
         content.insert("end","\n")
 except Exception as e:
     content.insert("end",f"{e}","error")

@@ -75,13 +75,21 @@ ${line}
 }
 
 async function startVarAssign(page: Page, rhs: string): Promise<void> {
-    // The leading space is required: on the fresh default project, the frame cursor is
-    // active (not a text cursor), and a bare letter like "r" gets consumed as a frame-creation
-    // shortcut key (e.g. "r" for a return frame) instead of being typed as literal text. A
-    // leading space is itself the shortcut for a blank function-call frame, which is what
-    // gives us an actual text cursor to type "r=<rhs>" into -- exactly the pattern used
-    // throughout structured-expressions.spec.ts (e.g. its "Have \"a=\"" test types " a=").
-    await typeIndividually(page, ` r=${rhs}`);
+    // " c" opens the frame-commands pane then selects "function call" (its own shortcut being
+    // "c") -- giving a blank func-call frame with a real text cursor to then type "r=" into. A
+    // single leading space only opens the pane and stops there: "r" would match the (here
+    // invalid, so silently swallowed) "return" shortcut, then "=" -- a direct shortcut -- inserts
+    // an empty var-assign frame outright, leaving `rhs` typed into the wrong (LHS) slot entirely.
+    // Bare "r=" with no prefix at all avoids that (a bare letter starts a func-call frame
+    // directly), but leaves the frame's first RHS field in a subtly different state that fails
+    // unary +/- sign detection later -- typing "r" into an explicitly-opened blank func-call frame
+    // like this doesn't have that problem.
+    await typeIndividually(page, " cr=");
+    // The func-call -> varassign conversion triggered by "=" converts immediately, but the target
+    // RHS slot still takes an async render pass to appear -- waitForEditorSettled() (called as
+    // part of typeIndividually's own per-keystroke loop, above) already waits for that via
+    // appStore.pendingSlotConversionCount, so `rhs` can just be typed straight after:
+    await typeIndividually(page, rhs);
 }
 
 async function selectAllInSlot(page: Page): Promise<void> {

@@ -95,11 +95,11 @@ i[::]  = j[8::] `.trimStart());
 expr_alpha  = value_alpha if cond_alpha else alt_alpha 
 expr_beta  = (x_beta if cond_beta else y_beta) if outer_beta else z_beta 
 expr_gamma  = [g_gamma for g_gamma in seq_gamma] 
-expr_delta  = [d_delta for d_delta in seq_delta if d_delta>0] 
-expr_epsilon  = {e_epsilon for e_epsilon in seq_epsilon if e_epsilon%2==0} 
+expr_delta  = [d_delta for d_delta in seq_delta if d_delta > 0] 
+expr_epsilon  = {e_epsilon for e_epsilon in seq_epsilon if e_epsilon % 2 == 0} 
 expr_zeta  = {k_zeta:v_zeta for (k_zeta,v_zeta) in pairs_zeta} 
 expr_eta  = tuple(h_eta for h_eta in seq_eta) 
-expr_theta  = sum(t_theta for t_theta in seq_theta if t_theta<10) `.trimStart());
+expr_theta  = sum(t_theta for t_theta in seq_theta if t_theta < 10) `.trimStart());
         // We don't (yet?) support async and await:
         // expr_iota = [i_iota async for i_iota in aseq_iota]
         // expr_kappa = await coro_kappa()

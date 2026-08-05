@@ -8,7 +8,7 @@ def func3 ():
     y = 2
     global z
     z = 5
-    return x+y+z
+    return x + y + z
 # Another comment
 def func4 ():
     func1()

@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { setupStrypeTest } from "../support/general";
-import { assertStateOfIfFrame, waitForEditorSettled, typeIndividually, MEDIA_SLOT_PARSED_PLACEHOLDER } from "../support/editor";
+import { assertStateOfIfFrame, waitForEditorSettled, typeIndividually, MEDIA_SLOT_PARSED_PLACEHOLDER, pressFrameShortcut } from "../support/editor";
 
 // This spec only runs under the dedicated "chromium-media-recording" Playwright project (see
 // playwright.config.ts), which supplies Chrome's fake-device flags so getUserMedia() returns a
@@ -11,7 +11,7 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
 
 // Opens an "if" frame and leaves the caret in its (empty) expression slot.
 async function openIfFrame(page: import("@playwright/test").Page) {
-    await page.keyboard.press("i");
+    await pressFrameShortcut(page, "i");
     await waitForEditorSettled(page);
 }
 

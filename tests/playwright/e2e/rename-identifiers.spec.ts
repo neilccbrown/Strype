@@ -2,7 +2,7 @@ import {test, expect, Locator, Page} from "@playwright/test";
 import {readFileSync} from "node:fs";
 import {save} from "../support/loading-saving";
 import {setupStrypeTest} from "../support/general";
-import {doPagePaste, getDefaultStrypeProjectDocumentationFullLine, getDefaultStrypeProjectImportsFullLine, pressN, waitForEditorSettled} from "../support/editor";
+import {doPagePaste, getDefaultStrypeProjectDocumentationFullLine, getDefaultStrypeProjectImportsFullLine, pressFrameShortcut, pressN, waitForEditorSettled} from "../support/editor";
 
 const defaultStandardStrypeProjectDocLiteral = getDefaultStrypeProjectDocumentationFullLine();
 const defaultStrypeProjectImportsLiteral = getDefaultStrypeProjectImportsFullLine();
@@ -27,7 +27,7 @@ ${defaultStandardStrypeProjectDocLiteral}#(=> Section:Imports
 #(=> Section:Definitions
 #(=> Section:Main
 [myString,anotherString]  = ["Hello from Strype"," Bye..."] 
-print(myString+anotherString) 
+print(myString + anotherString) 
 print(myString) 
 print(anotherString.strip()) 
 #(=> Section:End
@@ -42,7 +42,7 @@ def testF (anotherString ) :
     print(anotherString) 
 #(=> Section:Main
 [myString,anotherString]  = ["Hello from Strype"," Bye..."] 
-print(myString+anotherString) 
+print(myString + anotherString) 
 print(myString) 
 print(anotherString.strip()) 
 testF(anotherString) 
@@ -112,7 +112,7 @@ def testF ( ) :
 #(=> Section:Main
 for i  in range(5)  :
     today  = dt.date.today() 
-    new_day  = today+dt.timedelta(days=i) 
+    new_day  = today + dt.timedelta(days=i) 
     print(new_day) 
 print(dt.datetime.today()) 
 #(=> Section:End
@@ -127,7 +127,7 @@ class MyClass  :
     def __init__ (self, ) :
         pass
     def testF (self, ) :
-        print(self.var+4) 
+        print(self.var + 4) 
 #(=> Section:Main
 print(MyClass().var) 
 MyClass().testF() 
@@ -241,7 +241,7 @@ test.describe("Basic interaction", () => {
         await page.keyboard.press("ArrowDown");
         await expect(renameButton).toBeVisible();
         // Add a frame
-        await page.keyboard.press("i");
+        await pressFrameShortcut(page, "i");
         // Check no popup is still displayed
         await expect(renameButton).toBeHidden();
     });

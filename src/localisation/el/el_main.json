@@ -25,8 +25,8 @@
     "errorUserDefinedVarMsg": "Οι ορισμοί μεταβλητών σας περιέχουν κάποιο σφάλμα"
   },
   "appMessage": {
-    "editorFileUpload": "Μεταφόρτωση αρχείου στο Strype",
-    "editorFileUploadWrongVersion": "Ο εισαγώμενος κώδικας προέρχεται απο παλαιότερη έκδοση του Strype.\nΗ εισαγωγή του μπορεί να προκαλέσει σφάλαματα.\nΕπιθυμείτε να συνεχίσετε?",
+    "loadEditorFile": "Μεταφόρτωση αρχείου στο Strype",
+    "loadEditorFileWrongVersion": "Ο εισαγώμενος κώδικας προέρχεται απο παλαιότερη έκδοση του Strype.\nΗ εισαγωγή του μπορεί να προκαλέσει σφάλαματα.\nΕπιθυμείτε να συνεχίσετε?",
     "importsContainer": "Εισαγωγές:",
     "defsContainer": "Ορισμοί:",
     "mainContainer": "Ο Κώδικας μου:",

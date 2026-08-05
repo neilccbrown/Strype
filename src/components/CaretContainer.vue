@@ -266,7 +266,7 @@ export default defineComponent({
                     preparePasteMediaData(event as ClipboardEvent, (code: string, dataAndDim: MediaDataAndDim) => {
                         // We create a new function call frame with the media-adapated code content
                         this.appStore.ignoreStateSavingActionsForUndoRedo = true;
-                        this.appStore.addFrameWithCommand(getFrameDefType(AllFrameTypesIdentifier.funccall), undefined, true).then((frameId) => {
+                        this.appStore.addFrameWithCommand(getFrameDefType(AllFrameTypesIdentifier.funccall), undefined, true, true).then((frameId) => {
                             this.appStore.setFrameEditableSlotContent(
                                 {
                                     frameId: frameId,

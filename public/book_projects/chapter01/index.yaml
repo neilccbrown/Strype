@@ -7,3 +7,7 @@
   
 - file: yellow-fish-v3.spy
   description: The last version of the yellow-fish project in this chapter
+
+- file: pong-classic.spy
+  image: pong-icon.png
+  description: A starter for the classic game 'Pong'

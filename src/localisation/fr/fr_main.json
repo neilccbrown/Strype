@@ -105,6 +105,7 @@
     "cloudDrivePublicShareFailed": "Le projet n'a pas pu être partagé publiquement.<br>(Erreur : {error})",
     "clouldFileRestoreSharingStatus": "Une erreur est survenue lors de la tentative de restauration du partage de ficher dans {drivename}.<br>Détails : {errordetails}",
     "matchFrameWithoutCase": "Un cadre match doit au moins contenir un cadre case.",
+    "frameNotAllowedInParent": "Ce type de cadre n'est pas autorisé ici.",
     "fileIO": {
       "openReadingError": "Strype a rencontré une erreur interne lors de l'ouverture du fichier (problème de lecture du contenu).",
       "notConnectedToCloud": "l'accès aux fichiers lors d'opérations d'entrées/sorties n'est possible qu'à partir d'un projet Strype enregistré dans le Cloud.",
@@ -130,9 +131,9 @@
     "editableSlotWithHash": "Ce champ ne peut pas contenir '#'"
   },
   "appMessage": {
-    "editorFileUpload": "Chargement de votre fichier dans l'éditeur...",
+    "loadEditorFile": "Chargement de votre fichier dans l'éditeur...",
     "editorAskSaveChangedCode": "Votre projet contient des modifications non-enregistrées. Enregister avant de quitter le projet actuel ?",
-    "editorFileUploadWrongVersion": "Le code a été réalisé avec une version différente de l'éditeur.\nL'importer pourrait générer des erreurs.\n\nSouhaitez-vous néanmoins continuer ?",
+    "loadEditorFileWrongVersion": "Le code a été réalisé avec une version différente de l'éditeur.\nL'importer pourrait générer des erreurs.\n\nSouhaitez-vous néanmoins continuer ?",
     "newProjectConfirmation": "Toute modification non enregistrée sera perdue.",
     "importsContainer": "Imports :",
     "defsContainer": "Définitions :",
@@ -262,6 +263,9 @@
   },
   "commandTabs": {
     "0": "Ajoute un cadre"
+  },
+  "commandsPane": {
+    "pressSpaceThenSuffix": "→"
   },
   "PEA": {
     "run": "Exécuter",

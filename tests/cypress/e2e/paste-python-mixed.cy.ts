@@ -5,7 +5,7 @@ import os from "os";
 failOnConsoleError();
 import "../support/paste-test-support";
 import {testRoundTripImportAndDownload,testRoundTripPasteAndDownload} from "../support/paste-test-support";
-import { getDefaultStrypeProjectDocumentationFullLine } from "../support/test-support";
+import { getDefaultStrypeProjectDocumentationFullLine, pressFrameShortcutThenType } from "../support/test-support";
 
 // If the user pastes "mixed" code (i.e. imports, functions and body code)
 // then we split it into those three categories and obey the following rules:
@@ -30,6 +30,11 @@ def bar (a,b,c):
             return c
     raise "Err"
 `.trim();
+// The generator now always spaces a genuine binary operator like ">" in its downloaded output,
+// regardless of what spacing the pasted input (DEF1, above) used -- so the two need to diverge
+// wherever DEF1 is used both as pasted input and (via string interpolation) as part of an
+// expected downloaded/saved result:
+const DEF1_EXPECTED = DEF1.replace("if a>b:", "if a > b:");
 
 const MAIN0 = "x = y";
 const MAIN1 = "foo(72)";
@@ -96,7 +101,7 @@ ${STARTING_IMPORT}
 #(=> Section:Definitions
 ${STARTING_DEF}
 ${DEF0}
-${DEF1}
+${DEF1_EXPECTED}
 #(=> Section:Main
 ${STARTING_MAIN}
 #(=> Section:End
@@ -144,7 +149,7 @@ ${getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"))}#(=> Section
 ${STARTING_IMPORT}
 #(=> Section:Definitions
 ${DEF0}
-${DEF1}
+${DEF1_EXPECTED}
 ${STARTING_DEF}
 #(=> Section:Main
 ${STARTING_MAIN}
@@ -163,7 +168,7 @@ ${IMPORT2}
 ${STARTING_IMPORT}
 #(=> Section:Definitions
 ${DEF0}
-${DEF1}
+${DEF1_EXPECTED}
 ${STARTING_DEF}
 #(=> Section:Main
 ${MAIN2}
@@ -185,7 +190,7 @@ ${IMPORT1}
 ${IMPORT2}
 #(=> Section:Definitions
 ${DEF0}
-${DEF1}
+${DEF1_EXPECTED}
 ${STARTING_DEF}
 #(=> Section:Main
 ${MAIN2}
@@ -208,7 +213,7 @@ ${IMPORT2}
 #(=> Section:Definitions
 ${STARTING_DEF}
 ${DEF0}
-${DEF1}
+${DEF1_EXPECTED}
 #(=> Section:Main
 ${STARTING_MAIN}
 ${MAIN0}
@@ -231,7 +236,7 @@ ${IMPORT2}
 #(=> Section:Definitions
 ${STARTING_DEF}
 ${DEF0}
-${DEF1}
+${DEF1_EXPECTED}
 #(=> Section:Main
 ${STARTING_MAIN}
 ${MAIN1}
@@ -252,7 +257,7 @@ ${IMPORT1}
 ${IMPORT2}
 #(=> Section:Definitions
 ${DEF0}
-${DEF1}
+${DEF1_EXPECTED}
 ${STARTING_DEF}
     ${MAIN0}
     ${MAIN1}
@@ -274,7 +279,7 @@ ${IMPORT1}
 ${IMPORT2}
 #(=> Section:Definitions
 ${DEF0}
-${DEF1}
+${DEF1_EXPECTED}
 ${STARTING_DEF}
     ${MAIN0}
     ${MAIN1}
@@ -284,7 +289,7 @@ ${STARTING_DEF}
 ${STARTING_MAIN}
 #(=> Section:End
 `.trimStart(), true, "spy", () => {
-            cy.get("body").type(" afterwards");
+            cy.get("body").type("afterwards(");
         });
     });
 
@@ -304,7 +309,7 @@ ${STARTING_MAIN}
 afterwards()
 #(=> Section:End
 `.trimStart(), true, "spy", () => {
-            cy.get("body").type(" afterwards");
+            cy.get("body").type("afterwards(");
         });
     });
 
@@ -320,7 +325,7 @@ import afterwards
 ${STARTING_IMPORT}
 #(=> Section:Definitions
 ${DEF0}
-${DEF1}
+${DEF1_EXPECTED}
 ${STARTING_DEF}
 #(=> Section:Main
 ${MAIN2}
@@ -329,7 +334,7 @@ ${MAIN0}
 ${STARTING_MAIN}
 #(=> Section:End
 `.trimStart(), true, "spy", () => {
-            cy.get("body").type("iafterwards");
+            pressFrameShortcutThenType("i", "afterwards");
         });
     });
 
@@ -345,7 +350,7 @@ ${IMPORT2}
 #(=> Section:Definitions
 ${STARTING_DEF}
 ${DEF0}
-${DEF1}
+${DEF1_EXPECTED}
 #(=> Section:Main
 ${MAIN0}
 ${MAIN1}
@@ -369,7 +374,7 @@ ${STARTING_DEF}
 afterwards()
 #(=> Section:End
 `.trimStart(), true, "spy", () => {
-            cy.get("body").type(" afterwards");
+            cy.get("body").type("afterwards(");
         });
     });
 });

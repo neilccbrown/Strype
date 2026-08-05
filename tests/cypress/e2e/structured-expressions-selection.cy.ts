@@ -8,13 +8,15 @@ failOnConsoleError();
 beforeEach(standardBeforeEach);
 
 import {assertState, focusEditor} from "../support/expression-test-support";
+import {pressFrameShortcut} from "../support/test-support";
 
 export function testSelection(code : string, selectKeys: string, expectedAfterDeletion : string) : void {
     it("Tests " + code, () => {
         focusEditor();
-        cy.get("body").type("{backspace}{backspace}i");
+        cy.get("body").type("{backspace}{backspace}");
+        pressFrameShortcut("i");
         assertState("{$}");
-        cy.get("body").type(" " + code);
+        cy.get("body").type(code);
         cy.get("body").type(selectKeys);
         cy.get("body").type("{del}");
         assertState(expectedAfterDeletion);
@@ -24,7 +26,8 @@ export function testSelection(code : string, selectKeys: string, expectedAfterDe
 export function testPasteThenType(toPaste : string, toTypeAfter: string, expectedFinal : string) : void {
     it("Tests " + toPaste + " >>> " + toTypeAfter, () => {
         focusEditor();
-        cy.get("body").type("{backspace}{backspace}i");
+        cy.get("body").type("{backspace}{backspace}");
+        pressFrameShortcut("i");
         assertState("{$}");
         (cy.focused() as any).paste(toPaste);
         cy.wait(1000);

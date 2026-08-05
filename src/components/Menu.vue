@@ -38,7 +38,7 @@
                         </div>
                     </div>
                     <div><a class="open-menu-embedded-proj-link" @click="onOpenMenuLinkClick('examples')">{{$t("appMenu.loadDemoProject")}}</a><a class="open-menu-embedded-proj-link" @click="onOpenMenuLinkClick('book')">{{$t("appMenu.book")}}</a></div>
-                    <div class="recent-states-pane" v-if="recentLoadableStates && recentLoadableStates.length > 0">
+                    <div class="recent-states-pane" v-if="showRecentUnsaved && recentLoadableStates && recentLoadableStates.length > 0">
                         <div class="d-flex justify-content-between align-items-baseline">
                             <span class="load-save-label">{{ $t("appMessage.loadRecentState") }}</span>
                             <span class="clear-all-label" @click="clearAllRecent">{{ $t("appMessage.clearAllRecent") }}</span>
@@ -252,7 +252,7 @@ import { generateSPYFileContent } from "@/helpers/load-save";
 import ModalDlg from "@/components/ModalDlg.vue";
 import { ceil, cloneDeep } from "lodash";
 import appPackageJson from "@/../package.json";
-import { getAboveFrameCaretPosition, getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
+import { checkCodeErrors, getAboveFrameCaretPosition, getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
 import scssVars from "@/assets/style/_export.module.scss";
 import OpenDemoDlg from "@/components/OpenDemoDlg.vue";
 import { CloudFileSharingStatus, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
@@ -386,6 +386,8 @@ export default defineComponent({
 
             // States that could be loaded from the load menu:
             recentLoadableStates: [] as {label: string, sublabel: string, data: string, tabId: string}[],
+            // Whether the "recent unsaved projects" pane is revealed in the load dialog (hidden by default, toggled by Ctrl+U while the dialog is open)
+            showRecentUnsaved: false,
         };
     },
 
@@ -433,6 +435,15 @@ export default defineComponent({
                     event.preventDefault();
                     event.stopImmediatePropagation();
                     event.stopPropagation();
+                }
+                // Secret shortcut to reveal the "recent unsaved projects" pane in the load dialog.
+                // Ctrl+U is normally "view page source" in the browser, so we only intercept it (and
+                // therefore only override that browser shortcut) while the load dialog is open.
+                else if(lowCaseEventKey === "u" && (event.metaKey || event.ctrlKey) && this.appStore.currentModalDlgId === this.loadProjectModalDlgId) {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    event.stopPropagation();
+                    this.showRecentUnsaved = !this.showRecentUnsaved;
                 }
             }
         );
@@ -766,6 +777,8 @@ export default defineComponent({
 
         async openLoadProjectModal(): Promise<void> {
             this.appStore.trackMenuAction("load_project");
+            // The recent unsaved projects pane is hidden by default each time the dialog is opened; Ctrl+U reveals it.
+            this.showRecentUnsaved = false;
             // We prepare the recent states now, even if the user might need to deal with the save dialog in a moment:
             this.recentLoadableStates = (await checkForRecentSaveStates(settingsStore().locale ?? "en", "load_menu"))
                 .map((s) => {
@@ -1386,7 +1399,7 @@ export default defineComponent({
                         // We need to get the file content (hope for the best) and update the store
                         fileHandles[0].getFile().then((file: File) => {
                             const emitPayload: AppEvent = {requestAttention: true};
-                            emitPayload.message = this.$t("appMessage.editorFileUpload");
+                            emitPayload.message = this.$t("appMessage.loadEditorFile");
                             this.$emit(CustomEventTypes.appShowProgressOverlay, emitPayload);
                             // Make sure we have a delay for the main event loop to let us display the progress bar triggered above
                             setTimeout(() => {
@@ -1425,7 +1438,7 @@ export default defineComponent({
                 //before reading the file, we check the extension is supported for the import
                 if(files[0].name.indexOf(".") > -1 && fileImportSupportedFormats.findIndex((extension) => extension === files[0].name.substring(files[0].name.lastIndexOf(".") + 1)) > -1) {
                     const emitPayload: AppEvent = {requestAttention: true};
-                    emitPayload.message = this.$t("appMessage.editorFileUpload");
+                    emitPayload.message = this.$t("appMessage.loadEditorFile");
                     this.$emit(CustomEventTypes.appShowProgressOverlay, emitPayload);
                     // Store the file name in a variable to use it later in the callback, for some reason using files[0].name fails in Pinia, on Safari
                     const fileName = files[0].name;
@@ -1515,6 +1528,9 @@ export default defineComponent({
                 // #v-endif
                 return;
             }
+            
+            // Update errors in case they're about to download etc:
+            checkCodeErrors();
 
             const isMenuOpening = (e !== null);
             if(isMenuOpening) {
@@ -1806,11 +1822,25 @@ export default defineComponent({
 .open-menu-embedded-proj-link{
     font-size: smaller;
     cursor: pointer;
+    color: inherit;
+    text-decoration: none;
+    border: #c5c4c1 2px solid;
+    border-radius: 6px;
+    padding: 4px 10px;
+}
+
+.open-menu-embedded-proj-link:hover,
+.open-menu-embedded-proj-link:focus {
+    border-color: #007bff;
+    box-shadow: 2px 2px 5px rgb(141, 140, 140);
+    outline: none;
 }
 
 div:has(> a.open-menu-embedded-proj-link) {
     display: flex;
-    gap: 8px;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 5px;
 }
 
 .save-project-modal-dlg-container {
