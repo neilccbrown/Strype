@@ -21,16 +21,16 @@ def move (particle ) :
     if particle.is_at_edge()  :
         particle.remove() 
     else :
-        particle.set_location(particle.get_x()+particle.dx,particle.get_y()-particle.dy) 
-        particle.dy  = particle.dy+GRAVITY 
+        particle.set_location(particle.get_x() + particle.dx,particle.get_y() - particle.dy) 
+        particle.dy  = particle.dy + GRAVITY 
 def create_particles ( ) :
     '''Create 10 new particles with random initial movement at the location of the mouse.'''
     mouse  = get_mouse() 
     for i  in range(10)  :
         particle  = Actor(particle_image,mouse.x,mouse.y) 
         #Instance variables: initial movement
-        particle.dx  = random.gauss(0,1)*FORCE 
-        particle.dy  = random.gauss(0,1)*FORCE 
+        particle.dx  = random.gauss(0,1) * FORCE 
+        particle.dy  = random.gauss(0,1) * FORCE 
 #(=> Section:Main
 set_background("Black") 
 while True  :
