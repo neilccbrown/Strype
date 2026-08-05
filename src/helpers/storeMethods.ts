@@ -139,7 +139,12 @@ export const generateFlatSlotBases = (slot: { allowedSlotContent?: AllowedSlotCo
             const adjacentOp =
                 (operatorSlot.code !== "" || (operatorSlot.code === "" && opBefore === ".")) &&
                 (index == 0 || opBefore !== "") &&
-                !UNARY_PREFIX_OPERATORS.has(operatorSlot.code.trim());
+                !UNARY_PREFIX_OPERATORS.has(operatorSlot.code.trim()) &&
+                // A unary "+"/"-" (e.g. "foo(-a)") doesn't need a left operand either, same as
+                // "not"/"~"/"lambda" above -- but unlike those, "+"/"-" are ambiguous with the
+                // binary operators of the same spelling, so we can't just add them to
+                // UNARY_PREFIX_OPERATORS; isUnarySignAt has already disambiguated this occurrence:
+                !isUnarySignAt[index];
             addFlatSlot({...(fieldSlot as BaseSlot), id: slotId, type: evaluateSlotType(slot, fieldSlot)}, adjacentOp, opBefore, operatorSlot.code);
         }   
 

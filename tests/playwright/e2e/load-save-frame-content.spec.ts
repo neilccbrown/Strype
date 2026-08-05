@@ -921,6 +921,16 @@ test.describe("Enters, saves and loads specific frames", () => {
             {frameType: "funccall", slotContent: ["foo( lambda x:x)"]},
         ]]);
     });
+    test("Valid not after binary operator", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "if", slotContent: ["foo==0 and  not bar"], body: [], joint: []},
+        ]]);
+    });
+    test("Valid unary minus", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "varassign", slotContent: ["x", "foo(-bar,-baz)"]},
+        ]]);
+    });
     test("Invalid not #1", async ({page}) => {
         await testSpecific(page, [[], [], [
             {frameType: "funccall", slotContent: ["bar not foo(foo not bar)"]},

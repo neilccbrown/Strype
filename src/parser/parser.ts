@@ -118,12 +118,10 @@ function transformSlotLevel(slots: SlotsStructure, topLevel?: {frameType: string
     let valid = true;
     for (let i = 0; i < slots.operators.length; i++) {
         if (slots.operators[i].code.trim() === "not" || slots.operators[i].code.trim() === "~" || slots.operators[i].code.trim() === "lambda") {
-            // Unary operators only valid at start of bracketed expression:
-            if (i != 0) {
-                valid = false;
-                break;
-            }
-            
+            // Unary operators are valid wherever they start an operand position, i.e. the field
+            // immediately before them is blank -- not just at the very start of the expression.
+            // This also covers cases like "a and not b" or "x or not y", where the unary operator
+            // follows a preceding binary operator rather than sitting at index 0:
             const preceding = slots.fields[i];
             if (!(isFieldBaseSlot(preceding) && preceding.code.trim() === "")) {
                 // Something besides a plain blank before it; not valid unary operator:
