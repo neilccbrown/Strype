@@ -42,8 +42,15 @@ export function createOrGetAudioContext() : AudioContext {
             audioContext.close().catch(() => { /* Ignore errors closing a dead context */ });
         }
         audioContext = new AudioContext();
-        lastObservedCurrentTime = 0;
-        lastObservedAt = 0;
+        // Seed the baseline immediately rather than leaving it at the "unobserved" 0/0
+        // sentinel: isStuck() is never called on this same creation path (short-circuited
+        // by audioContext == null above), so without this the *next* call to isStuck() would
+        // see lastObservedAt === 0 and skip the stuck check entirely, just re-seeding the
+        // baseline instead of actually comparing against it -- meaning a context that died
+        // immediately after creation wouldn't be caught until a third call, one cycle later
+        // than intended:
+        lastObservedCurrentTime = audioContext.currentTime;
+        lastObservedAt = Date.now();
     }
     else if (audioContext.state === "suspended") {
         // This can happen if the browser suspended us (e.g. backgrounding); resuming does
