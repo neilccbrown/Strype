@@ -1,7 +1,7 @@
 #(=> Strype:1:std
 #(=> editorCommandsSplitterPane2Size:{"tabsCollapsed":51.67,"splitCollapsed":45.23}
 #(=> peaLayoutMode:splitCollapsed
-#(=> peaCommandsSplitterPane2Size:{"tabsCollapsed":66.27,"splitCollapsed":67.4}
+#(=> peaCommandsSplitterPane2Size:{"tabsCollapsed":66.27,"splitCollapsed":82.97}
 #(=> peaSplitViewSplitterPane1Size:{"splitCollapsed":78.12}
 '''Renewables. Version 1.0
 
@@ -47,9 +47,9 @@ def top_countries ( ) :
     clear_console() 
     print("The top 15 countries by renewable share of electricity (in the last year for which data was available).") 
     latest_year  = countries.loc[countries["renewables_share_elec"].notna(),"year"].max() 
-    latest  = countries[countries["year"] == latest_year].dropna(subset=["renewables_share_elec"]) 
+    latest  = countries[countries["year"]==latest_year].dropna(subset=["renewables_share_elec"]) 
     # require a minimum generation level so tiny islands with one hydro dam don't dominate
-    latest  = latest[latest["electricity_generation"] > 1] 
+    latest  = latest[latest["electricity_generation"]>1] 
     top15  = latest.nlargest(15,"renewables_share_elec").sort_values("renewables_share_elec") 
     fig,ax  = plt.subplots(figsize=(10,7)) 
     bars  = ax.barh(top15["country"],top15["renewables_share_elec"],color=COLORS["renew"]) 
@@ -92,12 +92,12 @@ def biggest_movers ( ) :
     print("The countries with the biggest improvement in adding renewables to their energy mix (2000-2025).") 
     latest_year  = countries.loc[countries["renewables_share_elec"].notna(),"year"].max() 
     y0,y1  = 2000,latest_year 
-    start  = countries[(countries["year"] == y0)][["country","renewables_share_elec"]].rename(columns={"renewables_share_elec":"start"}) 
-    end  = countries[(countries["year"] == y1)][["country","renewables_share_elec","electricity_generation"]].rename(columns={"renewables_share_elec":"end"}) 
+    start  = countries[(countries["year"]==y0)][["country","renewables_share_elec"]].rename(columns={"renewables_share_elec":"start"}) 
+    end  = countries[(countries["year"]==y1)][["country","renewables_share_elec","electricity_generation"]].rename(columns={"renewables_share_elec":"end"}) 
     change  = start.merge(end,on="country").dropna() 
-    change  = change[change["electricity_generation"] > 5] 
+    change  = change[change["electricity_generation"]>5] 
     # meaningful grid size
-    change["delta"]  = change["end"] - change["start"] 
+    change["delta"]  = change["end"]-change["start"] 
     movers  = change.nlargest(12,"delta").sort_values("delta") 
     
     fig,ax  = plt.subplots(figsize=(10,7)) 
@@ -116,18 +116,18 @@ def energy_vs_GDP ( ) :
     clear_console() 
     print("Renewable energy share by GDP per capita. The y-axis shows the renewable energy as a percentage of the country, the size of the circle shows the absolute energy amount.") 
     gdp_year  = countries.loc[countries["gdp"].notna(),"year"].max() 
-    snap  = countries[(countries["year"] == gdp_year)].dropna(subset=["gdp","population","renewables_share_energy"]) 
-    snap  = snap[snap["population"] > 0] 
-    snap["gdp_per_capita"]  = snap["gdp"] / snap["population"] 
+    snap  = countries[(countries["year"]==gdp_year)].dropna(subset=["gdp","population","renewables_share_energy"]) 
+    snap  = snap[snap["population"]>0] 
+    snap["gdp_per_capita"]  = snap["gdp"]/snap["population"] 
     
     fig,ax  = plt.subplots(figsize=(10,7)) 
-    sizes  = np.clip(snap["population"] / snap["population"].max() * 3000,20,3000) 
+    sizes  = np.clip(snap["population"]/snap["population"].max()*3000,20,3000) 
     sc  = ax.scatter(snap["gdp_per_capita"],snap["renewables_share_energy"],s=sizes,alpha=0.55,c=COLORS["renew"],edgecolors="white",linewidth=0.5) 
     ax.set_xscale("log") 
     ax.set_title(f"Wealth vs Renewable Energy Adoption ({gdp_year})",fontsize=14,weight="bold") 
     ax.set_xlabel("GDP per capita (log scale, current international $)") 
     ax.set_ylabel("Renewable share of primary energy (%)") 
-    ax.xaxis.set_major_formatter(mticker.FuncFormatter(___strype_blank lambda x,_:f"${x:,.0f}")) 
+    ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda x,_:f"${x:,.0f}")) 
     
     # label a few notable countries
     highlight  = ["China","United States","Iceland","Norway","India","Germany","United Kingdom","Brazil","Nigeria","Saudi Arabia","Sweden"] 
@@ -147,7 +147,7 @@ def solar_vs_wind ( ) :
     top_economies  = ["China","United States","Germany","India","United Kingdom","Brazil"] 
     fig,axes  = plt.subplots(1,2,figsize=(13,6),sharey=False) 
     for country  in top_economies  :
-        d  = countries[countries["country"] == country].sort_values("year") 
+        d  = countries[countries["country"]==country].sort_values("year") 
         axes[0].plot(d["year"],d["solar_electricity"],label=country,linewidth=2) 
         axes[1].plot(d["year"],d["wind_electricity"],label=country,linewidth=2) 
     
@@ -173,9 +173,9 @@ DATA_FILE  = "/data/renewable_energy_share_2000_2025.csv"
 df  = pd.read_csv(DATA_FILE) 
 # Keep only real countries (proper 3-letter ISO code) - drops regions/aggregates
 # like "Africa", "ASEAN (Ember)", "World", income groups, etc.
-countries  = df[df["iso_code"].notna() & (df["iso_code"].str.len() == 3)].copy() 
+countries  = df[df["iso_code"].notna()&(df["iso_code"].str.len()==3)].copy() 
 # Keep the World aggregate separately for global trend lines
-world  = df[df["country"] == "World"].copy() 
+world  = df[df["country"]=="World"].copy() 
 
 #Define style and colours for the plots
 plt.style.use("seaborn-v0_8-whitegrid") 
