@@ -126,6 +126,12 @@ export async function terminateAndRestartPyodide() : Promise<void> {
     // point, regardless of what kind of request it was waiting on -- so the worker actually stops
     // instead of continuing. We cap how long we wait for that (it should be near-instant) so a
     // slow/stuck write can never stop us from terminating below:
+    // Mark the worker as not-ready immediately: activeSlot is about to be terminated and
+    // swapped out below, and until activateSlot() runs again at the end of this function,
+    // any Run click that slips through (isPythonWorkerReady was previously left stale/true
+    // during this whole window) could pick up a client that's mid-termination or briefly
+    // null, get no response, and leave the UI stuck showing "Stop" with nothing running:
+    isPythonWorkerReady.value = false;
     const client = activeSlot?.client;
     if (client?.state === "awaitingMessage" || client?.state === "sleeping") {
         try {
