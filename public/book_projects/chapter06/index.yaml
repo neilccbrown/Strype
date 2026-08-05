@@ -11,3 +11,6 @@
 - file: temperature-v4.spy
   description: The fourth version of the temperature analysis project
 
+- file: temperature-plot.spy
+  image: temperature.png
+  description: An extension project - adding a graph to the temperature project

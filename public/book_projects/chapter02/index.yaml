@@ -12,3 +12,7 @@
   
 - file: fatcat-v2.spy
   description: The last version of the fatcat project
+
+- file: drum.spy
+  image: drum.png
+  description: Hit the drum, make some noise
