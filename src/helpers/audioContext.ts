@@ -58,11 +58,18 @@ export function createOrGetAudioContext() : AudioContext {
         lastObservedCurrentTime = audioContext.currentTime;
         lastObservedAt = Date.now();
     }
-    else if (audioContext.state === "suspended") {
-        // This can happen if the browser suspended us (e.g. backgrounding); resuming does
-        // not require a fresh user gesture in any of our supported browsers, so we can just
-        // try it directly here.
-        audioContext.resume().catch((err) => console.warn("Error resuming suspended AudioContext (caller will still get the context and can retry later):", err));
+    else if (audioContext.state === "suspended" || audioContext.state === "interrupted") {
+        // "suspended" can happen if the browser suspended us (e.g. backgrounding). "interrupted"
+        // is Safari-specific: unlike "suspended" (which we/the page asked for), it means the
+        // *browser* paused us for something outside the page's control -- an incoming call, Siri,
+        // an alarm, another app taking audio focus, etc -- and per Apple's guidance the fix is the
+        // same: just call resume() once the interruption is over. Without this, a context left
+        // "interrupted" would never be recovered at all: it's not "running" (so isStuck() above
+        // ignores it) and not "closed" (so the recreate branch ignores it too), so it would
+        // otherwise just sit there silently and never produce sound again. Resuming does not
+        // require a fresh user gesture in any of our supported browsers, so we can just try it
+        // directly here.
+        audioContext.resume().catch((err) => console.warn(`Error resuming ${audioContext?.state} AudioContext (caller will still get the context and can retry later):`, err));
     }
     return audioContext;
 }
