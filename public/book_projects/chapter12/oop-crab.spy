@@ -38,7 +38,7 @@ class Lobster(Actor)  :
     def act (self, ) :
         '''Do what the lobster does: walk around randomly, looking for the crab.'''
         self.move(6) 
-        if randint(1,10)==1  :
+        if randint(1,10) == 1  :
             self.turn(randint(-20,20)) 
         if self.is_at_edge()  :
             self.turn(20) 

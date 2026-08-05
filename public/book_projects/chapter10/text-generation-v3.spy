@@ -23,9 +23,9 @@ def generate_next_word (prev1,prev2,trigrams ) :
     '''Given two previous words and a list of trigrams, return a next word by randomly selecting one of the trigrams that matches both words.'''
     following  = [] 
     for first,second,third  in trigrams  :
-        if first==prev1 and second==prev2  :
+        if first == prev1 and second == prev2  :
             following.append(third) 
-    if len(following)==0  :
+    if len(following) == 0  :
         return random.choice(trigrams)[2] 
     else :
         return random.choice(following) 

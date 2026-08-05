@@ -23,9 +23,9 @@ def generate_next_word (prev_word,bigrams ) :
     '''Given a previous word and a list of bigrams, return a next word by randomly selecting one of the matching bigrams.'''
     following  = [] 
     for first,second  in bigrams  :
-        if first==prev_word  :
+        if first == prev_word  :
             following.append(second) 
-    if len(following)==0  :
+    if len(following) == 0  :
         return random.choice(bigrams)[1] 
     else :
         return random.choice(following) 
