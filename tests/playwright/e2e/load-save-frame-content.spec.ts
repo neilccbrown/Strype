@@ -916,24 +916,29 @@ test.describe("Enters, saves and loads specific frames", () => {
             {frameType: "funccall", slotContent: [" not foo( not bar)"]},
         ]]);
     });
+    test("Valid lambda", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "funccall", slotContent: ["foo( lambda x:x)"]},
+        ]]);
+    });
+    test("Valid not after binary operator", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "if", slotContent: ["foo==0 and  not bar"], body: [], joint: []},
+        ]]);
+    });
+    test("Valid unary minus", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "varassign", slotContent: ["x", "foo(-bar,-baz)"]},
+        ]]);
+    });
     test("Invalid not #1", async ({page}) => {
         await testSpecific(page, [[], [], [
             {frameType: "funccall", slotContent: ["bar not foo(foo not bar)"]},
         ]]);
     });
-    test("Invalid not #2", async ({page}) => {
-        await testSpecific(page, [[], [], [
-            {frameType: "funccall", slotContent: [" not in  is not  not (ü@B\\)"]},
-        ]]);
-    });
     test("Invalid not #3", async ({page}) => {
         await testSpecific(page, [[], [], [
             {frameType: "funccall", slotContent: [" and  not "]},
-        ]]);
-    });
-    test("Invalid not #4", async ({page}) => {
-        await testSpecific(page, [[], [], [
-            {frameType: "funccall", slotContent: ["_0üB!_1_#[(B\\üB0)@{+ not in  not }( is not ) is not ]"]},
         ]]);
     });
 

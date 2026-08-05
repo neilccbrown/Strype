@@ -23,16 +23,16 @@ def react_to_keys ( ) :
     global left_is_on_drum 
     global right_is_on_drum 
     if not left_is_on_drum and key_pressed("left")  :
-        hit(left_stick,___strype_blank-ROTATION,drum1) 
+        hit(left_stick,-ROTATION,drum1) 
         left_is_on_drum  = True 
-    if ___strype_opsinvalid(left_is_on_drum,___strype_operator_u0061u006eu0064,___strype_blank,___strype_operator_u006eu006fu0074,key_pressed,___strype_operator_,("left"),___strype_operator_,___strype_blank)  :
+    if left_is_on_drum and  not key_pressed("left")  :
         release(left_stick,ROTATION) 
         left_is_on_drum  = False 
     if not right_is_on_drum and key_pressed("right")  :
         hit(right_stick,ROTATION,drum2) 
         right_is_on_drum  = True 
-    if ___strype_opsinvalid(right_is_on_drum,___strype_operator_u0061u006eu0064,___strype_blank,___strype_operator_u006eu006fu0074,key_pressed,___strype_operator_,("right"),___strype_operator_,___strype_blank)  :
-        release(right_stick,___strype_blank-ROTATION) 
+    if right_is_on_drum and  not key_pressed("right")  :
+        release(right_stick,-ROTATION) 
         right_is_on_drum  = False 
 #(=> Section:Main
 set_background("white") 
