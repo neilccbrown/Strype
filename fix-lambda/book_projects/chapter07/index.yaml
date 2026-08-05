@@ -14,3 +14,11 @@
 
 - file: sounds-v3.spy
   description: The second version of the sound manipulation project
+
+- file: piano.spy
+  image: piano.png
+  description: A playable piano on screen
+
+- file: breakout.spy
+  image: breakout.png
+  description: The start of the classic 'Breakout' game
