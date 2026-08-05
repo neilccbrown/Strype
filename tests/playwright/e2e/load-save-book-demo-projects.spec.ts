@@ -27,14 +27,10 @@ function findSpyFiles(dir: string): string[] {
     return result;
 }
 
-// chapter12/renewables.spy is excluded: loading it through the file picker hangs indefinitely
-// (loading overlay never clears, no console/page error, reproduced up to a 5-minute timeout) --
-// a genuine, pre-existing bug unrelated to the ___strype_blank fixes this spec covers. Left as
-// a known issue rather than chased down here.
 const spyFiles = [
     ...findSpyFiles("public/book_projects"),
     ...findSpyFiles("public/demos"),
-].filter((f) => !f.endsWith("chapter12/renewables.spy") && !f.endsWith("chapter12\\renewables.spy"));
+];
 
 test.describe("Book and demo projects round-trip", () => {
     test.beforeEach(async ({ page, browserName }, testInfo) => {
