@@ -25,6 +25,12 @@ function isStuck(ctx: AudioContext) : boolean {
     const stuck = lastObservedAt !== 0
         && (now - lastObservedAt) > STUCK_THRESHOLD_MS
         && ctx.currentTime <= lastObservedCurrentTime;
+    if (stuck) {
+        // Log this so that if a user reports sound silently stopping, we have a chance of
+        // spotting it in the console: it's exactly the "running but not producing audio" state
+        // this function exists to detect.
+        console.warn(`AudioContext detected as stuck (state "${ctx.state}", currentTime stayed at ${ctx.currentTime} for ${now - lastObservedAt}ms) -- recreating it.`);
+    }
     // Refresh our observation regardless, ready for the next check:
     lastObservedCurrentTime = ctx.currentTime;
     lastObservedAt = now;
@@ -39,7 +45,7 @@ export function createOrGetAudioContext() : AudioContext {
     if (audioContext == null || audioContext.state === "closed" || isStuck(audioContext)) {
         if (audioContext != null && audioContext.state !== "closed") {
             // Don't wait for this; we just want to release its resources:
-            audioContext.close().catch(() => { /* Ignore errors closing a dead context */ });
+            audioContext.close().catch((err) => console.warn("Error closing previous AudioContext (ignoring, continuing with a new one):", err));
         }
         audioContext = new AudioContext();
         // Seed the baseline immediately rather than leaving it at the "unobserved" 0/0
@@ -56,7 +62,7 @@ export function createOrGetAudioContext() : AudioContext {
         // This can happen if the browser suspended us (e.g. backgrounding); resuming does
         // not require a fresh user gesture in any of our supported browsers, so we can just
         // try it directly here.
-        audioContext.resume().catch(() => { /* Ignore; caller will still get the context and can retry later */ });
+        audioContext.resume().catch((err) => console.warn("Error resuming suspended AudioContext (caller will still get the context and can retry later):", err));
     }
     return audioContext;
 }

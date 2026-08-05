@@ -98,6 +98,7 @@ export default defineComponent({
                 this.analyserBuffer = new Uint8Array(analyser.fftSize);
                 this.startWaveformLoop();
             }).catch((err) => {
+                console.warn("Error obtaining microphone stream:", err);
                 if (err?.name === "NotAllowedError") {
                     this.errorMessage = this.$t("media.micPermissionDenied") as string;
                 }
@@ -226,6 +227,10 @@ export default defineComponent({
                     // for the (animated) modal-hide transition to finish:
                     this.cleanUp();
                     eventBus.emit(CustomEventTypes.hideStrypeModal, {trigger: "captured", componentId: this.dlgId});
+                }).catch((err) => {
+                    console.error("Error decoding recorded audio:", err);
+                    this.errorMessage = this.$t("media.recordingProcessingError") as string;
+                    this.cleanUp();
                 });
             };
             mediaRecorder.stop();
