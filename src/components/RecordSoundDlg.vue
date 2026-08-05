@@ -51,6 +51,10 @@ export default defineComponent({
             peakHistory: [] as WaveformPeak[],
             recordStartTime: null as number | null,
             capturedAudioBuffer: null as AudioBuffer | null,
+            // Bumped every time the dialog is (re-)shown or cleaned up, so that a getUserMedia()
+            // promise which resolves/rejects after the dialog has since been closed (or reopened)
+            // can recognise it's stale and not act on it -- see onShownModalDlg():
+            requestToken: 0,
         };
     },
 
@@ -85,7 +89,18 @@ export default defineComponent({
             this.capturedAudioBuffer = null;
             this.peakHistory = [];
             this.recordStartTime = null;
+            // Captured now so we can tell, once the (async) getUserMedia() call below resolves,
+            // whether this is still the dialog session that asked for it -- see the comment on
+            // requestToken in data() above:
+            const token = ++this.requestToken;
             navigator.mediaDevices.getUserMedia({audio: true}).then((stream) => {
+                if (token !== this.requestToken) {
+                    // The dialog was closed (or reopened) before permission came back: don't
+                    // leave the microphone open and don't touch state belonging to whatever
+                    // session is current now.
+                    stopMediaStreamTracks(stream);
+                    return;
+                }
                 this.stream = stream;
                 // Live waveform monitoring starts as soon as we have the stream, independent of
                 // whether the user has pressed Record yet -- deliberately NOT connected to
@@ -99,6 +114,10 @@ export default defineComponent({
                 this.startWaveformLoop();
             }).catch((err) => {
                 console.warn("Error obtaining microphone stream:", err);
+                if (token !== this.requestToken) {
+                    // Stale request (dialog already closed/reopened) -- nothing to show this for.
+                    return;
+                }
                 if (err?.name === "NotAllowedError") {
                     this.errorMessage = this.$t("media.micPermissionDenied") as string;
                 }
@@ -116,6 +135,10 @@ export default defineComponent({
         },
 
         cleanUp() {
+            // Invalidate any getUserMedia() call still in flight from onShownModalDlg(), so that
+            // if it resolves after this point it recognises itself as stale and releases the
+            // stream instead of reviving it into a dialog session that's already closed:
+            this.requestToken++;
             // If a recording is in progress when the dialog closes some other way (Cancel, Esc,
             // backdrop), we must NOT let its completion be treated as a capture -- so we stop
             // listening for it here rather than awaiting its result:
@@ -127,6 +150,7 @@ export default defineComponent({
             this.mediaRecorder = null;
             this.isRecording = false;
             this.stopWaveformLoop();
+            this.analyser?.disconnect();
             this.analyser = null;
             this.analyserBuffer = null;
             stopMediaStreamTracks(this.stream);
