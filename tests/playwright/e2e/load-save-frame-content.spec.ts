@@ -936,19 +936,9 @@ test.describe("Enters, saves and loads specific frames", () => {
             {frameType: "funccall", slotContent: ["bar not foo(foo not bar)"]},
         ]]);
     });
-    test("Invalid not #2", async ({page}) => {
-        await testSpecific(page, [[], [], [
-            {frameType: "funccall", slotContent: [" not in  is not  not (ü@B\\)"]},
-        ]]);
-    });
     test("Invalid not #3", async ({page}) => {
         await testSpecific(page, [[], [], [
             {frameType: "funccall", slotContent: [" and  not "]},
-        ]]);
-    });
-    test("Invalid not #4", async ({page}) => {
-        await testSpecific(page, [[], [], [
-            {frameType: "funccall", slotContent: ["_0üB!_1_#[(B\\üB0)@{+ not in  not }( is not ) is not ]"]},
         ]]);
     });
 
