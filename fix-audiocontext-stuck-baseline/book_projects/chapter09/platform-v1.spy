@@ -44,33 +44,33 @@ def setup ( ) :
 def on_ground ( ) :
     '''Check whether we are on solid ground. Return True if we are, False otherwise.'''
     #We calculate the location under our feet (our own y minus 50), and then check whether there is an actor there
-    at_feet  = get_actor_at(player.get_x(),player.get_y()-50) 
-    return at_feet!=None 
+    at_feet  = get_actor_at(player.get_x(),player.get_y() - 50) 
+    return at_feet != None 
 def fall ( ) :
     '''Fall down. Accelerate as we fall. If we fall all the way to the bottom, it\'s game over.'''
     global v_speed 
-    player.set_location(player.get_x(),player.get_y()-v_speed) 
-    v_speed  = v_speed+ACCELERATION 
+    player.set_location(player.get_x(),player.get_y() - v_speed) 
+    v_speed  = v_speed + ACCELERATION 
     if at_bottom()  :
         game_end() 
 def at_bottom ( ) :
     '''Return True if we are at the bottom of the screen.'''
-    return player.get_y()<-290 
+    return player.get_y() < -290 
 def game_end ( ) :
     '''End the game. Do whatever you want to do at the end.'''
     stop() 
 def move_right ( ) :
     '''Move the player to the right.'''
     player.set_image(player_img_right) 
-    player.set_location(player.get_x()+SPEED,None) 
+    player.set_location(player.get_x() + SPEED,None) 
 def move_left ( ) :
     '''Move the player to the left.'''
     player.set_image(player_img_left) 
-    player.set_location(player.get_x()-SPEED,None) 
+    player.set_location(player.get_x() - SPEED,None) 
 def jump ( ) :
     '''Jump up. This does the following: set the current vertical speed to move upwards, and then go to usual falling behaviour.'''
     global v_speed 
-    v_speed  = ___strype_blank-JUMP_STRENGTH 
+    v_speed  = -JUMP_STRENGTH 
     fall() 
 def check_keys ( ) :
     '''Check for key presses and react accordingly.'''
