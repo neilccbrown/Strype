@@ -856,7 +856,7 @@ export default defineComponent({
             this.requestOpenProjectLater = false;
             if (this.afterSaveDialog && "spy" in this.afterSaveDialog) {
                 vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(this.afterSaveDialog.spy, this.afterSaveDialog.name, 0, false, "import")
-                    .then(() => this.saveTargetChoice(StrypeSyncTarget.none));
+                    .then(() => this.saveTargetChoice(StrypeSyncTarget.none), () => { /* error message already shown by pasteMixedPython() */ });
             }
             else {
                 eventBus.emit(CustomEventTypes.showStrypeModal, (this.afterSaveDialog && "dialog" in this.afterSaveDialog) ? this.afterSaveDialog.dialog : this.loadProjectModalDlgId);
@@ -1222,7 +1222,7 @@ export default defineComponent({
                     eventBus.emit(CustomEventTypes.backupEditorProjectBeforeDiscard);
                     if (this.afterSaveDialog && "spy" in this.afterSaveDialog) {
                         vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(this.afterSaveDialog.spy, this.afterSaveDialog.name, 0, false, "import")
-                            .then(() => this.saveTargetChoice(StrypeSyncTarget.none));
+                            .then(() => this.saveTargetChoice(StrypeSyncTarget.none), () => { /* error message already shown by pasteMixedPython() */ });
                     }
                     else if (this.afterSaveDialog && "dialog" in this.afterSaveDialog) {
                         eventBus.emit(CustomEventTypes.showStrypeModal, this.afterSaveDialog.dialog);
@@ -1408,7 +1408,7 @@ export default defineComponent({
                                     // name is not always available so we also check if content starts with a {,
                                     // which it will do for old-style spy files:
                                     if (file.name.endsWith(".py") || !(reader.result as string).trimStart().startsWith("{")) {
-                                        vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(reader.result as string, fileHandles[0].name, file.lastModified, true, fileHandles[0]);
+                                        vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(reader.result as string, fileHandles[0].name, file.lastModified, true, fileHandles[0])?.catch(() => { /* error message already shown by pasteMixedPython() */ });
                                     }
                                     else {
                                         this.appStore.setStateFromJSONStr(
@@ -1449,7 +1449,7 @@ export default defineComponent({
                                 // name is not always available so we also check if content starts with a {,
                                 // which it will do for spy files:
                                 if (fileName.endsWith(".py") || !content.trimStart().startsWith("{")) {
-                                    vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(content, fileName, lastModified, true, "local");
+                                    vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(content, fileName, lastModified, true, "local")?.catch(() => { /* error message already shown by pasteMixedPython() */ });
                                 }
                                 else {
                                     this.appStore.setStateFromJSONStr(
