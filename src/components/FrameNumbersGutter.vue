@@ -128,10 +128,12 @@ export default defineComponent({
         // grows to its visible height at the one position it currently sits at. That means moving
         // it shifts every frame between the old and new position by the caret's height, which in
         // turn would shift any gutter number measured naively from the frames' live positions.
-        // To avoid that, in "floating" mode we find whichever single caret is currently expanded
-        // and subtract its height back out of the measured position of anything below it -- i.e.
-        // we compute where each frame would be if the caret were *always* collapsed, which doesn't
-        // change as the cursor moves.
+        // Fully cancelling that (subtracting the full caret height from anything below it, as if
+        // the caret were always collapsed) keeps numbers below from jittering as the cursor moves,
+        // but leaves them a full caret-height out of line with their actual header row, while
+        // numbers above the caret -- untouched -- stay perfectly aligned. Splitting the correction
+        // in half instead (half a caret-height off below, half a caret-height off above, in
+        // opposite directions) spreads that same misalignment evenly across both sides.
         getActiveCaretTopAndHeight(): {top: number, height: number} | null {
             const expandedCarets = document.querySelectorAll(`.${scssVars.caretClassName}:not(.${scssVars.invisibleClassName})`);
             if (expandedCarets.length !== 1) {
@@ -155,7 +157,9 @@ export default defineComponent({
                 const headerEl = document.getElementById(getFrameHeaderUID(frameId));
                 if (headerEl) {
                     const rect = headerEl.getBoundingClientRect();
-                    const correctedTop = (activeCaret && rect.top > activeCaret.top) ? rect.top - activeCaret.height : rect.top;
+                    const halfCaretHeight = (activeCaret?.height ?? 0) / 2;
+                    const correctedTop = !activeCaret ? rect.top :
+                        (rect.top > activeCaret.top) ? rect.top - halfCaretHeight : rect.top + halfCaretHeight;
                     newOffsets[frameId] = Math.round(correctedTop - editorRect.top + editorDiv.scrollTop);
                 }
             });
