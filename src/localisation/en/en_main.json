@@ -235,7 +235,12 @@
     "shareProject": "Share...",
     "needSaveShareProj":"Save your project in the Cloud before sharing it",
     "lang": "Language: ",
-    "homepage": "Strype Homepage", 
+    "frameNumbers": "Frame numbers: ",
+    "frameNumbersNone": "None",
+    "frameNumbersLHS": "Left margin",
+    "frameNumbersLHSFloating": "Left margin (steady)",
+    "frameNumbersTopRight": "Top-right",
+    "homepage": "Strype Homepage",
     "apiDocumentation": "Library documentation...",
     "version": "Version",
     "policy": "Privacy policy"

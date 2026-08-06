@@ -51,11 +51,12 @@
                                         class="noselect no-print col flex-grow-0"
                                     />
                                     <div class="col">
-                                        <div 
-                                            :id="editorUID" 
-                                            :class="{'editor-code-div noselect print-full-height':true, ...layoutClassesForStandardVersion}"
+                                        <div
+                                            :id="editorUID"
+                                            :class="{'editor-code-div noselect print-full-height':true, 'has-frame-numbers-gutter': settingsStore.frameNumbersDisplay === 'lhs' || settingsStore.frameNumbersDisplay === 'lhs-floating', ...layoutClassesForStandardVersion}"
                                             @mousedown="handleWholeEditorMouseDown"
                                         >
+                                            <FrameNumbersGutter />
                                             <FrameHeader
                                                 :id="getFrameHeaderUID(-10)"
                                                 :labels="projectDocLabels"
@@ -124,6 +125,7 @@ import { useI18n } from "vue-i18n";
 import { BApp } from "bootstrap-vue-next";
 import MessageBanner from "@/components/MessageBanner.vue";
 import FrameContainer from "@/components/FrameContainer.vue";
+import FrameNumbersGutter from "@/components/FrameNumbersGutter.vue";
 import Commands from "@/components/Commands.vue";
 import Menu from "@/components/Menu.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
@@ -198,6 +200,7 @@ export default defineComponent({
         FrameHeader,
         MessageBanner,
         FrameContainer,
+        FrameNumbersGutter,
         Commands,
         EditImageDlg,
         EditSoundDlg,
@@ -1053,7 +1056,10 @@ export default defineComponent({
                 if(savedSettingsState.locale) {
                     strypeSessionLocale = savedSettingsState.locale;
                 }
-                else {
+                if(savedSettingsState.frameNumbersDisplay) {
+                    this.settingsStore.setFrameNumbersDisplay(savedSettingsState.frameNumbersDisplay);
+                }
+                if(!savedSettingsState.locale) {
                     // There is no locale saved. Maybe the user wants to use the default English, but maybe
                     // they would like to use another language and their working environment won't save it,
                     // so we can ask them based on the browser's locale if they want to switch.
@@ -2064,6 +2070,11 @@ body.#{$strype-classname-dragging-frame} {
 
 .editor-code-div {
     overflow-y: auto;
+    position: relative;
+}
+
+.editor-code-div.has-frame-numbers-gutter {
+    padding-left: 24px;
 }
 
 .top {

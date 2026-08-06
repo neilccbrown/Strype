@@ -170,7 +170,16 @@
                     <select name="lang" :id="appLangSelectId" v-model="appLang" @change="showMenu=false;" :class="scssVars.strypeMenuItemClassName" @click="setCurrentTabIndexFromEltId(appLangSelectId)">
                         <option v-for="locale in locales" :value="locale.code" :key="locale.code">{{locale.name}}</option>
                     </select>
-                </div> 
+                </div>
+                <div>
+                    <label :for="frameNumbersSelectId">{{$t("appMenu.frameNumbers")}}</label>&nbsp;
+                    <select name="frameNumbers" :id="frameNumbersSelectId" v-model="frameNumbersDisplay" @change="showMenu=false;" :class="scssVars.strypeMenuItemClassName" @click="setCurrentTabIndexFromEltId(frameNumbersSelectId)">
+                        <option value="none">{{$t("appMenu.frameNumbersNone")}}</option>
+                        <option value="lhs">{{$t("appMenu.frameNumbersLHS")}}</option>
+                        <option value="lhs-floating">{{$t("appMenu.frameNumbersLHSFloating")}}</option>
+                        <option value="topright">{{$t("appMenu.frameNumbersTopRight")}}</option>
+                    </select>
+                </div>
             </div>
             <!-- new section -->
             <div class="menu-separator-div"></div>
@@ -484,6 +493,10 @@ export default defineComponent({
             return getAppLangSelectId();
         },
 
+        frameNumbersSelectId(): string {
+            return "frameNumbersSelectId";
+        },
+
         locales(): Locale[] {
             // The locale codes are already parts of the i18n messages at this stage, so they are easy to retrieve.
             // We retrieve the corresponding locale's friendly name from i18n directly.
@@ -702,9 +715,18 @@ export default defineComponent({
             get(): string {
                 return this.settingsStore.locale??"en";
             },
-            set(lang: string) {                                
+            set(lang: string) {
                 this.settingsStore.setAppLang(lang);
-            }, 
+            },
+        },
+
+        frameNumbersDisplay: {
+            get(): string {
+                return this.settingsStore.frameNumbersDisplay??"none";
+            },
+            set(mode: "none" | "lhs" | "lhs-floating" | "topright") {
+                this.settingsStore.setFrameNumbersDisplay(mode);
+            },
         },
 
         getAppVersion(): string {
