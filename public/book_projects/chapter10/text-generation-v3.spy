@@ -1,7 +1,7 @@
 #(=> Strype:1:std
 #(=> editorCommandsSplitterPane2Size:{"tabsCollapsed":42.09}
 #(=> peaExpandedSplitterPane2Size:{"tabsExpanded":50,"splitExpanded":50}
-'''text-generation, Version 0.2
+'''text-generation, Version 0.3
 In this version of the project, we can create bigrams of our text, and we can generate a sequence of words based on these bigrams.
 
 This project is part of the book "Creative Python Programming with Strype".
