@@ -34,12 +34,12 @@ def place_debris (x,y,num_fragments ) :
         deb  = Actor(img,x,y,"debris") 
         deb.set_rotation(randint(0,359)) 
         #give each fragment a random initial movement speed (dx, dy), determined by the FORCE of the explosion
-        deb.dx  = randint(___strype_blank-FORCE,FORCE) 
-        deb.dy  = randint(___strype_blank-FORCE,FORCE) 
+        deb.dx  = randint(-FORCE,FORCE) 
+        deb.dy  = randint(-FORCE,FORCE) 
 def debris_fall ( ) :
     '''Make all debris fragments fall donw. This function will run until all pieces of debris in the world have fallen out of the world.'''
     debris  = get_actors("debris") 
-    while len(debris)>0  :
+    while len(debris) > 0  :
         for deb  in debris  :
             move_debris(deb) 
         debris  = get_actors("debris") 
@@ -50,9 +50,9 @@ def move_debris (deb ) :
         deb.remove() 
     else :
         #The speed of movement is determined by the piece's own dx/dy values
-        deb.set_location(deb.get_x()+deb.dx,deb.get_y()+deb.dy) 
+        deb.set_location(deb.get_x() + deb.dx,deb.get_y() + deb.dy) 
         #At every step, change the dy speed to be more negative (downward) by a constant amount. This applies gravity.
-        deb.dy  = deb.dy-GRAVITY 
+        deb.dy  = deb.dy - GRAVITY 
 #(=> Section:Main
 #Set it all up
 set_background("white") 

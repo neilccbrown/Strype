@@ -15,7 +15,7 @@ def drawFlower (x,y,petal_color ) :
     setpos((x,y)) 
     pendown() 
     color(petal_color) 
-    for _  in range(int(360/15))  :
+    for _  in range(int(360 / 15))  :
         drawSquare() 
         right(15) 
     color("green") 

@@ -1,7 +1,7 @@
 #(=> Strype:1:std
 #(=> editorCommandsSplitterPane2Size:{"tabsCollapsed":42.09}
 #(=> peaExpandedSplitterPane2Size:{"tabsExpanded":50,"splitExpanded":50}
-'''text-generation, Version 0.2
+'''text-generation, Version 0.3
 In this version of the project, we can create bigrams of our text, and we can generate a sequence of words based on these bigrams.
 
 This project is part of the book "Creative Python Programming with Strype".
@@ -23,9 +23,9 @@ def generate_next_word (prev1,prev2,trigrams ) :
     '''Given two previous words and a list of trigrams, return a next word by randomly selecting one of the trigrams that matches both words.'''
     following  = [] 
     for first,second,third  in trigrams  :
-        if first==prev1 and second==prev2  :
+        if first == prev1 and second == prev2  :
             following.append(third) 
-    if len(following)==0  :
+    if len(following) == 0  :
         return random.choice(trigrams)[2] 
     else :
         return random.choice(following) 

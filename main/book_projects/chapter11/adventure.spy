@@ -81,34 +81,34 @@ def enter_room (room ) :
     for item  in current_room.items  :
         item.re_add(item.x,item.y) 
     
-    show_text("You are "+current_room.description) 
+    show_text("You are " + current_room.description) 
 def check_door ( ) :
     '''Check whether we are currently at a door.
     Returns the next room we are getting into via that door, and the (x,y) position on screen where we should be placed after entering. Returns \'None\' for the next room if we are not at a door.'''
     exits  = current_room.exits 
     next_room  = None 
     next_pos  = (0,0) 
-    if player.get_x()<=-399 and player.get_y()>-50 and player.get_y()<50  :
+    if player.get_x() <= -399 and player.get_y() > -50 and player.get_y() < 50  :
         next_room  = exits.get("west") 
         next_pos  = (400,0) 
-    if player.get_x()>=399 and player.get_y()>-50 and player.get_y()<50  :
+    if player.get_x() >= 399 and player.get_y() > -50 and player.get_y() < 50  :
         next_room  = exits.get("east") 
         next_pos  = (-400,0) 
-    if player.get_y()<=-299 and player.get_x()>-50 and player.get_x()<50  :
+    if player.get_y() <= -299 and player.get_x() > -50 and player.get_x() < 50  :
         next_room  = exits.get("south") 
         next_pos  = (0,300) 
-    if player.get_y()>=299 and player.get_x()>-50 and player.get_x()<50  :
+    if player.get_y() >= 299 and player.get_x() > -50 and player.get_x() < 50  :
         next_room  = exits.get("north") 
         next_pos  = (0,-300) 
     return next_room,next_pos 
 def move (x_dir,y_dir,images ) :
     '''Move the player character. The direction parameters should be -1, 0, or 1 to indicate the direction.'''
     global img_no 
-    img_no  = (img_no+1)%2 
+    img_no  = (img_no + 1) % 2 
     player.set_image(images[img_no]) 
-    player.set_location(player.get_x()+(x_dir*SPEED),player.get_y()+(y_dir*SPEED)) 
+    player.set_location(player.get_x() + (x_dir * SPEED),player.get_y() + (y_dir * SPEED)) 
     next_room_name,location  = check_door() 
-    if next_room_name!=None  :
+    if next_room_name != None  :
         enter_room(rooms[next_room_name]) 
         player.set_location(location[0],location[1]) 
 def look ( ) :
@@ -117,7 +117,7 @@ def look ( ) :
     if item  :
         player.say_for(item.description,2) 
     else :
-        show_text("You are "+current_room.description) 
+        show_text("You are " + current_room.description) 
 def take ( ) :
     '''If we are currently touching an item, take it. Otherwise do nothing.'''
     item  = player.get_touching("item") 
@@ -133,17 +133,17 @@ def drop ( ) :
     global inventory 
     for item  in inventory  :
         current_room.items.append(item) 
-        item.x  = player.get_x()+randint(-40,40) 
-        item.y  = player.get_y()+randint(-40,40) 
+        item.x  = player.get_x() + randint(-40,40) 
+        item.y  = player.get_y() + randint(-40,40) 
         item.re_add(item.x,item.y) 
     inventory  = [] 
 def show_inventory ( ) :
     '''Show what we are currently carrying.'''
     clear_console() 
     print("You are carrying:") 
-    if len(inventory)>0  :
+    if len(inventory) > 0  :
         for item  in inventory  :
-            print("   "+item.description) 
+            print("   " + item.description) 
     else :
         print("   nothing") 
 def print_help ( ) :

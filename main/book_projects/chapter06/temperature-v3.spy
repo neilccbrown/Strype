@@ -27,13 +27,13 @@ def my_sum (list ) :
     '''Return the sum of the elements in \'list\''''
     total  = 0 
     for elem  in list  :
-        total  = total+elem 
+        total  = total + elem 
     return total 
 def my_max (list ) :
     '''Return the maximum value from \'list\''''
     max  = list[0] 
     for elem  in list  :
-        if elem>max  :
+        if elem > max  :
             max  = elem 
     return max 
 def biggest_change (list ) :
@@ -41,8 +41,8 @@ def biggest_change (list ) :
     max_diff  = 0 
     max_diff_index  = 0 
     for i  in range(1,len(list))  :
-        diff  = abs(list[i]-list[i-1]) 
-        if diff>max_diff  :
+        diff  = abs(list[i] - list[i - 1]) 
+        if diff > max_diff  :
             max_diff  = diff 
             max_diff_index  = i 
     return max_diff,max_diff_index 
@@ -52,7 +52,7 @@ temp  = []
 for elem  in data  :
     temp.append(float(elem)) 
 
-print("Average temperature for the year:",round(sum(temp)/len(temp),1)) 
+print("Average temperature for the year:",round(sum(temp) / len(temp),1)) 
 
 print("My sum:",my_sum(temp)) 
 print("Sum:",sum(temp)) 

@@ -31,7 +31,7 @@ def get_expected_frequencies ( ) :
                 continue
                 # skip empty lines
             parts  = line.split() 
-            if len(parts)!=2  :
+            if len(parts) != 2  :
                 continue
             key,value_str  = parts 
             try :
@@ -43,7 +43,7 @@ def get_expected_frequencies ( ) :
 #(=> FrameState:FoldToHeader
 def print_dict (dict ) :
     for key,value  in dict.items()  :
-        if value>10 and len(key)>4  :
+        if value > 10 and len(key) > 4  :
             print(f"{key}: {value}") 
 def count_words (text ) :
     '''Return a dictionary with a count for every word in this text'''
@@ -53,7 +53,7 @@ def count_words (text ) :
     for word  in words  :
         word  = word.strip(string.punctuation) 
         if word in counts  :
-            counts[word]  = counts[word]+1 
+            counts[word]  = counts[word] + 1 
         else :
             counts[word]  = 1 
     return counts 
@@ -62,8 +62,8 @@ def get_overused_words (observed_counts,total_words,frequencies,how_many ) :
     frequent  = {} 
     for word,count  in observed_counts.items()  :
         if word in frequencies  :
-            word_frequency  = count/total_words 
-            if count>10 and word_frequency>frequencies[word]*10  :
+            word_frequency  = count / total_words 
+            if count > 10 and word_frequency > frequencies[word] * 10  :
                 frequent[word]  = count 
     frequent_words  = sorted(frequent,key=frequent.get,reverse=True) 
     return frequent_words[:how_many] 
@@ -72,7 +72,7 @@ def get_overused_words (observed_counts,total_words,frequencies,how_many ) :
 #(=> Disabled:title  = "pride-and-prejudice" 
 #(=> Disabled:title  = "three-men-in-a-boat" 
 title  = "winnie-the-pooh" 
-text  = read_file("/books/"+title+".txt") 
+text  = read_file("/books/" + title + ".txt") 
 
 word_counts  = count_words(text) 
 total_words  = len(text.split()) 
