@@ -456,7 +456,10 @@ export default defineComponent({
                 }
                 else{
                     // If we were looking for the Strype folder, then we also need to reset our internal flag
-                    this.strypeFolderId = "";
+                    // (if we were checking another folder instead, the Strype folder lookup is unaffected, so leave it alone)
+                    if(checkStrypeFolder){
+                        this.strypeFolderId = "";
+                    }
                     return checkFolderDoneCallBack(strypeFolderId);
                 }
             });
