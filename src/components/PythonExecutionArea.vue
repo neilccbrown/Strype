@@ -91,7 +91,7 @@ import {SoundManager} from "@/stryperuntime/sound_manager";
 import {handleAsyncRequests, handleSyncRequests} from "@/stryperuntime/main_bridge_handler";
 import {getPythonClient, isPythonWorkerReady, renderer, serviceWorkerChannel, terminateAndRestartPyodide} from "@/stryperuntime/main_thread_python_handler";
 import { TurtlePixiHandler } from "@/stryperuntime/turtle_pixi_handler";
-import {createOrGetAudioContext} from "@/helpers/audioContext";
+import {closeAudioContext, createOrGetAudioContext} from "@/helpers/audioContext";
 import {clearAllRuntimeErrors, computeFrameSnapshot} from "@/helpers/storeMethods";
 import html2canvas from "html2canvas";
 
@@ -117,6 +117,15 @@ let switchedToConsoleTabAlreadyThisExecute = false;
 // run button still shows "Stop" during this time; clicking it goes through runClicked()'s
 // "Running" case, which stops the sounds (resolving the wait below) and finalises the run.
 let waitingForSoundsAfterNormalCompletion = false;
+
+// Logged (temporarily -- see isServiceWorkerChannelResponsive() in shared_helpers.ts) so the
+// "[SW channel check]"/"[Worker first sync read]"/"[Pyodide slot swap]" log lines can be matched
+// up against which numbered Run click they belong to -- we're chasing a failure that has so far
+// only ever been reported on the *second* execution since page load, never later ones, which
+// points at something specific to run #2's worker (the spare pre-warmed at page load via
+// maybeCreateSpareSlot() in main_thread_python_handler.ts) rather than a general "worker just
+// got swapped in" issue that would equally affect run #3, #4, etc:
+let runCount = 0;
 
 let soundManager : SoundManager | null = null; // Can't initialise this here as we need permissions for audio context
 const turtleCanvas = new OffscreenCanvas(800, 600);
@@ -453,6 +462,16 @@ export default defineComponent({
             // When we change tab, we also check the position of the expand/collapse button
             setPythonExecAreaLayoutButtonPos();
         },
+        isPythonExecuting(nowExecuting: boolean){
+            // Once execution (including any trailing sounds -- see waitingForSoundsAfterNormalCompletion)
+            // has fully finished, close the shared AudioContext rather than leaving it running
+            // indefinitely: it will be recreated on the next run/gesture that needs it (see
+            // createOrGetAudioContext() call sites). This bounds how long a context stays alive
+            // during a session that may otherwise run for hours between executions.
+            if (!nowExecuting) {
+                closeAudioContext();
+            }
+        },
     },
 
     methods: {
@@ -505,6 +524,8 @@ export default defineComponent({
             switch (useStore().pythonExecRunningState) {
             case PythonExecRunningState.NotRunning:
                 useStore().pythonExecRunningState = PythonExecRunningState.Running;
+                runCount += 1;
+                console.info(`[Run click ${new Date().toISOString()}] run #${runCount} this page session`);
                 try {
                     useStore().enqueueAnalyticsEvent("run", computeFrameSnapshot());
                     useStore().flushAnalyticsQueue("critical");
@@ -664,14 +685,19 @@ export default defineComponent({
                     console.error("Service worker sync channel not responding; attempting to reclaim control before running");
                     const registration = await navigator.serviceWorker.getRegistration();
                     await registration?.update();
-                    await new Promise<void>((resolve) => {
-                        const timeout = setTimeout(resolve, 1500);
+                    // Logged (temporarily -- see isServiceWorkerChannelResponsive() in
+                    // shared_helpers.ts) so we can tell whether the reclaim actually got a
+                    // controllerchange back, or just fell through the 1.5s timeout unanswered:
+                    const reclaimedViaControllerChange = await new Promise<boolean>((resolve) => {
+                        const timeout = setTimeout(() => resolve(false), 1500);
                         navigator.serviceWorker.addEventListener("controllerchange", () => {
                             clearTimeout(timeout);
-                            resolve();
+                            resolve(true);
                         }, {once: true});
                         registration?.active?.postMessage("claim");
                     });
+                    const respondingAfterReclaim = await isServiceWorkerChannelResponsive(serviceWorkerChannel.baseUrl);
+                    console.info(`Service worker reclaim attempt: ${reclaimedViaControllerChange ? "got controllerchange" : "timed out waiting for controllerchange"}; channel now responsive=${respondingAfterReclaim}`);
                 }
 
                 const syncBridgePromise = handleSyncRequests(renderer, soundManager as SoundManager, turtlePixiHandler, {

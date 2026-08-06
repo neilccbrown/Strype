@@ -27,12 +27,20 @@ npm run serve:python
 If you want to create a packaged version to distribute or host somewhere, instead run:
 
 ```
-npm install
+npm ci
 npm run build:download-pyodide-libs
-npm run build
+npm run build:python
 ```
 
 Strype is currently an entirely client-side tool; there is no server component to run alongside.
+
+Releasing
+---
+
+Publishing a GitHub Release (Releases -> Draft a new release, pick or create a tag, then Publish) automatically
+triggers the `attach-release-build.yml` workflow, which builds packaged versions for the Python and micro:bit
+platforms and attaches them to that release as zip files, so anyone can download a ready-to-host copy without
+needing to build it themselves.
 
 Development
 ---
