@@ -1194,20 +1194,20 @@ def pace(actions_per_second = 25):
     _last_frame = now + sleep_for
     _time.sleep(sleep_for)
 
-# Maps from integer (x,y) position to an Actor that shows the image text
+# Maps from integer (x,y) position to a (text, font_size, Actor) tuple that shows the image text
 _shown_text = {}
 
 def show_text(text, x = 0, y = 0, font_size = 24):
     # type: (str | None, float, float, float) -> None
     """
         Shows the text at the given X, Y position in the world.
-        
+
         This allows you to easily draw text on the world, for example a "Game Over" message.  You can show multiple text items if you supply
         different X, Y positions for each.  If you want to change the text at a particular position,
         call this function again with the same X, Y position and a new string; this will replace the previous text at that position.
-        To clear the text entirely at that position, pass None as the text, with the same X, Y position. 
-    
-        :param text: The text to show, or None to show no text.  Passing None allows you to clear text previously drawn at the same position. 
+        To clear the text entirely at that position, pass None as the text, with the same X, Y position.
+
+        :param text: The text to show, or None to show no text.  Passing None allows you to clear text previously drawn at the same position.
         :param x: The X position of the centre of the text.  This is rounded to the nearest integer.
         :param y: The Y position of the centre of the text.  This is rounded to the nearest integer.
         :param font_size: The font size to use for the text.
@@ -1215,11 +1215,12 @@ def show_text(text, x = 0, y = 0, font_size = 24):
     x = round(x)
     y = round(y)
     existing = _shown_text.get((x, y))
-    # Always remove the old actor:
-    if existing is not None:
-        existing.remove()
-        del _shown_text[(x, y)]
-    # Show a new one if they've specified text:
+    # If the text and font size are unchanged, there's nothing to do:
+    if existing is not None and existing[0] == text and existing[1] == font_size:
+        return
+    # Prepare the new actor (if any) before removing the old one, to minimise the time
+    # the old text is gone before the new text appears (avoids flickering):
+    new_actor = None
     if text is not None:
         # We first make an image just with the text on, which also tells us the size:
         textOnlyImg = Image(800, 600)
@@ -1233,4 +1234,11 @@ def show_text(text, x = 0, y = 0, font_size = 24):
         croppedImg.set_stroke(None)
         croppedImg.draw_rounded_rect(0, 0, croppedImg.get_width(), croppedImg.get_height())
         croppedImg._draw_part_of_image(textOnlyImg, round(font_size / 2), round(font_size / 2), 0, 0, textDimensions.width, textDimensions.height)
-        _shown_text[(x, y)] = Actor(croppedImg, x, y)
+        new_actor = Actor(croppedImg, x, y)
+    # Now remove the old actor, once the new one (if any) is already showing:
+    if existing is not None:
+        existing[2].remove()
+    if new_actor is not None:
+        _shown_text[(x, y)] = (text, font_size, new_actor)
+    elif (x, y) in _shown_text:
+        del _shown_text[(x, y)]
