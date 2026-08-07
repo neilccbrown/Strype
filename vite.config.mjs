@@ -121,13 +121,34 @@ function removeFilesPlugin(isStandardPython) {
     };
 }
 
+// Writes a small, deliberately-unhashed version.json into the build output, containing the same
+// git hash already baked into the JS bundle as __BUILD_GIT_HASH__ (see the "define" block below).
+// A tab that's been open long enough to outlive a deploy periodically re-fetches this file (see
+// startVersionCheck() in src/helpers/versionCheck.ts) to detect that a new version exists and
+// prompt the user to reload -- which requires it to live at a stable, unhashed path (so the
+// already-loaded page knows where to ask) and to never be long-cached (so the answer is actually
+// current, not whatever was true when the page itself first loaded):
+function writeVersionFilePlugin(gitHash) {
+    return {
+        name: "write-version-file",
+        // Use writeBundle (not closeBundle) so we get the actual resolved output dir: this config
+        // is also loaded, via vite's build() API, by scripts/build-service-worker.mjs to compile a
+        // single worker file into a temp dir ahead of the real app build -- writing to a
+        // hardcoded "dist/" there fails because the real dist/ doesn't exist yet at that point:
+        writeBundle(options) {
+            fs.writeFileSync(path.resolve(options.dir, "version.json"), JSON.stringify({gitHash}));
+        },
+    };
+}
+
 export default defineConfig(({mode}) => {
     // The environment variable for the Strype "platform" (standard Python or for micro:bit) is set in the scripts (STRYPE_PLATFORM)
     // We use environment variables for listing the possible values (for the code, the literal values are used only in the serve/build scripts...).
     const viteEnv = loadEnv(mode, process.cwd(), "VITE_");
     const isStandardPython = process.env.STRYPE_PLATFORM === viteEnv.VITE_STANDARD_PYTHON_MODE;
-  
-    return {       
+    const gitHash = execSync("git rev-parse --short=8 HEAD").toString().trim();
+
+    return {
         plugins: [
             ConditionalCompile(),
             vue(),
@@ -137,8 +158,9 @@ export default defineConfig(({mode}) => {
             removeFilesPlugin(isStandardPython),
             viteStaticCopyPyodide(),
             zipPysrcPlugin(),
+            writeVersionFilePlugin(gitHash),
             // Ideally we want typescript: true, but only after finishing the Pyodide and Vue 3 work:
-            checker({ typescript: false }),        
+            checker({ typescript: false }),
         ],
 
         css: {
@@ -162,9 +184,7 @@ export default defineConfig(({mode}) => {
         // Global Vite define variables used in the application
         define: {
             __BUILD_DATE_TICKS__: Date.now(),
-            __BUILD_GIT_HASH__: JSON.stringify(
-                execSync("git rev-parse --short=8 HEAD").toString().trim()
-            ),
+            __BUILD_GIT_HASH__: JSON.stringify(gitHash),
             __PYODIDE_VERSION__: JSON.stringify(getPyodideVersion()),
         },
 
