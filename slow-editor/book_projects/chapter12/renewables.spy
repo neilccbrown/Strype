@@ -1,7 +1,7 @@
 #(=> Strype:1:std
 #(=> editorCommandsSplitterPane2Size:{"tabsCollapsed":51.67,"splitCollapsed":45.23}
 #(=> peaLayoutMode:splitCollapsed
-#(=> peaCommandsSplitterPane2Size:{"tabsCollapsed":66.27,"splitCollapsed":67.4}
+#(=> peaCommandsSplitterPane2Size:{"tabsCollapsed":66.27,"splitCollapsed":82.97}
 #(=> peaSplitViewSplitterPane1Size:{"splitCollapsed":78.12}
 '''Renewables. Version 1.0
 
@@ -127,7 +127,7 @@ def energy_vs_GDP ( ) :
     ax.set_title(f"Wealth vs Renewable Energy Adoption ({gdp_year})",fontsize=14,weight="bold") 
     ax.set_xlabel("GDP per capita (log scale, current international $)") 
     ax.set_ylabel("Renewable share of primary energy (%)") 
-    ax.xaxis.set_major_formatter(mticker.FuncFormatter(___strype_blank lambda x,_:f"${x:,.0f}")) 
+    ax.xaxis.set_major_formatter(mticker.FuncFormatter( lambda x,_:f"${x:,.0f}")) 
     
     # label a few notable countries
     highlight  = ["China","United States","Iceland","Norway","India","Germany","United Kingdom","Brazil","Nigeria","Saudi Arabia","Sweden"] 

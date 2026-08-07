@@ -26,10 +26,10 @@ class Cat(Actor)  :
         for i  in range(distance)  :
             self.set_image(img1) 
             pause(0.4) 
-            self.set_location(self.get_x()+direction,self.get_y()) 
+            self.set_location(self.get_x() + direction,self.get_y()) 
             self.set_image(img2) 
             pause(0.4) 
-            self.set_location(self.get_x()+direction,self.get_y()) 
+            self.set_location(self.get_x() + direction,self.get_y()) 
         self.set_image(self.cat_image) 
     #(=> FrameState:FoldToDocumentation
     def walk_left (self,distance ) :
@@ -97,7 +97,7 @@ class Cat(Actor)  :
     def is_alone (self, ) :
         '''Check whether the cat is alone. Return True if it is, or False if another cat is around.'''
         number_of_cats  = len(get_actors()) 
-        return number_of_cats<2 
+        return number_of_cats < 2 
     #(=> FrameState:FoldToDocumentation
     def has_company (self, ) :
         '''The opposite of \'is_alone()\': Return True if we have company, False otherwise.'''

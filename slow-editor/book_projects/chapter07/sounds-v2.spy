@@ -21,7 +21,7 @@ def play_stutter (sound,length,count ) :
     '''Produce the stutter effect'''
     samples  = sound.get_samples() 
     prefix  = samples[:length] 
-    total  = prefix*count+samples 
+    total  = prefix * count + samples 
     stutter  = Sound(total) 
     stutter.play() 
 #(=> Section:Main
@@ -29,9 +29,9 @@ hello  = load_sound("data:audio/wav;base64,UklGRkgEAQBXQVZFZm10IBAAAAABAAEAgLsAA
 
 while True  :
     keypress  = get_key() 
-    if keypress=='2'  :
+    if keypress == '2'  :
         play_backwards(hello) 
-    if keypress=='3'  :
+    if keypress == '3'  :
         play_stutter(hello,9000,7) 
 
 #(=> Section:End

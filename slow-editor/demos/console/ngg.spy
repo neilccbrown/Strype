@@ -8,12 +8,12 @@ import random
 def getGuess ( ) :
     '''Get the next guess from the user'''
     global numGuesses 
-    numGuesses  = numGuesses+1 
+    numGuesses  = numGuesses + 1 
     guess  = int(input("Your number: ")) 
     return guess 
 def gameOver ( ) :
     '''Check whether it\'s game over. Return True if it is (False otherwise).'''
-    return ___strype_invalid_u0067u0075u0065u0073u0073u0065u0064u0020u006fu0072(numGuesses>6) 
+    return ___strype_invalid_u0067u0075u0065u0073u0073u0065u0064u0020u006fu0072(numGuesses > 6) 
 #(=> Section:Main
 print("Welcome to the Number Guessing Game (NGG)") 
 number  = random.randint(0,100) 
@@ -22,10 +22,10 @@ guessed  = False
 print("Guess a number between 0 and 100") 
 while not gameOver()  :
     guess  = getGuess() 
-    if guess==number  :
+    if guess == number  :
         print("You got it!") 
         guessed  = True 
-    elif guess<number  :
+    elif guess < number  :
         print("You're too low...  Try again.") 
     else :
         print("You're too high. Try again.") 

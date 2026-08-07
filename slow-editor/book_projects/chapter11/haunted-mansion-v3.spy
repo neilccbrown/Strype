@@ -57,7 +57,7 @@ def show_room_description (room ) :
     print("You are",current_room.description) 
     #show items
     items_in_room  = items.get(current_room) 
-    if len(items_in_room)>0  :
+    if len(items_in_room) > 0  :
         print("You see: ") 
         for item  in items_in_room  :
             print("   ",item.description) 
@@ -71,11 +71,11 @@ def get_command ( ) :
     '''Get a one-wrod or two-word command from the user, via text input. This will return two words (command and second_word). The commnand returned will be a string, the second work is either a string or None.'''
     print() 
     words  = [] 
-    while len(words)==0  :
+    while len(words) == 0  :
         #repeat untilt he user types at least one word
         input_string  = input("> ") 
         words  = input_string.split() 
-    if len(words)>1  :
+    if len(words) > 1  :
         return words[0],words[1] 
     else :
         return words[0],None 
@@ -115,7 +115,7 @@ def look (item_name ) :
     else :
         room_items  = items.get(current_room) 
         for item  in room_items  :
-            if item.name==item_name  :
+            if item.name == item_name  :
                 print("You are looking at",item.description) 
 def print_help ( ) :
     '''Print a help text.'''
