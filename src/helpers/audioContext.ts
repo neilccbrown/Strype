@@ -25,6 +25,12 @@ function isStuck(ctx: AudioContext) : boolean {
     const stuck = lastObservedAt !== 0
         && (now - lastObservedAt) > STUCK_THRESHOLD_MS
         && ctx.currentTime <= lastObservedCurrentTime;
+    if (stuck) {
+        // Log this so that if a user reports sound silently stopping, we have a chance of
+        // spotting it in the console: it's exactly the "running but not producing audio" state
+        // this function exists to detect.
+        console.warn(`AudioContext detected as stuck (state "${ctx.state}", currentTime stayed at ${ctx.currentTime} for ${now - lastObservedAt}ms) -- recreating it.`);
+    }
     // Refresh our observation regardless, ready for the next check:
     lastObservedCurrentTime = ctx.currentTime;
     lastObservedAt = now;
@@ -39,19 +45,47 @@ export function createOrGetAudioContext() : AudioContext {
     if (audioContext == null || audioContext.state === "closed" || isStuck(audioContext)) {
         if (audioContext != null && audioContext.state !== "closed") {
             // Don't wait for this; we just want to release its resources:
-            audioContext.close().catch(() => { /* Ignore errors closing a dead context */ });
+            audioContext.close().catch((err) => console.warn("Error closing previous AudioContext (ignoring, continuing with a new one):", err));
         }
         audioContext = new AudioContext();
-        lastObservedCurrentTime = 0;
-        lastObservedAt = 0;
+        // Seed the baseline immediately rather than leaving it at the "unobserved" 0/0
+        // sentinel: isStuck() is never called on this same creation path (short-circuited
+        // by audioContext == null above), so without this the *next* call to isStuck() would
+        // see lastObservedAt === 0 and skip the stuck check entirely, just re-seeding the
+        // baseline instead of actually comparing against it -- meaning a context that died
+        // immediately after creation wouldn't be caught until a third call, one cycle later
+        // than intended:
+        lastObservedCurrentTime = audioContext.currentTime;
+        lastObservedAt = Date.now();
     }
-    else if (audioContext.state === "suspended") {
-        // This can happen if the browser suspended us (e.g. backgrounding); resuming does
-        // not require a fresh user gesture in any of our supported browsers, so we can just
-        // try it directly here.
-        audioContext.resume().catch(() => { /* Ignore; caller will still get the context and can retry later */ });
+    else if (audioContext.state === "suspended" || audioContext.state === "interrupted") {
+        // "suspended" can happen if the browser suspended us (e.g. backgrounding). "interrupted"
+        // is Safari-specific: unlike "suspended" (which we/the page asked for), it means the
+        // *browser* paused us for something outside the page's control -- an incoming call, Siri,
+        // an alarm, another app taking audio focus, etc -- and per Apple's guidance the fix is the
+        // same: just call resume() once the interruption is over. Without this, a context left
+        // "interrupted" would never be recovered at all: it's not "running" (so isStuck() above
+        // ignores it) and not "closed" (so the recreate branch ignores it too), so it would
+        // otherwise just sit there silently and never produce sound again. Resuming does not
+        // require a fresh user gesture in any of our supported browsers, so we can just try it
+        // directly here.
+        audioContext.resume().catch((err) => console.warn(`Error resuming ${audioContext?.state} AudioContext (caller will still get the context and can retry later):`, err));
     }
     return audioContext;
+}
+
+// Closes the shared AudioContext, if one exists. Callers should invoke this once they know no
+// more sound will be played until the next createOrGetAudioContext() call (e.g. execution
+// finished, or a media dialog/popup closed) -- this bounds how long a context stays alive, which
+// keeps us out of the long-lived-background-context territory where Safari has been observed to
+// silently stop delivering audio.
+export function closeAudioContext() : void {
+    if (audioContext != null && audioContext.state !== "closed") {
+        audioContext.close().catch((err) => console.warn("Error closing AudioContext (ignoring):", err));
+    }
+    audioContext = null;
+    lastObservedCurrentTime = 0;
+    lastObservedAt = 0;
 }
 
 // Proactively check/recover the audio context whenever the page becomes visible again, since

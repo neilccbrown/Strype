@@ -26,28 +26,28 @@ def check_wall ( ) :
     '''Check whether the ball has bit the wall. If it has, bounce off it.'''
     global ball_dx 
     global ball_dy 
-    if ball.get_x()<-390 or ball.get_x()>390  :
-        ball_dx  = ___strype_blank-ball_dx 
-    if ball.get_y()>290  :
-        ball_dy  = ___strype_blank-ball_dy 
+    if ball.get_x() < -390 or ball.get_x() > 390  :
+        ball_dx  = -ball_dx 
+    if ball.get_y() > 290  :
+        ball_dy  = -ball_dy 
 def check_paddle ( ) :
     '''Check whether the ball has hit the paddle. If it has, bounce of it.'''
     if ball.get_touching("paddle")  :
         global ball_dx 
         global ball_dy 
-        ball_dy  = ___strype_blank-ball_dy 
-        offset  = ball.get_x()-paddle.get_x() 
-        ball_dx  = ball_dx+(offset/10) 
+        ball_dy  = -ball_dy 
+        offset  = ball.get_x() - paddle.get_x() 
+        ball_dx  = ball_dx + (offset / 10) 
 def check_out ( ) :
     '''Check whether the ball is out of play. If it is, stop the game.'''
-    if ball.get_y()<-298  :
+    if ball.get_y() < -298  :
         ball.remove() 
         stop() 
 def make_smoke ( ) :
     '''Draw the smoke.'''
     for smoke  in get_actors("smoke")  :
         img  = smoke.get_image() 
-        if img.get_width()<20  :
+        if img.get_width() < 20  :
             smoke.remove() 
         else :
             smoke.set_image(img.clone(smoke.shrink_rate)) 
@@ -62,15 +62,15 @@ def make_smoke ( ) :
         draw_smoke  = True 
 def move_ball ( ) :
     '''Move the ball. Make sure it bounces off the walls and the paddle.'''
-    ball.set_location(ball.get_x()+ball_dx,ball.get_y()+ball_dy) 
+    ball.set_location(ball.get_x() + ball_dx,ball.get_y() + ball_dy) 
     check_wall() 
     check_paddle() 
 def move_paddle ( ) :
     '''Check for key presses and move the paddle accordingly.'''
     if key_pressed("left")  :
-        paddle.move(___strype_blank-PADDLE_SPEED) 
+        paddle.move(-PADDLE_SPEED) 
         if ball_stuck  :
-            ball.move(___strype_blank-PADDLE_SPEED) 
+            ball.move(-PADDLE_SPEED) 
     if key_pressed("right")  :
         paddle.move(PADDLE_SPEED) 
         if ball_stuck  :

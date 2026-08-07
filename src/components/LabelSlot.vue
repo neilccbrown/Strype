@@ -174,6 +174,8 @@ export default defineComponent({
         if (this.isMediaSlot) {
             this.loadMediaPreview().then((m) => {
                 this.mediaPreview = m;
+            }).catch((err) => {
+                console.error("Error loading media preview:", err);
             });
         }
     },

@@ -31,15 +31,15 @@ def analyse_text (text ) :
     #count non-space characters
     non_space  = 0 
     for char  in text  :
-        if char!=" "  :
-            non_space  = non_space+1 
+        if char != " "  :
+            non_space  = non_space + 1 
     print(f"Characters without spaces: {non_space}") 
     
     #count punctuation characters
     punct_count  = 0 
     for char  in text  :
         if char in punctuation  :
-            punct_count  = punct_count+1 
+            punct_count  = punct_count + 1 
     print(f"Punctuation characters: {punct_count}") 
     
     #print empty line

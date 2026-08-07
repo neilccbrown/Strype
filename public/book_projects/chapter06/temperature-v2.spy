@@ -41,7 +41,7 @@ print()
 
 jan  = temp[0:31] 
 print("Warmest day in January:",max(jan),"degrees.") 
-feb  = temp[31:31+28] 
+feb  = temp[31:31 + 28] 
 print("Warmest day in February:",max(feb),"degrees.") 
 print() 
 

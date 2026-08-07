@@ -85,13 +85,13 @@ import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { BTab, BTabs } from "bootstrap-vue-next";
 import * as Comlink from "comlink";
 import {handleErrorTrace, setSInputConsole} from "@/helpers/execPythonCode";
-import {PyodideErrorDetails, serviceWorkerReadyAndInControl} from "@/workers/shared_helpers";
+import {isServiceWorkerChannelResponsive, PyodideErrorDetails, serviceWorkerReadyAndInControl} from "@/workers/shared_helpers";
 import {SpriteHandle, SyncOrAsyncStrypePyodideWorkerRequest} from "@/stryperuntime/worker_bridge_type";
 import {SoundManager} from "@/stryperuntime/sound_manager";
 import {handleAsyncRequests, handleSyncRequests} from "@/stryperuntime/main_bridge_handler";
-import {getPythonClient, isPythonWorkerReady, renderer, terminateAndRestartPyodide} from "@/stryperuntime/main_thread_python_handler";
+import {getPythonClient, isPythonWorkerReady, renderer, serviceWorkerChannel, terminateAndRestartPyodide} from "@/stryperuntime/main_thread_python_handler";
 import { TurtlePixiHandler } from "@/stryperuntime/turtle_pixi_handler";
-import {createOrGetAudioContext} from "@/helpers/audioContext";
+import {closeAudioContext, createOrGetAudioContext} from "@/helpers/audioContext";
 import {clearAllRuntimeErrors, computeFrameSnapshot} from "@/helpers/storeMethods";
 import html2canvas from "html2canvas";
 
@@ -117,6 +117,15 @@ let switchedToConsoleTabAlreadyThisExecute = false;
 // run button still shows "Stop" during this time; clicking it goes through runClicked()'s
 // "Running" case, which stops the sounds (resolving the wait below) and finalises the run.
 let waitingForSoundsAfterNormalCompletion = false;
+
+// Logged (temporarily -- see isServiceWorkerChannelResponsive() in shared_helpers.ts) so the
+// "[SW channel check]"/"[Worker first sync read]"/"[Pyodide slot swap]" log lines can be matched
+// up against which numbered Run click they belong to -- we're chasing a failure that has so far
+// only ever been reported on the *second* execution since page load, never later ones, which
+// points at something specific to run #2's worker (the spare pre-warmed at page load via
+// maybeCreateSpareSlot() in main_thread_python_handler.ts) rather than a general "worker just
+// got swapped in" issue that would equally affect run #3, #4, etc:
+let runCount = 0;
 
 let soundManager : SoundManager | null = null; // Can't initialise this here as we need permissions for audio context
 const turtleCanvas = new OffscreenCanvas(800, 600);
@@ -453,6 +462,16 @@ export default defineComponent({
             // When we change tab, we also check the position of the expand/collapse button
             setPythonExecAreaLayoutButtonPos();
         },
+        isPythonExecuting(nowExecuting: boolean){
+            // Once execution (including any trailing sounds -- see waitingForSoundsAfterNormalCompletion)
+            // has fully finished, close the shared AudioContext rather than leaving it running
+            // indefinitely: it will be recreated on the next run/gesture that needs it (see
+            // createOrGetAudioContext() call sites). This bounds how long a context stays alive
+            // during a session that may otherwise run for hours between executions.
+            if (!nowExecuting) {
+                closeAudioContext();
+            }
+        },
     },
 
     methods: {
@@ -505,6 +524,8 @@ export default defineComponent({
             switch (useStore().pythonExecRunningState) {
             case PythonExecRunningState.NotRunning:
                 useStore().pythonExecRunningState = PythonExecRunningState.Running;
+                runCount += 1;
+                console.info(`[Run click ${new Date().toISOString()}] run #${runCount} this page session`);
                 try {
                     useStore().enqueueAnalyticsEvent("run", computeFrameSnapshot());
                     useStore().flushAnalyticsQueue("critical");
@@ -641,12 +662,44 @@ export default defineComponent({
                 setSInputConsole(pythonConsole);
                 
                 // getPythonClient() can change value if restarted so important we take one
-                // const reference to it for the duration of a Python run: 
+                // const reference to it for the duration of a Python run:
                 const client = getPythonClient();
                 if (client == null) {
+                    // Shouldn't normally happen (the Run button is disabled while
+                    // isPythonWorkerReady is false), but if it does, don't leave the
+                    // button stuck showing "Stop" with nothing actually running:
+                    useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
                     return;
                 }
-                
+
+                // The run depends on the sync-message service worker channel throughout (input(),
+                // cloud file I/O, output catch-up), but nothing normally confirms it's actually
+                // being intercepted before we commit to running -- a controller can be present yet
+                // not truly answering (Safari is known to silently lose a backgrounded tab's service
+                // worker), in which case the run would only fail ~5s in, deep inside the worker.
+                // Check fast, and if it's not responding try to get the service worker to reclaim
+                // us before proceeding; if that doesn't help either, we still go ahead -- the
+                // .then()/.catch() below will reset the Run button cleanly rather than leaving it
+                // stuck, so this is a best-effort speed-up, not a hard gate:
+                if (!(await isServiceWorkerChannelResponsive(serviceWorkerChannel.baseUrl))) {
+                    console.error("Service worker sync channel not responding; attempting to reclaim control before running");
+                    const registration = await navigator.serviceWorker.getRegistration();
+                    await registration?.update();
+                    // Logged (temporarily -- see isServiceWorkerChannelResponsive() in
+                    // shared_helpers.ts) so we can tell whether the reclaim actually got a
+                    // controllerchange back, or just fell through the 1.5s timeout unanswered:
+                    const reclaimedViaControllerChange = await new Promise<boolean>((resolve) => {
+                        const timeout = setTimeout(() => resolve(false), 1500);
+                        navigator.serviceWorker.addEventListener("controllerchange", () => {
+                            clearTimeout(timeout);
+                            resolve(true);
+                        }, {once: true});
+                        registration?.active?.postMessage("claim");
+                    });
+                    const respondingAfterReclaim = await isServiceWorkerChannelResponsive(serviceWorkerChannel.baseUrl);
+                    console.info(`Service worker reclaim attempt: ${reclaimedViaControllerChange ? "got controllerchange" : "timed out waiting for controllerchange"}; channel now responsive=${respondingAfterReclaim}`);
+                }
+
                 const syncBridgePromise = handleSyncRequests(renderer, soundManager as SoundManager, turtlePixiHandler, {
                     getPressedKeys: () => pressedKeys,
                     waitForNextKey: () => {
@@ -778,8 +831,21 @@ export default defineComponent({
                             }
                         });
                     }
+                }).catch((err) => {
+                    // client.call() itself can reject -- not just resolve with a possibleError --
+                    // e.g. if a sync request from the worker (see bridgeSync/makeRawRequest) couldn't
+                    // reach the main thread because the service worker sync-message channel was briefly
+                    // down (ServiceWorkerError). Without this handler that rejection went unhandled and
+                    // the .then() above never ran, leaving the Run button stuck showing "Stop" with
+                    // nothing running until the user clicked Stop then Run again to force a reset:
+                    console.error("Python execution failed to complete: ", err);
+                    setPythonExecAreaLayoutButtonPos();
+                    // The worker may be left in a broken/uncertain state, so get a clean one for next time:
+                    void terminateAndRestartPyodide();
+                    soundManager?.stopAllSounds();
+                    useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
                 });
-                
+
                 // We make sure the number of errors shown in the interface is in line with the current state of the code
                 // Note that a run time error can still occur later.                
                 this.checkNonePrecompiledErrors();

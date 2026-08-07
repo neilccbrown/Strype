@@ -1,4 +1,4 @@
-#(=> Strype:1:mb
+#(=> Strype:1:std
 '''Let your micro:bit play a song!'''
 #(=> Section:Imports
 from microbit import * 

@@ -198,6 +198,8 @@ async function changeBookDialogCategory(index: number) {
                 item.imgURL = drawSoundOnCanvas(audioBuffer, 200, 50, 1.0, 0.75);
             }
             item.assetFileBase64 = base64;
+        }).catch((err) => {
+            console.error(`Error preparing preview for asset "${details.name}" (${asset.mimeType}):`, err);
         });
     }
     projectsInCurrentChapter.value = foundProjects;

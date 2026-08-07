@@ -27,15 +27,15 @@ def number_non_space_chars (text ) :
     '''Return the number of non-space characters'''
     non_space  = 0 
     for char  in text  :
-        if char!=" "  :
-            non_space  = non_space+1 
+        if char != " "  :
+            non_space  = non_space + 1 
     return non_space 
 def number_punctuation (text ) :
     '''Return the number of punctuation characters in \'text\''''
     punct_count  = 0 
     for char  in text  :
         if char in punctuation  :
-            punct_count  = punct_count+1 
+            punct_count  = punct_count + 1 
     return punct_count 
 def number_of_words (text ) :
     '''Return the number of words in \'text\''''

@@ -19,13 +19,13 @@ def determine_winner (user,computer ) :
     '''Check who has won. Print out the result.'''
     print(f"\nYou chose {user}, computer chose {computer}.") 
     
-    if user==computer  :
+    if user == computer  :
         return "It's a tie!" 
-    elif user=="rock" and computer=="scissors"  :
+    elif user == "rock" and computer == "scissors"  :
         return "You win!" 
-    elif user=="scissors" and computer=="paper"  :
+    elif user == "scissors" and computer == "paper"  :
         return "You win!" 
-    elif user=="paper" and computer=="rock"  :
+    elif user == "paper" and computer == "rock"  :
         return "You win!" 
     else :
         return "Computer wins!" 

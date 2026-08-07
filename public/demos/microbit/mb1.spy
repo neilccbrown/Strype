@@ -1,4 +1,4 @@
-#(=> Strype:1:mb
+#(=> Strype:1:std
 #(=> editorCommandsSplitterPane2Size:{"tabsCollapsed":34.13}
 '''A simple programme to show emotions on the micro:bit when pressing the buttons'''
 #(=> Section:Imports

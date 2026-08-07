@@ -319,7 +319,8 @@
     "cameraPermissionDenied": "L'accès à la caméra a été refusé. Veuillez autoriser l'accès à la caméra pour enregistrer une image.",
     "micPermissionDenied": "L'accès au microphone a été refusé. Veuillez autoriser l'accès au microphone pour enregistrer un son.",
     "noCameraFound": "Aucune caméra n'a été trouvée sur cet appareil.",
-    "noMicFound": "Aucun microphone n'a été trouvé sur cet appareil."
+    "noMicFound": "Aucun microphone n'a été trouvé sur cet appareil.",
+    "recordingProcessingError": "Un problème est survenu lors du traitement de l'enregistrement. Veuillez réessayer."
   },
   "book": {
     "dialogTitle": "Manuel Strype"

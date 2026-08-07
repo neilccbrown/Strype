@@ -26,13 +26,17 @@ async function installDeadFirstAudioContext(page: import("@playwright/test").Pag
                     return real;
                 }
                 // The first context: always reports "closed", mimicking a dead AudioContext.
-                // All other members pass through untouched.
+                // All other members pass through untouched. Note: the receiver passed to
+                // Reflect.get() must be the real target, not this proxy -- native accessors
+                // like currentTime are WebIDL getters that require `this` to be a genuine
+                // AudioContext instance, and invoking them with the proxy as `this` throws
+                // "TypeError: Illegal invocation" in Chromium.
                 return new Proxy(real, {
-                    get(t, prop, receiver) {
+                    get(t, prop) {
                         if (prop === "state") {
                             return "closed";
                         }
-                        const value = Reflect.get(t, prop, receiver);
+                        const value = Reflect.get(t, prop, t);
                         return typeof value === "function" ? value.bind(t) : value;
                     },
                 });
