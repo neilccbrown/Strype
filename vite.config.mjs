@@ -12,6 +12,20 @@ import { zipDir } from "./scripts/zip-dir.js";
 import checker from 'vite-plugin-checker';
 import {randomUUID} from "node:crypto";
 
+// Reads the exact resolved Pyodide version from package-lock.json -- must match the same lookup
+// in scripts/download-pyodide-libs.cjs, which uses this same version as the folder name under
+// public/pyodide/ (see the comment on indexURL in python-execution.ts for why: the folder needs a
+// version segment so it's safe to cache indefinitely, and the two need to agree on that segment or
+// the runtime will fetch a URL that was never downloaded there):
+function getPyodideVersion() {
+    const lock = JSON.parse(fs.readFileSync(path.resolve(__dirname, "package-lock.json"), "utf-8"));
+    const version = lock.packages?.["node_modules/pyodide"]?.version ?? lock.dependencies?.pyodide?.version;
+    if (!version) {
+        throw new Error("Could not find pyodide version in package-lock.json");
+    }
+    return version;
+}
+
 function zipPysrcPlugin() {
     let running = false;
     const run = async () => {
@@ -167,6 +181,7 @@ export default defineConfig(({mode}) => {
         define: {
             __BUILD_DATE_TICKS__: Date.now(),
             __BUILD_GIT_HASH__: JSON.stringify(gitHash),
+            __PYODIDE_VERSION__: JSON.stringify(getPyodideVersion()),
         },
 
         resolve: {
@@ -174,6 +189,28 @@ export default defineConfig(({mode}) => {
             alias: {
                 "@": path.resolve(__dirname, "src"),
                 vue: "@vue/compat",
+            },
+        },
+
+        // Inserts a literal, distinctive marker before the hash in every content-hashed output
+        // filename (default template is "assets/[name]-[hash].js" etc. -- this just adds
+        // "-vuehashed-" before "[hash]"). A production server can then reliably tell "this is a
+        // hash Vite generated" apart from "this filename happens to look hash-shaped" -- e.g.
+        // matching purely on shape (a hyphen followed by 6-12 alphanumeric characters) would also
+        // match an ordinary hand-written name like my-javascript-codefile.js ("-codefile" fits
+        // that shape too), and separately, vite-plugin-static-copy's raw Pyodide files land in
+        // this same assets/ directory unmodified (see viteStaticCopyPyodide() below) -- today
+        // none of their names happen to fit the shape either, but that's incidental, not
+        // guaranteed, and a future Pyodide release could easily ship one that does. Requiring
+        // this exact marker makes both false-positive risks structural instead of coincidental:
+        // only Vite's own hashing ever produces it, so nothing else ever will:
+        build: {
+            rollupOptions: {
+                output: {
+                    entryFileNames: "assets/[name]-vuehashed-[hash].js",
+                    chunkFileNames: "assets/[name]-vuehashed-[hash].js",
+                    assetFileNames: "assets/[name]-vuehashed-[hash][extname]",
+                },
             },
         },
 
