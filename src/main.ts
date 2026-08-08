@@ -102,19 +102,24 @@ else {
     // #v-endif
 };
 
-// These two compat checks fire unconditionally whenever Vue patches the DOM in the affected
-// way, regardless of whether the code already does the Vue-3-correct thing -- e.g.
-// ATTR_ENUMERATED_COERCION warns on every v-bind (and even static-but-dynamically-patched)
-// contenteditable/draggable/spellcheck attribute, even when the bound value is already an
-// explicit "true"/"false" string, and WATCH_ARRAY's auto-deep wrapper runs on every Options API
-// watcher over an array value even when `deep: true` is already set explicitly. We've audited
-// our usages of both and they already match real (non-compat) Vue 3 behaviour, so disable just
-// these two checks to stop the console noise without masking any other compat difference.
+// WATCH_ARRAY's auto-deep-and-warn wrapper runs on every Options API watcher over an array
+// value even when `deep: true` is already set explicitly, as ours already was -- we've audited
+// our one usage and it already matches real (non-compat) Vue 3 behaviour, so disable just this
+// check to stop that specific console noise.
+//
+// Deliberately NOT also disabling ATTR_ENUMERATED_COERCION here: unlike WATCH_ARRAY, disabling
+// it changes real runtime behaviour (removes Vue 2's silent auto-coercion of contenteditable/
+// draggable/spellcheck) for every v-bind site project-wide, not just the ones we've audited and
+// converted to explicit "true"/"false" strings. CI caught this: with the flag disabled, Vue logs
+// a genuine console.error ("...will likely lead to runtime errors") for every unfixed site (e.g.
+// Frame.vue's draggable="true", AutoCompletion.vue's spellcheck="false"), and
+// cypress-fail-on-console-error fails the test on any console.error. Leave the check enabled --
+// it's still noisy in the console, but that's the safe trade-off, not a full app-wide audit.
+//
 // (configureCompat() is only present at runtime, via the "vue" -> "@vue/compat" alias in
 // vite.config.mjs -- @vue/compat ships no reachable type declarations under this project's
 // moduleResolution, hence the local cast rather than a typed import.)
 (Vue as unknown as { configureCompat: (config: Record<string, boolean>) => void }).configureCompat({
-    ATTR_ENUMERATED_COERCION: false,
     WATCH_ARRAY: false,
 });
 
