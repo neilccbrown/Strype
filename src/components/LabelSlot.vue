@@ -3,7 +3,7 @@
         <span
             autocomplete="off"
             spellcheck="false"
-            :disabled="isDisabled"
+            :disabled="isDisabled ? 'true' : 'false'"
             :placeholder="defaultText"
             :empty-content="(!code || code == '\u200B') ? 'true' : 'false'"
             :contenteditable="(isEditableSlot && !(isDisabled || isFrozen || isPythonExecuting)) ? 'true' : 'false'"

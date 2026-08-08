@@ -1,3 +1,4 @@
+import * as Vue from "vue";
 import { createApp, nextTick } from "vue";
 import App from "@/App.vue";
 import  {createPinia } from "pinia";
@@ -100,6 +101,22 @@ else {
     getPEATabContentContainerDivId: getPEATabContentContainerDivId,
     // #v-endif
 };
+
+// These two compat checks fire unconditionally whenever Vue patches the DOM in the affected
+// way, regardless of whether the code already does the Vue-3-correct thing -- e.g.
+// ATTR_ENUMERATED_COERCION warns on every v-bind (and even static-but-dynamically-patched)
+// contenteditable/draggable/spellcheck attribute, even when the bound value is already an
+// explicit "true"/"false" string, and WATCH_ARRAY's auto-deep wrapper runs on every Options API
+// watcher over an array value even when `deep: true` is already set explicitly. We've audited
+// our usages of both and they already match real (non-compat) Vue 3 behaviour, so disable just
+// these two checks to stop the console noise without masking any other compat difference.
+// (configureCompat() is only present at runtime, via the "vue" -> "@vue/compat" alias in
+// vite.config.mjs -- @vue/compat ships no reachable type declarations under this project's
+// moduleResolution, hence the local cast rather than a typed import.)
+(Vue as unknown as { configureCompat: (config: Record<string, boolean>) => void }).configureCompat({
+    ATTR_ENUMERATED_COERCION: false,
+    WATCH_ARRAY: false,
+});
 
 // New way of creating the App in Vue 3: using createApp()
 const app = createApp(App);

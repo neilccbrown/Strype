@@ -265,8 +265,8 @@ export default defineComponent({
 
         // Exposed for tests: whether a debounced funccall->keyword-frame/varassign conversion is
         // currently pending (see LabelSlotsStructure.vue's cancelPendingConversion()).
-        pendingSlotConversion() : boolean {
-            return this.appStore.pendingSlotConversionCount > 0;
+        pendingSlotConversion() : string {
+            return (this.appStore.pendingSlotConversionCount > 0) ? "true" : "false";
         },
 
         showMessage(): boolean {
