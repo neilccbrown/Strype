@@ -79,7 +79,7 @@ import Cache from "timed-cache";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
 import { bumpCaretRequestSeq, closeBracketCharacters, CustomEventTypes, getACLabelSlotUID, getCaretRequestSeq, getFocusedEditableSlotTextSelectionStartEnd, getFrameHeaderUID, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFrameUID, getLabelSlotUID, getMatchingBracket, getNumPrecedingBackslashes, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, keywordOperatorsWithSurroundSpaces, openBracketCharacters, operators, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, simpleSlotStructureToString, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringDoubleQuoteChar, stringQuoteCharacters, stringSingleQuoteChar, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength } from "@/helpers/editor";
-import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, CollapsedState, EditImageInDialogFunction, FieldSlot, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, getFrameDefType, isFieldBracketedSlot, isFieldStringSlot, LoadedMedia, MediaSlot, MessageDefinitions, OptionalSlotType, PythonExecRunningState, RecordNewImageInDialogFunction, RecordNewSoundInDialogFunction, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
+import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, CollapsedState, EditImageInDialogFunction, FieldSlot, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, getFrameDefType, isFieldBracketedSlot, isFieldStringSlot, LoadedMedia, MediaSlot, MessageDefinitions, OpenColourPickerInDialogFunction, OptionalSlotType, PythonExecRunningState, RecordNewImageInDialogFunction, RecordNewSoundInDialogFunction, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
 import {evaluateSlotType, getFlatNeighbourFieldSlotInfos, getOutmostDisabledAncestorFrameId, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
@@ -154,7 +154,7 @@ export default defineComponent({
         },
     },
     
-    inject: ["editImageInDialog", "recordNewImageInDialog", "recordNewSoundInDialog"],
+    inject: ["editImageInDialog", "recordNewImageInDialog", "recordNewSoundInDialog", "openColourPickerInDialog"],
 
     mounted(){
         // To make sure the a/c component shows just below the spans, we set its top position here based on the span height.
@@ -417,6 +417,10 @@ export default defineComponent({
 
         doRecordNewSoundInDialog() : RecordNewSoundInDialogFunction {
             return (this as any).recordNewSoundInDialog as RecordNewSoundInDialogFunction;
+        },
+
+        doOpenColourPickerInDialog() : OpenColourPickerInDialogFunction {
+            return (this as any).openColourPickerInDialog as OpenColourPickerInDialogFunction;
         },
     },
 
@@ -948,6 +952,24 @@ export default defineComponent({
                 this.triggerMediaRecording(event.key.toLowerCase() == "i" ? "image" : "sound");
             }
 
+            // Ctrl-Shift-Y opens a colour-picker dialog (Ctrl-Shift-L was already taken by the
+            // project-sharing-link shortcut in Menu.vue; Ctrl-Shift-P is Firefox's reserved Private
+            // Browsing shortcut; Ctrl-Alt-C collides with AltGr on many non-US keyboard layouts;
+            // Ctrl-Shift-K opens Firefox's Web Console regardless of preventDefault, same
+            // unblockable-by-the-page category as Ctrl-Shift-P). Unlike Ctrl-Shift-I/U above, this
+            // one IS allowed inside string slots (it's meant to help build/edit colour string
+            // literals), just not inside comments where a colour string wouldn't make sense.
+            if((event.ctrlKey || event.metaKey) && event.shiftKey
+                    && event.key.toLowerCase() == "y"
+                    && this.slotType != SlotType.comment
+                    && this.frameType != AllFrameTypesIdentifier.comment
+                    && !this.appStore.isModalDlgShown){
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+                this.triggerColourPicker();
+            }
+
             // Manage the handling of home/end and page up/page down keys (see macOS case in method details)
             const textHomeEndBehaviourKeys = (isMacOSPlatform() && event.metaKey) ? ["ArrowLeft", "ArrowRight"] : ["Home", "End"];
             if(["PageUp", "PageDown", ...textHomeEndBehaviourKeys].includes(event.key)){
@@ -1039,6 +1061,94 @@ export default defineComponent({
             }
             else {
                 this.doRecordNewSoundInDialog(commitInsertion, restoreOriginalCursor);
+            }
+        },
+
+        // Ctrl-Shift-Y: opens the colour-picker dialog at the current caret position. Two cases,
+        // per the same synchronous-capture approach as triggerMediaRecording above:
+        // - Outside a string: inserts a brand new string literal containing the picked hex code,
+        //   via addNewSlot (mirrors the media-literal-insertion case there).
+        // - Inside a string: seeds the picker from the current string content (if it parses as a
+        //   colour), and on "OK" replaces the WHOLE string content with the picked hex code
+        //   (regardless of whether the original content was a valid colour), via
+        //   setFrameEditableSlotContent. Cancel leaves the string untouched.
+        triggerColourPicker() {
+            const inputSpanField = document.getElementById(this.UID) as HTMLSpanElement;
+            if (!inputSpanField) {
+                return;
+            }
+            const targetSlotInfos = parseLabelSlotUID(this.UID);
+            const isInString = this.slotType == SlotType.string;
+
+            // Suppress the artificial blur about to happen as focus moves to the modal (see
+            // triggerMediaRecording above for why):
+            this.appStore.ignoreBlurEditableSlot = true;
+
+            if (isInString) {
+                const currentCode = (inputSpanField.textContent ?? "").replace(/\u200B/g, "");
+                const restoreOriginalCursor = () => {
+                    const cursorInfo: SlotCursorInfos = {slotInfos: targetSlotInfos, cursorPos: currentCode.length};
+                    nextTick(() => {
+                        setDocumentSelection(cursorInfo, cursorInfo);
+                        this.appStore.setSlotTextCursors(cursorInfo, cursorInfo);
+                        this.appStore.setFocusEditableSlot({
+                            frameSlotInfos: targetSlotInfos,
+                            caretPosition: this.appStore.getAllowedChildren(targetSlotInfos.frameId) ? CaretPosition.body : CaretPosition.below,
+                        });
+                    });
+                };
+
+                const commitReplacement = (hex: string) => {
+                    this.appStore.setFrameEditableSlotContent({...targetSlotInfos, code: hex, initCode: "", isFirstChange: true});
+                    const cursorInfo: SlotCursorInfos = {slotInfos: targetSlotInfos, cursorPos: hex.length};
+                    nextTick(() => {
+                        setDocumentSelection(cursorInfo, cursorInfo);
+                        this.appStore.setSlotTextCursors(cursorInfo, cursorInfo);
+                        this.appStore.setFocusEditableSlot({
+                            frameSlotInfos: targetSlotInfos,
+                            caretPosition: this.appStore.getAllowedChildren(targetSlotInfos.frameId) ? CaretPosition.body : CaretPosition.below,
+                        });
+                    });
+                };
+
+                this.doOpenColourPickerInDialog(currentCode, commitReplacement, restoreOriginalCursor);
+            }
+            else {
+                const {selectionStart, selectionEnd} = getFocusedEditableSlotTextSelectionStartEnd(this.UID);
+                const lhsCode = (inputSpanField.textContent?.substring(0, selectionStart) ?? "").replace(/\u200B/g, "");
+                const rhsCode = (inputSpanField.textContent?.substring(selectionEnd) ?? "").replace(/\u200B/g, "");
+
+                const restoreOriginalCursor = () => {
+                    const anchorCursorInfo: SlotCursorInfos = {slotInfos: targetSlotInfos, cursorPos: selectionStart};
+                    const focusCursorInfo: SlotCursorInfos = {slotInfos: targetSlotInfos, cursorPos: selectionEnd};
+                    nextTick(() => {
+                        setDocumentSelection(anchorCursorInfo, focusCursorInfo);
+                        this.appStore.setSlotTextCursors(anchorCursorInfo, focusCursorInfo);
+                        this.appStore.setFocusEditableSlot({
+                            frameSlotInfos: targetSlotInfos,
+                            caretPosition: this.appStore.getAllowedChildren(targetSlotInfos.frameId) ? CaretPosition.body : CaretPosition.below,
+                        });
+                    });
+                };
+
+                const commitInsertion = (hex: string) => {
+                    this.appStore.addNewSlot(targetSlotInfos, "\"", lhsCode, rhsCode, SlotType.string, false, hex);
+                    // Place the cursor in the new trailing (empty) field right after the inserted
+                    // string, mirroring commitInsertion in triggerMediaRecording above:
+                    const {parentId, slotIndex} = getSlotParentIdAndIndexSplit(targetSlotInfos.slotId);
+                    const rhsSlotInfos: SlotCoreInfos = {...targetSlotInfos, slotId: getSlotIdFromParentIdAndIndexSplit(parentId, slotIndex + 2)};
+                    const cursorInfo: SlotCursorInfos = {slotInfos: rhsSlotInfos, cursorPos: 0};
+                    nextTick(() => {
+                        setDocumentSelection(cursorInfo, cursorInfo);
+                        this.appStore.setSlotTextCursors(cursorInfo, cursorInfo);
+                        this.appStore.setFocusEditableSlot({
+                            frameSlotInfos: rhsSlotInfos,
+                            caretPosition: this.appStore.getAllowedChildren(rhsSlotInfos.frameId) ? CaretPosition.body : CaretPosition.below,
+                        });
+                    });
+                };
+
+                this.doOpenColourPickerInDialog(null, commitInsertion, restoreOriginalCursor);
             }
         },
 

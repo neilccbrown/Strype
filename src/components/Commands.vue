@@ -97,6 +97,21 @@
                                                         <span>{{ mediaRecordingCommand.description }}</span>
                                                     </div>
                                                 </p>
+                                                <p v-if="colourPickerCommand.length">
+                                                    <div
+                                                        v-for="colourPickerCmd in colourPickerCommand"
+                                                        :key="colourPickerCmd.description"
+                                                        class="frame-cmd-container text-editing-command"
+                                                    >
+                                                        <span class="text-editing-command-keys">
+                                                            <template v-for="(key, keyIndex) in colourPickerCmd.keys" :key="key.label">
+                                                                <span v-if="keyIndex > 0" class="text-editing-command-keys-plus">+</span>
+                                                                <button class="frame-cmd-btn frame-cmd-btn-large" :title="key.title">{{ key.label }}</button>
+                                                            </template>
+                                                        </span>
+                                                        <span>{{ colourPickerCmd.description }}</span>
+                                                    </div>
+                                                </p>
                                             <!-- this conditional rendering is only used for our code editor to see the closing <div> right -->
                                             <!-- #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE -->
                                             </div>
@@ -402,6 +417,28 @@ export default defineComponent({
             return [
                 {keys: [ctrl, shift, {label: "i"}], description: this.$t("autoCompletion.recordImageShortcut")},
                 {keys: [ctrl, shift, {label: "u"}], description: this.$t("autoCompletion.recordSoundShortcut")},
+            ];
+        },
+
+        // Ctrl-Shift-Y opens the colour-picker dialog. Unlike mediaRecordingCommands above, this is
+        // shown for string slots too, since that's exactly where it's most useful (editing colour
+        // string literals in place); only comments are excluded.
+        colourPickerCommand(): {keys: ({label: string, title?: string})[]; description: string}[] {
+            const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
+            if(!this.appStore.isEditing || !focusSlotCursorInfos){
+                return [];
+            }
+
+            const slotInfos = focusSlotCursorInfos.slotInfos;
+            const frameType = this.appStore.frameObjects[slotInfos.frameId]?.frameType.type;
+            if(slotInfos.slotType == SlotType.comment || frameType == AllFrameTypesIdentifier.comment){
+                return [];
+            }
+
+            const ctrl = {label: this.$t("contextMenu.ctrl")};
+            const shift = {label: "⇧", title: this.$t("autoCompletion.shiftKey")};
+            return [
+                {keys: [ctrl, shift, {label: "y"}], description: this.$t("autoCompletion.colourPickerShortcut")},
             ];
         },
 

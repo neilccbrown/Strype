@@ -151,6 +151,10 @@ export type AutoCompletionComponentAPI = {
   },
 }
 
+export type ColourPickerDlgComponentAPI = {
+  getHexValue: () => string | null,
+}
+
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 export type PEAComponentAPI = {
   togglePEALayout:(layoutMode: StrypePEALayoutMode, userTriggeredAction?: boolean) => void,

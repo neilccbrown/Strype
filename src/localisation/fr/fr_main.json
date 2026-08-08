@@ -259,7 +259,8 @@
     "wrapSingleQuotes": "Entourer de '",
     "shiftKey": "Maj",
     "recordImageShortcut": "Enregistrer une image",
-    "recordSoundShortcut": "Enregistrer un son"
+    "recordSoundShortcut": "Enregistrer un son",
+    "colourPickerShortcut": "Sélecteur de couleur"
   },
   "commandTabs": {
     "0": "Ajoute un cadre"
@@ -320,7 +321,25 @@
     "micPermissionDenied": "L'accès au microphone a été refusé. Veuillez autoriser l'accès au microphone pour enregistrer un son.",
     "noCameraFound": "Aucune caméra n'a été trouvée sur cet appareil.",
     "noMicFound": "Aucun microphone n'a été trouvé sur cet appareil.",
-    "recordingProcessingError": "Un problème est survenu lors du traitement de l'enregistrement. Veuillez réessayer."
+    "recordingProcessingError": "Un problème est survenu lors du traitement de l'enregistrement. Veuillez réessayer.",
+    "colourPickerTitle": "Choisir une couleur"
+  },
+  "colourPicker": {
+    "familyRed": "Rouge",
+    "familyOrange": "Orange",
+    "familyYellow": "Jaune",
+    "familyGreen": "Vert",
+    "familyTeal": "Sarcelle",
+    "familyBlue": "Bleu",
+    "familyPurple": "Violet",
+    "familyPink": "Rose",
+    "familyBrown": "Marron",
+    "familyGrey": "Niveaux de gris",
+    "allColours": "Toutes les couleurs",
+    "hue": "Teinte",
+    "shade": "Nuance",
+    "fineGrainedSelector": "Sélecteur précis…",
+    "tiles": "Tuiles"
   },
   "book": {
     "dialogTitle": "Manuel Strype"
