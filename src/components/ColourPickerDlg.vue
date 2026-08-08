@@ -102,7 +102,13 @@ import { defineComponent, nextTick, PropType } from "vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { eventBus } from "@/helpers/appContext";
-import { CustomEventTypes, getPEAGraphicsContainerDivId } from "@/helpers/editor";
+import { CustomEventTypes } from "@/helpers/editor";
+// #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
+// getPEAGraphicsContainerDivId() only exists in standard mode -- micro:bit mode has no "Graphics"
+// PEA tab/canvas for the live colour preview to dim a hole over (see punchBackdropHoleOverGraphics
+// below), so this whole live-preview mechanism is standard-mode-only.
+import { getPEAGraphicsContainerDivId } from "@/helpers/editor";
+// #v-endif
 import { BvTriggerableEvent } from "bootstrap-vue-next";
 import {
     parseColourToHex, hexToHsv, hsvToHex, hexToHsl, hslToHex,
@@ -520,6 +526,7 @@ export default defineComponent({
         // the net result is a plain rectangle with a rectangular hole, without needing an evenodd
         // fill rule (which the plain CSS polygon() function doesn't support).
         punchBackdropHoleOverGraphics() {
+            // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
             const backdrop = document.querySelector(".modal-backdrop") as HTMLElement | null;
             const graphicsEl = document.getElementById(getPEAGraphicsContainerDivId());
             if (!backdrop || !graphicsEl) {
@@ -535,6 +542,7 @@ export default defineComponent({
                 `${rect.left}px ${rect.top}px`, `0px ${rect.top}px`,
             ].join(", ");
             backdrop.style.clipPath = `polygon(${points})`;
+            // #v-endif
         },
 
         clearGraphicsColourPreview() {
