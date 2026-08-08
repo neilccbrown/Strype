@@ -116,6 +116,11 @@ export type LabelSlotComponentAPI = {
   forInstance: {
     [componentInstanceKey: string]: {
       handleUpDown: (event: KeyboardEvent) => boolean,
+      // Exposed so the clickable shortcut hints in Commands.vue can trigger these on whichever
+      // slot is currently focused, the same as if its own Ctrl-Shift-I/U/Y keyboard shortcut had
+      // been pressed directly.
+      triggerMediaRecording: (kind: "image" | "sound") => void,
+      triggerColourPicker: () => void,
     },
   }
 }

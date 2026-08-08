@@ -115,6 +115,8 @@ export default defineComponent({
         // (we don't set it in setup() because we want to have this accessible, and the component created!)
         const apiMethods = {
             handleUpDown: this.handleUpDown,
+            triggerMediaRecording: this.triggerMediaRecording,
+            triggerColourPicker: this.triggerColourPicker,
         };
         
         if(vueComponentsAPIHandler.labelSlotComponentAPI == null){    

@@ -86,7 +86,8 @@
                                                     <div
                                                         v-for="mediaRecordingCommand in mediaRecordingCommands"
                                                         :key="mediaRecordingCommand.description"
-                                                        class="frame-cmd-container text-editing-command"
+                                                        class="frame-cmd-container text-editing-command clickable-command"
+                                                        @click="triggerMediaRecordingFromHint(mediaRecordingCommand.kind)"
                                                     >
                                                         <span class="text-editing-command-keys">
                                                             <template v-for="(key, keyIndex) in mediaRecordingCommand.keys" :key="key.label">
@@ -101,7 +102,8 @@
                                                     <div
                                                         v-for="colourPickerCmd in colourPickerCommand"
                                                         :key="colourPickerCmd.description"
-                                                        class="frame-cmd-container text-editing-command"
+                                                        class="frame-cmd-container text-editing-command clickable-command"
+                                                        @click="triggerColourPickerFromHint"
                                                     >
                                                         <span class="text-editing-command-keys">
                                                             <template v-for="(key, keyIndex) in colourPickerCmd.keys" :key="key.label">
@@ -400,7 +402,7 @@ export default defineComponent({
         // Ctrl-Shift-I/U opens a dialog to record a new image/sound literal from the webcam/
         // microphone. We show those shortcuts here as a hint, mirroring the same gating
         // LabelSlot.vue's onKeyDown uses for the shortcut itself.
-        mediaRecordingCommands(): {keys: ({label: string, title?: string})[]; description: string}[] {
+        mediaRecordingCommands(): {keys: ({label: string, title?: string})[]; description: string; kind: "image" | "sound"}[] {
             const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
             if(!this.appStore.isEditing || !focusSlotCursorInfos){
                 return [];
@@ -415,8 +417,8 @@ export default defineComponent({
             const ctrl = {label: this.$t("contextMenu.ctrl")};
             const shift = {label: "⇧", title: this.$t("autoCompletion.shiftKey")};
             return [
-                {keys: [ctrl, shift, {label: "i"}], description: this.$t("autoCompletion.recordImageShortcut")},
-                {keys: [ctrl, shift, {label: "u"}], description: this.$t("autoCompletion.recordSoundShortcut")},
+                {keys: [ctrl, shift, {label: "i"}], description: this.$t("autoCompletion.recordImageShortcut"), kind: "image"},
+                {keys: [ctrl, shift, {label: "u"}], description: this.$t("autoCompletion.recordSoundShortcut"), kind: "sound"},
             ];
         },
 
@@ -940,6 +942,31 @@ export default defineComponent({
             return getAddFrameCmdElementUID(commandType);
         },
 
+        // Clicking these hints should do the same thing as pressing the shortcut they describe,
+        // for users who don't know/remember the shortcut. The tricky part is that they live in a
+        // totally different component to the focused slot -- the wrapping @mousedown.prevent.stop
+        // above stops the click from blurring the focused slot (so appStore.focusSlotCursorInfos
+        // is still valid by the time this runs), and we then dispatch to that specific LabelSlot
+        // instance's own triggerMediaRecording/triggerColourPicker via the shared component API
+        // registry, exactly as if its own keydown handler had fired.
+        triggerMediaRecordingFromHint(kind: "image" | "sound") {
+            const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
+            if(!focusSlotCursorInfos){
+                return;
+            }
+            const uid = getLabelSlotUID(focusSlotCursorInfos.slotInfos);
+            vueComponentsAPIHandler.labelSlotComponentAPI?.forInstance[uid]?.triggerMediaRecording(kind);
+        },
+
+        triggerColourPickerFromHint() {
+            const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
+            if(!focusSlotCursorInfos){
+                return;
+            }
+            const uid = getLabelSlotUID(focusSlotCursorInfos.slotInfos);
+            vueComponentsAPIHandler.labelSlotComponentAPI?.forInstance[uid]?.triggerColourPicker();
+        },
+
         // Inserts the frame matching this (lowercased) shortcut key -- by its original shortcut, its
         // legacy shortcut (see getLegacyShortcut, editor.ts), or a hidden shorthand -- exactly as the
         // direct top-level dispatch always has. Returns whether a match was found and dispatched, so
@@ -1321,6 +1348,21 @@ export default defineComponent({
 
 .modifed-label-span {
      margin-left: 15px;
+}
+
+// Unlike other .text-editing-command hints (informational only, cursor: default -- see
+// AddFrameCommand.vue), the media-recording/colour-picker hints can also be clicked directly to
+// trigger the same action as their keyboard shortcut, so they get the pointer cursor back plus a
+// hover highlight for affordance.
+.frame-cmd-container.clickable-command,
+.frame-cmd-container.clickable-command .frame-cmd-btn {
+    cursor: pointer;
+}
+.frame-cmd-container.clickable-command {
+    border-radius: 4px;
+}
+.frame-cmd-container.clickable-command:hover {
+    background-color: rgba(0, 0, 0, 0.06);
 }
 
 .project-name {
