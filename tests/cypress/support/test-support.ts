@@ -201,7 +201,14 @@ export function waitForEditorSettled(timeoutMs = 10000): void {
                 // either direction) resets the stability clock, and so we never resolve while it's
                 // still true:
                 const pendingConversion = editorEl?.getAttribute("data-pending-slot-conversion") === "true";
-                const state = `${focusId}:${cursor}:${frameCount}:${pendingConversion}`;
+                // A param prompt (e.g. a function call's argument placeholders) can still be waiting
+                // on an async calculateParamPrompt() resolution (library data fetched over the
+                // network) well after focus/cursor/frameCount have already settled -- see
+                // LabelSlot.vue's data-param-prompt-pending, set by LabelSlotsStructure.vue while
+                // that promise is in flight. Without checking it here, a caller reading the DOM right
+                // after we resolve could see a stale/blank placeholder instead of the real one.
+                const pendingParamPrompt = win.document.querySelector("[data-param-prompt-pending=\"true\"]") != null;
+                const state = `${focusId}:${cursor}:${frameCount}:${pendingConversion}:${pendingParamPrompt}`;
                 const now = Date.now();
                 if (state !== lastState) {
                     stableSince = now;
@@ -215,7 +222,7 @@ export function waitForEditorSettled(timeoutMs = 10000): void {
                 // time) before trusting a blank state than a real one (no minimum wait), comfortably
                 // past any such transient:
                 const requiredStableMs = lastFocusId === "" ? 450 : 0;
-                if (!pendingConversion && now - stableSince >= requiredStableMs) {
+                if (!pendingConversion && !pendingParamPrompt && now - stableSince >= requiredStableMs) {
                     resolve();
                     return;
                 }

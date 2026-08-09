@@ -632,6 +632,21 @@ export async function tpyDefineLibraries(parser: Parser) : Promise<void> {
     }
 }
 
+// Warms the library-fetch caches (in libraryManager.ts) that calculateParamPrompt() and the AC
+// dropdown ultimately depend on -- getTextFileFromLibraries() there memoizes by file path, so a
+// call made here just means the *real* call site later (typing a call's opening bracket) finds
+// the data already resolved instead of having to wait out a fresh network round-trip. Intended to
+// be called fire-and-forget whenever an import/from-import frame is added or edited (see
+// checkSlotRefactoring in LabelSlotsStructure.vue) and once after a project loads: errors are
+// deliberately swallowed here, since the real call site (which does surface errors/give up
+// gracefully) will simply re-attempt the fetch itself if this prefetch didn't succeed in time.
+export function prefetchImportedLibraryData(): void {
+    const parser = new Parser();
+    parser.parseJustImports();
+    tpyDefineLibraries(parser).catch(() => { /* real call site will retry */ });
+    getAllExplicitlyImportedItems("").catch(() => { /* real call site will retry */ });
+}
+
 export async function getUserDefinedSignature(userFuncOrClass: FrameObject) : Promise<Signature> {
     const inUserDefinedClass = (userFuncOrClass.frameType.type == AllFrameTypesIdentifier.classdef);
     // Retrieve the formal params slot structures: in a function, this is part of the frame header, 

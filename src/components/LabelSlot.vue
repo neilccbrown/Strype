@@ -6,6 +6,7 @@
             :disabled="isDisabled ? 'true' : 'false'"
             :placeholder="defaultText"
             :empty-content="(!code || code == '\u200B') ? 'true' : 'false'"
+            :data-param-prompt-pending="paramPromptPending ? 'true' : undefined"
             :contenteditable="(isEditableSlot && !(isDisabled || isFrozen || isPythonExecuting)) ? 'true' : 'false'"
             @click.stop="onGetCaret($event, true)"
             @slotGotCaret="onGetCaret"
@@ -143,6 +144,11 @@ export default defineComponent({
 
     props: {
         defaultText: String,
+        // True while this slot's placeholder text is still being resolved asynchronously (e.g. a
+        // param prompt waiting on library data to load) -- see LabelSlotsStructure.vue's
+        // placeholderText/paramPromptPending. Used purely to show a "still working on it" indicator
+        // instead of a blank/empty placeholder.
+        paramPromptPending: Boolean,
         code: {type: String, required: true},
         labelSlotsIndex: {type: Number, required: true},
         slotId: {type: String, required: true},
@@ -2078,6 +2084,22 @@ export default defineComponent({
     content: attr(placeholder);
     font-style: italic;
     color: var(--prompt-color, #bbb);
+}
+
+// Overrides the rule above (extra attribute selector wins on specificity) while a param prompt is
+// still being resolved asynchronously, so users see a "still working on it" indicator instead of a
+// blank slot -- see LabelSlotsStructure.vue's paramPromptPending.
+.#{$strype-classname-label-slot-input}[empty-content="true"][data-param-prompt-pending="true"]::after {
+    content: "\2022\2022\2022";
+    font-style: normal;
+    letter-spacing: 2px;
+    color: var(--prompt-color, #bbb);
+    animation: strype-param-prompt-pending-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes strype-param-prompt-pending-pulse {
+    0%, 100% { opacity: 0.25; }
+    50% { opacity: 0.9; }
 }
 
 .#{$strype-classname-label-slot-input}.readonly {
