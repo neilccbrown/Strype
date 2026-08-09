@@ -40,7 +40,7 @@
                                                     <span class="frame-cmd-prefix-btn frame-cmd-btn-large frame-cmd-prefix-btn-wide">{{ $t('autoCompletion.spaceKey') }}</span>
                                                     <span>{{ $t('commandsPane.pressSpaceThenSuffix') }}</span>
                                                 </div>
-                                                <p>
+                                                <p class="frame-cmd-row">
                                                     <AddFrameCommand
                                                         v-for="addFrameCommand in addFrameCommands"
                                                         :id="addFrameCommandUID(addFrameCommand[0].type.type)"
@@ -62,7 +62,7 @@
                                                         :greyedOut="!isFrameCommandsPaneActive"
                                                     />
                                                 </p>
-                                                <p v-if="codeCompletionCommand">
+                                                <div v-if="codeCompletionCommand" class="frame-cmd-row">
                                                     <div class="frame-cmd-container text-editing-command">
                                                         <span class="text-editing-command-keys">
                                                             <button class="frame-cmd-btn frame-cmd-btn-large">{{ codeCompletionCommand.ctrlSymbol }}</button>
@@ -71,8 +71,8 @@
                                                         </span>
                                                         <span>{{ codeCompletionCommand.description }}</span>
                                                     </div>
-                                                </p>
-                                                <p v-if="wrapSelectionCommands.length">
+                                                </div>
+                                                <div v-if="wrapSelectionCommands.length" class="frame-cmd-row">
                                                     <div
                                                         v-for="wrapSelectionCommand in wrapSelectionCommands"
                                                         :key="wrapSelectionCommand.symbol"
@@ -81,8 +81,8 @@
                                                         <button class="frame-cmd-btn">{{ wrapSelectionCommand.symbol }}</button>
                                                         <span>{{ wrapSelectionCommand.description }}</span>
                                                     </div>
-                                                </p>
-                                                <p v-if="mediaRecordingCommands.length">
+                                                </div>
+                                                <div v-if="mediaRecordingCommands.length" class="frame-cmd-row">
                                                     <div
                                                         v-for="mediaRecordingCommand in mediaRecordingCommands"
                                                         :key="mediaRecordingCommand.description"
@@ -96,7 +96,7 @@
                                                         </span>
                                                         <span>{{ mediaRecordingCommand.description }}</span>
                                                     </div>
-                                                </p>
+                                                </div>
                                             <!-- this conditional rendering is only used for our code editor to see the closing <div> right -->
                                             <!-- #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE -->
                                             </div>
@@ -1211,7 +1211,7 @@ export default defineComponent({
             return waitForPanesSettled();
         },
 
-        onCommandsSplitterResize(event: any) {
+        onCommandsSplitterResize(event: any, isProgrammaticRestore?: boolean) {
             // When the splitter is resized, we need to resize the frame commands container (wrap/unwrap)
             // and the PEA (will take the full space in its pane, breaking the initial 4:3 ratio)
             document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
@@ -1228,13 +1228,15 @@ export default defineComponent({
                 this.appStore.peaCommandsSplitterPane2Size = {...defaultEmptyStrypeLayoutDividerSettings, [this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed]: event.panes[1].size};
             }
 
-            // A change of divider position triggers a modification notification only when the user actively moves the divider,
-            // we can distinguish between a sitation when the divider is position is loaded and user event by the content of the event
-            if(event.panes.length > 1){
+            // A change of divider position triggers a modification notification only when the user actively moves the divider.
+            // We can't infer this from the event's shape (a real Splitpanes "resize" event and the synthetic event used to
+            // restore a saved layout both carry a 2-element "panes" array), so callers doing a programmatic restore must
+            // say so explicitly via isProgrammaticRestore.
+            if(!isProgrammaticRestore){
                 this.appStore.isEditorContentModified = true;
                 this.appStore.editorLastModificationAt = Date.now();
             }
-        }, 
+        },
 
         setPEACommandsSplitterPanesMinSize(onlyResizePEA?: boolean) {
             // Called to get the right min sizes of the pea/Commands splitter.
@@ -1394,10 +1396,12 @@ export default defineComponent({
     color:#666666;
 }
 
-.#{$strype-classname-add-frame-commands-container} p {
+.#{$strype-classname-add-frame-commands-container} .frame-cmd-row {
     display: flex;
     flex-direction: column;
     flex-wrap: wrap;
+    // Matches the margin a <p> would have had (these rows were previously <p> elements).
+    margin: 0 0 1rem 0;
 }
 
 .frame-commands-pane-intro {
@@ -1431,7 +1435,7 @@ export default defineComponent({
     padding-right: 10px;
 }
 
-.#{$strype-classname-add-frame-commands-container}.with-expanded-PEA p {
+.#{$strype-classname-add-frame-commands-container}.with-expanded-PEA .frame-cmd-row {
    // So that the frame commands in expanded view expands over the commands/PEA splitter,
    // the width is set programmatically
    position: absolute;
