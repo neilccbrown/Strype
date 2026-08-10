@@ -1,12 +1,12 @@
 <template>
-    <div :id="'div_'+UID" :class="{[scssVars.labelSlotContainerClassName]: true, nohover: isDraggingFrame}" :contenteditable="isEditableSlot && !(isDisabled || isFrozen || isPythonExecuting)">
+    <div :id="'div_'+UID" :class="{[scssVars.labelSlotContainerClassName]: true, nohover: isDraggingFrame}" :contenteditable="(isEditableSlot && !(isDisabled || isFrozen || isPythonExecuting)) ? 'true' : 'false'">
         <span
             autocomplete="off"
             spellcheck="false"
-            :disabled="isDisabled"
+            :disabled="isDisabled ? 'true' : 'false'"
             :placeholder="defaultText"
-            :empty-content="!code || code == '\u200B'"
-            :contenteditable="isEditableSlot && !(isDisabled || isFrozen || isPythonExecuting)"
+            :empty-content="(!code || code == '\u200B') ? 'true' : 'false'"
+            :contenteditable="(isEditableSlot && !(isDisabled || isFrozen || isPythonExecuting)) ? 'true' : 'false'"
             @click.stop="onGetCaret($event, true)"
             @slotGotCaret="onGetCaret"
             @slotLostCaret="onLoseCaret"
@@ -67,7 +67,6 @@
             :key="AC_UID"
             :id="AC_UID"
             :AC_UID="AC_UID"
-            :isImportFrame="isImportFrame()"
             @[CustomEventTypes.acItemClicked]="acItemClicked"
         />
     </div>
@@ -2067,11 +2066,7 @@ export default defineComponent({
             
             this.showAC = false;
         },
-   
-        isImportFrame(): boolean {
-            return this.appStore.isImportFrame(this.frameId);
-        },
-        
+
         async loadMediaPreview(): Promise<LoadedMedia> {
             let slot = retrieveSlotFromSlotInfos(this.coreSlotInfo) as MediaSlot;
             if (slot.mediaType.startsWith("image") && !slot.mediaType.startsWith("image/svg+xml")) {
