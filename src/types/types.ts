@@ -66,6 +66,8 @@ export interface StringSlot extends BaseSlot {
 // and we can infer the function is "load_image" from the media type.
 // None of this can be edited after the image is initially inserted into the code
 // so there are no problems with keeping the different parts in sync
+// Exception: mediaType "colour" has code equal to a bare quoted string (e.g. "#aabbcc"),
+// not a function call -- there is no underlying function for colour literals.
 export interface MediaSlot extends BaseSlot {
     mediaType: string;
 }
