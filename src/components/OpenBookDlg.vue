@@ -207,7 +207,7 @@ async function changeBookDialogCategory(index: number) {
 }
 
 function shown() {
-    changeBookDialogCategory(0);
+    changeBookDialogCategory(selectedChapterIndex.value);
 }
 
 function getSelectedProject(): ({ name: string, chapter: string, projectFile: Promise<string | undefined> } | undefined) {
