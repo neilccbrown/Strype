@@ -41,7 +41,11 @@ function isOperatorToken(n : SyntaxNode) : boolean {
 // loop, except each "operand" here is always a single already-structured child node (tree-sitter has
 // already resolved precedence/associativity into real sub-trees, so unlike the old code there's no
 // need to manually scan ahead for e.g. unary +/- prefixes).
-function flattenChildren(nodes : SyntaxNode[]) : SlotsStructure {
+// Exported for reuse by the statement-level tree walk (pythonToFrames.ts) for its own
+// keyword-prefixed comma/operator sequences (e.g. global_statement's variable list, an
+// import_statement's names after "import"), which need the exact same operand/operator flattening
+// as expressions do.
+export function flattenChildren(nodes : SyntaxNode[]) : SlotsStructure {
     let idx = 0;
     const readOperand = () : SlotsStructure => {
         if (idx < nodes.length && !isOperatorToken(nodes[idx])) {
@@ -53,6 +57,15 @@ function flattenChildren(nodes : SyntaxNode[]) : SlotsStructure {
     };
     let latest = readOperand();
     while (idx < nodes.length) {
+        if (!isOperatorToken(nodes[idx])) {
+            // A non-operator node landed where an operator was expected -- rather than silently
+            // misinterpreting its text as an operator (and then misreading the *next* node as its
+            // operand), fail clearly. This is a real safety net, not just defensive dead code: it's
+            // exactly how the "yield" case above would have gone wrong before that explicit check
+            // was added, and guards against any other future construct not yet in
+            // operators/trimmedKeywordOperators falling through the same way.
+            throw new UnsupportedConstructError("Unsupported construct: " + nodes[idx].type);
+        }
         let opText = nodes[idx].text;
         idx++;
         // Merge two adjacent operator tokens that form one compound keyword operator, e.g.
@@ -145,6 +158,14 @@ export function nodeToSlots(node : SyntaxNode) : SlotsStructure {
         // Walrus operator (:=) -- deliberately kept unsupported, per the migration's decision to
         // keep the parser swap scope-neutral (see PLAN.md §5):
         throw new UnsupportedConstructError("The walrus operator (:=) is not supported");
+    }
+    if (node.type === "yield") {
+        // Strype has no generator/yield frame at all -- confirmed by the old Skulpt-based
+        // copyFramesFromPython() never having a case for it. "yield" isn't a recognised operator
+        // token (it's not in operators/trimmedKeywordOperators), so without this explicit check it
+        // would silently fall through to flattenChildren() and be mis-parsed (its own child nodes
+        // would get misinterpreted as an operand/operator pair) rather than clearly rejected:
+        throw new UnsupportedConstructError("yield is not supported");
     }
     if (node.childCount === 0) {
         return terminalToSlots(node);

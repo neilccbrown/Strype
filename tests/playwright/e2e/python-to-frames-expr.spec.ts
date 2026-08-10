@@ -295,6 +295,16 @@ test.describe("nodeToSlots: lambda and ternary", () => {
 });
 
 test.describe("nodeToSlots: unsupported constructs stay explicitly rejected", () => {
+    test("yield throws UnsupportedConstructError (rather than silently mis-flattening)", () => {
+        // yield is only valid inside a function body:
+        const tree = parser.parse("def f():\n    yield a\n");
+        const yieldStmt = tree.rootNode.child(0)?.childForFieldName("body")?.child(0);
+        if (!yieldStmt) {
+            throw new Error("Couldn't find the yield statement in the parsed tree");
+        }
+        expect(() => nodeToSlots(yieldStmt)).toThrow(UnsupportedConstructError);
+    });
+
     test("walrus operator throws UnsupportedConstructError", () => {
         expect(() => exprSlots("(n := 10)\n")).toThrow(UnsupportedConstructError);
     });
