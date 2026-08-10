@@ -105,9 +105,9 @@
             <MediaPreviewPopup ref="mediaPreviewPopup" />
             <EditImageDlg dlgId="editImageDlg" ref="editImageDlg" :imgToEdit="imgToEditInDialog" :showImgPreview="showImgPreview" :showReRecordButton="editImageDlgShowReRecord" />
             <EditSoundDlg dlgId="editSoundDlg" ref="editSoundDlg" :soundToEdit="soundToEditInDialog" :showReRecordButton="editSoundDlgShowReRecord" />
-            <RecordImageDlg dlgId="recordImageDlg" ref="recordImageDlg" :dlgTitle="$t('media.recordImageTitle')" />
-            <RecordSoundDlg dlgId="recordSoundDlg" ref="recordSoundDlg" :dlgTitle="$t('media.recordSoundTitle')" />
-            <ColourPickerDlg dlgId="colourPickerDlg" ref="colourPickerDlg" :dlgTitle="$t('media.colourPickerTitle')" :initialColour="colourPickerInitialColour" />
+            <RecordImageDlg ref="recordImageDlg" />
+            <RecordSoundDlg ref="recordSoundDlg" />
+            <ColourPickerDlg ref="colourPickerDlg" :initialColour="colourPickerInitialColour" />
             <canvas v-show="appStore.isDraggingFrame" :id="getCompanionDndCanvasId" class="companion-canvas-dnd"/>
             <ModalDlg :dlgId="confirmNewProjectModalDlgId" :okCustomTitle="$t('buttonLabel.continue')">
                 <span style="white-space:pre-wrap" v-html="$t('appMessage.newProjectConfirmation')"></span>

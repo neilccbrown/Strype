@@ -1,5 +1,5 @@
 <template>
-    <ModalDlg :dlgId="dlgId" :dlgTitle="dlgTitle" :okDisabled="okDisabled">
+    <ModalDlg dlgId="colourPickerDlg" :dlgTitle="$t('media.colourPickerTitle')" :okDisabled="okDisabled">
         <div class="ColourPickerDlg-content">
             <div class="ColourPickerDlg-view-area">
                 <div v-if="view === 'grid'" class="ColourPickerDlg-family-grid">
@@ -120,16 +120,24 @@ import {
 
 const DEFAULT_HEX = "#ff0000";
 
+// Only ever one instance of this dialog (see App.vue), so its id is fixed rather than a prop.
+const DLG_ID = "colourPickerDlg";
+
 function clamp(x: number, lo: number, hi: number): number {
     return Math.min(hi, Math.max(lo, x));
 }
 
+// Squared Euclidean ("Pythagoras") distance between two hex colours in RGB space, for finding the
+// closest of a set of candidate swatches to a target colour.
 function hexColourDistance(a: string, b: string): number {
     const ar = parseInt(a.substring(1, 3), 16), ag = parseInt(a.substring(3, 5), 16), ab = parseInt(a.substring(5, 7), 16);
     const br = parseInt(b.substring(1, 3), 16), bg = parseInt(b.substring(3, 5), 16), bb = parseInt(b.substring(5, 7), 16);
     return (ar - br) ** 2 + (ag - bg) ** 2 + (ab - bb) ** 2;
 }
 
+// A single tile in the shade grid. No hue field: the grid always shows shades of whichever hue is
+// currently selected (or of the family's fixed hue for hue-less families like grey), so hue lives
+// on the component's own state rather than per-cell.
 interface ShadeCell {
     sat: number;
     light: number;
@@ -145,8 +153,6 @@ export default defineComponent({
     },
 
     props: {
-        dlgId: String,
-        dlgTitle: String,
         // A hex code or recognised CSS colour name to seed the picker with; null/unparseable
         // falls back to a default colour.
         initialColour: {type: String as PropType<string | null>, default: null},
@@ -154,7 +160,10 @@ export default defineComponent({
 
     data: function () {
         return {
+            // "grid" is the family-swatch overview; "tinker" is the hue/shade tile picker for a
+            // chosen family; "classic" is the free-form HSV square-and-slider fine-grained selector.
             view: "grid" as "grid" | "tinker" | "classic",
+            // The family currently open in the tinker view, or null while on the grid.
             currentFamilyKey: null as string | null,
             // The "current colour" while browsing the family grid/shade grid, as HSL:
             hue: 0,
@@ -205,6 +214,7 @@ export default defineComponent({
             return this.currentFamily != null && familyHasHueChoice(this.currentFamily);
         },
 
+        // The row of selectable hue swatches shown above the shade grid for families with a hue choice.
         hueChips(): {hue: number, hex: string, selected: boolean}[] {
             if (!this.currentFamily || !this.hasHue) {
                 return [];
@@ -220,6 +230,11 @@ export default defineComponent({
             return chips;
         },
 
+        // The grid of shade tiles for the current family, at the currently selected hue: rows spaced
+        // evenly across the family's lightness range, columns across its saturation range (with a
+        // fixed number of columns per row, from SHADE_ROW_SAT_COUNTS -- fewer near the light/dark
+        // ends, where saturation differences are barely visible). Hue-less families (grey) instead
+        // use fixed-hue/zero-saturation bands spaced across their lightness range.
         shadeRows(): ShadeCell[][] {
             if (!this.currentFamily) {
                 return [];
@@ -255,6 +270,14 @@ export default defineComponent({
             }
         },
 
+        // The tile views (grid/tinker) use HSL because the family/hue/shade data (COLOUR_FAMILIES,
+        // GOOD_CHIP_SAT/LIGHT etc.) is authored as hue/saturation/lightness ranges, which is the
+        // natural way to describe families like "pale pastels" or "dark shades" as fixed bands.
+        // The fine-grained selector uses HSV instead because its square-plus-hue-slider widget is
+        // the standard colour-picker UI, and that widget is inherently a saturation/value square
+        // (S on one axis, V on the other) rather than an HSL shape -- so the two views are kept on
+        // their own natural models and converted at the boundary (see toggleFineGrained) rather
+        // than forcing one view's data to fit the other's model.
         currentHex(): string {
             return this.view == "classic"
                 ? hsvToHex(this.classicHue, this.classicSat, this.classicVal)
@@ -348,7 +371,7 @@ export default defineComponent({
         // which is already reactive to the assignments just below, so no need to wait a tick.
         selectShadeCellAndConfirm(sat: number, light: number) {
             this.selectShadeCell(sat, light);
-            eventBus.emit(CustomEventTypes.hideStrypeModal, {trigger: "ok", componentId: this.dlgId});
+            eventBus.emit(CustomEventTypes.hideStrypeModal, {trigger: "ok", componentId: DLG_ID});
         },
 
         toggleFineGrained() {
@@ -388,16 +411,11 @@ export default defineComponent({
             this.hexText = hsvToHex(this.classicHue, this.classicSat, this.classicVal);
         },
 
-        // Called on user input into the always-visible hex text field. Mirrors the logic used when
-        // the dialog is first opened with an existing colour (see onShownModalDlg below): if the
-        // typed colour lands exactly on a tile swatch, jump to that tile selected in the tinker
-        // view; otherwise fall through to the fine-grained selector with the colour in place.
-        onHexTextEdited() {
-            const hex = parseColourToHex(this.hexText);
-            if (!hex) {
-                return;
-            }
-            this.hasSelectedColour = true;
+        // If the given colour lands exactly on a tile swatch, jump to that tile selected in the
+        // tinker view; otherwise fall through to the fine-grained selector with the colour in
+        // place. Used both for user edits to the hex text field and, in onShownModalDlg below,
+        // when the dialog is first opened with an existing colour.
+        applyHexColour(hex: string) {
             const match = this.findExactSwatchMatch(hex);
             if (match) {
                 this.currentFamilyKey = match.family.key;
@@ -414,6 +432,16 @@ export default defineComponent({
                 this.currentFamilyKey = null;
                 this.view = "classic";
             }
+        },
+
+        // Called on user input into the always-visible hex text field.
+        onHexTextEdited() {
+            const hex = parseColourToHex(this.hexText);
+            if (!hex) {
+                return;
+            }
+            this.hasSelectedColour = true;
+            this.applyHexColour(hex);
         },
 
         onSvPointerDown(event: PointerEvent) {
@@ -476,7 +504,7 @@ export default defineComponent({
         },
 
         onShownModalDlg(event: BvTriggerableEvent) {
-            if (event.componentId != this.dlgId) {
+            if (event.componentId != DLG_ID) {
                 return;
             }
             // initialColour is only ever passed (non-null) when we're editing an existing string's
@@ -489,24 +517,18 @@ export default defineComponent({
                 // If it lands exactly on a swatch, start there with it selected; otherwise (including
                 // when the existing content wasn't a valid colour at all) there's no sensible swatch
                 // to preselect, so go straight to the fine-grained selector with the colour in place.
-                const match = parsedInitial ? this.findExactSwatchMatch(parsedInitial) : null;
-                if (match) {
-                    this.currentFamilyKey = match.family.key;
-                    this.hue = match.hue;
-                    this.sat = match.sat;
-                    this.light = match.light;
-                    this.view = "tinker";
-                    this.hexText = seededHex;
+                if (parsedInitial) {
+                    this.applyHexColour(parsedInitial);
                 }
                 else {
                     const {h, s, v} = hexToHsv(seededHex);
                     this.classicHue = h;
                     this.classicSat = s;
                     this.classicVal = v;
-                    this.hexText = seededHex;
                     this.currentFamilyKey = null;
                     this.view = "classic";
                 }
+                this.hexText = seededHex;
                 this.isShown = true;
                 this.hasSelectedColour = true;
                 this.showGraphicsColourPreview(seededHex);
@@ -529,7 +551,7 @@ export default defineComponent({
         },
 
         onHiddenModalDlg(event: BvTriggerableEvent) {
-            if (event.componentId != this.dlgId) {
+            if (event.componentId != DLG_ID) {
                 return;
             }
             this.isShown = false;
