@@ -66,14 +66,31 @@ drop-in swap.** Key findings:
   **Bundle-size accounting, corrected**: since §0 established Skulpt is
   fully removable (not just this one consumer of it), this is **not** a
   700KB addition on top of Skulpt — it's ~700KB replacing 1085KB
-  (`skulpt.min.js` + `skulpt-stdlib.js`), a net reduction, and that 1085KB
-  is currently loaded *eagerly* on every app start via blocking
-  `<script defer>` tags regardless of whether Python is ever pasted/loaded.
-  Lazy-load the two `.wasm` files only when a paste/load actually happens
-  (`Parser.init()` + `Language.load()` on first use, cached thereafter) so
-  the 700KB doesn't even hit the initial-load critical path — i.e. this
-  change should be a strict improvement to both initial load size *and*
-  total shipped size, not a tradeoff.
+  (`skulpt.min.js` + `skulpt-stdlib.js`), a net reduction. **Load eagerly**,
+  matching how Skulpt is loaded today and the user's stated general
+  preference for this app (§1a below) — do not defer `Parser.init()` /
+  `Language.load()` to first paste/load use. Both `.wasm` files are already
+  vendored as local static assets under `public/js/`, so eager loading here
+  doesn't add any new server round-trip beyond what's already true of the
+  app's other bundled assets — it just means the ~700KB is paid upfront
+  rather than on first use, in exchange for parsing being ready
+  immediately and no first-use latency spike.
+
+### 1a. Standing principle: no runtime server contact for JS/wasm libraries
+
+Noted directly by the user, and worth restating here since it should govern
+this migration's loading strategy and any future dependency choices in this
+codebase, not just this task: **Strype should not need to contact its
+server again after the initial page load to fetch JavaScript (or wasm)
+libraries.** Everything needed to run must be vendored/self-hosted and
+shipped with the app (as `skulpt.min.js`/`skulpt-stdlib.js` and the
+`pyodide-0.29.0` assets already are, both cached by the service worker) —
+never fetched on demand from a CDN or other external origin at runtime. The
+two `tree-sitter*.wasm` files must follow the same pattern: vendored under
+`public/js/`, included in the service worker precache list, loaded eagerly
+from the app's own origin. (This principle has also been recorded in
+`CLAUDE.md` and as a persistent memory so it carries into unrelated future
+work, not just this migration.)
 - **Runs in Node.js too** (slower than native, but fine for test purposes) —
   this is a real enabler: it means `copyFramesFromPython`/`toSlots`-equivalent
   logic could get **Vitest unit tests** for the first time. There is
@@ -256,11 +273,11 @@ Suggested order, each step should leave `main`/the branch buildable and
    a few classes of invalid input. This resolves the open unknown in §2 and
    de-risks everything after it.
 2. **Decide and implement `.wasm` sourcing** (§1, build-vs-vendor decision),
-   add the files under `public/js/`, add lazy-load plumbing (fetch +
-   `Parser.init()` + `Language.load()` on first use, cached thereafter —
-   mirror how Skulpt's `Sk.configure({})` is called lazily per-parse today
-   but make the wasm fetch itself one-time and async-await-able from
-   `parseWithSkulpt`'s replacement).
+   add the files under `public/js/`, add them to the service worker
+   precache list, and load them **eagerly** at app startup (`Parser.init()`
+   + `Language.load()` once, result awaited/cached for `parseWithSkulpt`'s
+   replacement to use) — per §1a, no deferred/on-demand fetch, matching how
+   Skulpt is loaded today via `index.html`'s `<script defer>` tags.
 3. **New thin preprocessing pass** replacing `transformCommentsAndBlanks()`
    per §2 — only SPY-directive stripping (`Disabled:`) survives in
    meaningfully similar shape; keep `disabledLines`/`frameStateLines`/

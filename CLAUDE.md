@@ -4,6 +4,18 @@ Strype (https://strype.org) is a frame-based Python editor that runs entirely
 client-side, built with Vue. Maintained by the K-PET group at King's College
 London. See [README.md](README.md) for build/run basics.
 
+## Architecture principles
+
+- **No runtime server contact for JS/wasm libraries.** After the initial
+  page load, Strype should never need to fetch JavaScript or wasm libraries
+  from its server (or any CDN/external origin) again. Everything needed to
+  run must be vendored/self-hosted and shipped with the app, cached by the
+  service worker — see `public/js/skulpt.min.js`/`skulpt-stdlib.js` and the
+  `pyodide-0.29.0` assets for the existing pattern. When adding a new JS/wasm
+  dependency, vendor it under `public/js/` and load it eagerly (matching how
+  Skulpt/Pyodide are loaded today), not via a CDN `<script src>` or an
+  on-demand fetch to an external host.
+
 ## Key commands
 
 - `npm run serve:python` — run a local dev server (standard/Python platform).
