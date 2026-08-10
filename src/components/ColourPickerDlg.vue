@@ -61,18 +61,20 @@
                     <div ref="svSquare" class="ColourPickerDlg-sv-square" :style="svSquareStyle" @pointerdown="onSvPointerDown">
                         <div class="ColourPickerDlg-sv-cursor" :style="{left: classicSat + '%', top: (100 - classicVal) + '%'}"></div>
                     </div>
-                    <div class="ColourPickerDlg-hex-row">
-                        <span class="ColourPickerDlg-swatch" :style="{background: currentHex}"></span>
-                        <input
-                            id="ColourPickerDlg-hex-input"
-                            type="text"
-                            class="ColourPickerDlg-hex-input"
-                            :class="{'ColourPickerDlg-hex-input-invalid': !isClassicHexValid}"
-                            v-model="hexText"
-                            spellcheck="false"
-                        />
-                    </div>
                 </div>
+            </div>
+
+            <div class="ColourPickerDlg-hex-row">
+                <span class="ColourPickerDlg-swatch" :style="{background: currentHex}"></span>
+                <input
+                    id="ColourPickerDlg-hex-input"
+                    type="text"
+                    class="ColourPickerDlg-hex-input"
+                    :class="{'ColourPickerDlg-hex-input-invalid': !isClassicHexValid}"
+                    v-model="hexText"
+                    spellcheck="false"
+                    @input="onHexTextEdited"
+                />
             </div>
 
             <div class="ColourPickerDlg-bottom-row" :class="{'ColourPickerDlg-bottom-row-split': view === 'tinker'}">
@@ -122,6 +124,12 @@ function clamp(x: number, lo: number, hi: number): number {
     return Math.min(hi, Math.max(lo, x));
 }
 
+function hexColourDistance(a: string, b: string): number {
+    const ar = parseInt(a.substring(1, 3), 16), ag = parseInt(a.substring(3, 5), 16), ab = parseInt(a.substring(5, 7), 16);
+    const br = parseInt(b.substring(1, 3), 16), bg = parseInt(b.substring(3, 5), 16), bb = parseInt(b.substring(5, 7), 16);
+    return (ar - br) ** 2 + (ag - bg) ** 2 + (ab - bb) ** 2;
+}
+
 interface ShadeCell {
     sat: number;
     light: number;
@@ -157,11 +165,6 @@ export default defineComponent({
             classicSat: 100,
             classicVal: 100,
             hexText: DEFAULT_HEX,
-            // Set just before we overwrite hexText ourselves (from the SV square / hue slider), so
-            // the hexText watcher below knows not to re-derive classic HSV from its own output --
-            // that round trip is lossy enough (due to hue wrap-around and rounding) to make the
-            // square's cursor visibly jitter while dragging.
-            settingHexFromPicker: false,
             // Whether the dialog is currently visible; gates the graphics-area colour preview so we
             // don't try to touch it while the dialog (and hence this component's reactive state) is
             // just sitting there unshown.
@@ -263,7 +266,7 @@ export default defineComponent({
         },
 
         okDisabled(): boolean {
-            return this.view == "classic" && !this.isClassicHexValid;
+            return !this.isClassicHexValid;
         },
 
         svSquareStyle(): Record<string, string> {
@@ -272,21 +275,6 @@ export default defineComponent({
     },
 
     watch: {
-        hexText() {
-            if (this.settingHexFromPicker) {
-                this.settingHexFromPicker = false;
-                return;
-            }
-            const hex = parseColourToHex(this.hexText);
-            if (hex) {
-                this.hasSelectedColour = true;
-                const {h, s, v} = hexToHsv(hex);
-                this.classicHue = h;
-                this.classicSat = s;
-                this.classicVal = v;
-            }
-        },
-
         currentHex(newHex: string) {
             if (this.isShown && this.hasSelectedColour) {
                 this.showGraphicsColourPreview(newHex);
@@ -312,9 +300,30 @@ export default defineComponent({
             this.hasSelectedColour = true;
             this.currentFamilyKey = family.key;
             this.hue = midOfRange(family.hue);
-            this.sat = midOfRange(family.sat);
-            this.light = midOfRange(family.light);
+            // The shade grid's rows/columns sit at fixed fractions of the family's sat/light ranges
+            // (see SHADE_ROW_SAT_COUNTS), so there's no single "middle" cell -- pick whichever real
+            // cell renders closest (in RGB terms) to whatever's shown at the top of the tinker view
+            // the user's just landed on: the selected hue chip when the family has one (which uses
+            // GOOD_CHIP_SAT/LIGHT, not the family's own sat/light range), or the family's grid swatch
+            // for hue-less families like grey (which have no chip strip to compare against).
+            const targetHex = familyHasHueChoice(family)
+                ? hslToHex(this.hue, family.chipSat ?? GOOD_CHIP_SAT, family.chipLight ?? GOOD_CHIP_LIGHT)
+                : this.familySwatchHex(family);
+            let nearest: ShadeCell | null = null;
+            let nearestDist = Infinity;
+            for (const row of this.shadeRows) {
+                for (const cell of row) {
+                    const dist = hexColourDistance(cell.hex, targetHex);
+                    if (dist < nearestDist) {
+                        nearestDist = dist;
+                        nearest = cell;
+                    }
+                }
+            }
+            this.sat = nearest ? nearest.sat : midOfRange(family.sat);
+            this.light = nearest ? nearest.light : midOfRange(family.light);
             this.view = "tinker";
+            this.hexText = this.currentHex;
         },
 
         backToGrid() {
@@ -324,12 +333,14 @@ export default defineComponent({
         selectHueChip(hue: number) {
             this.hasSelectedColour = true;
             this.hue = hue;
+            this.hexText = this.currentHex;
         },
 
         selectShadeCell(sat: number, light: number) {
             this.hasSelectedColour = true;
             this.sat = sat;
             this.light = light;
+            this.hexText = this.currentHex;
         },
 
         // Double-clicking a shade tile picks it and immediately confirms the dialog, same as
@@ -359,6 +370,7 @@ export default defineComponent({
                     this.light = l;
                     this.view = "grid";
                 }
+                this.hexText = this.currentHex;
             }
             else {
                 // Entering the fine-grained selector: seed its HSV state from whatever's currently picked.
@@ -373,8 +385,35 @@ export default defineComponent({
 
         updateHexFromClassic() {
             this.hasSelectedColour = true;
-            this.settingHexFromPicker = true;
             this.hexText = hsvToHex(this.classicHue, this.classicSat, this.classicVal);
+        },
+
+        // Called on user input into the always-visible hex text field. Mirrors the logic used when
+        // the dialog is first opened with an existing colour (see onShownModalDlg below): if the
+        // typed colour lands exactly on a tile swatch, jump to that tile selected in the tinker
+        // view; otherwise fall through to the fine-grained selector with the colour in place.
+        onHexTextEdited() {
+            const hex = parseColourToHex(this.hexText);
+            if (!hex) {
+                return;
+            }
+            this.hasSelectedColour = true;
+            const match = this.findExactSwatchMatch(hex);
+            if (match) {
+                this.currentFamilyKey = match.family.key;
+                this.hue = match.hue;
+                this.sat = match.sat;
+                this.light = match.light;
+                this.view = "tinker";
+            }
+            else {
+                const {h, s, v} = hexToHsv(hex);
+                this.classicHue = h;
+                this.classicSat = s;
+                this.classicVal = v;
+                this.currentFamilyKey = null;
+                this.view = "classic";
+            }
         },
 
         onSvPointerDown(event: PointerEvent) {
@@ -457,6 +496,7 @@ export default defineComponent({
                     this.sat = match.sat;
                     this.light = match.light;
                     this.view = "tinker";
+                    this.hexText = seededHex;
                 }
                 else {
                     const {h, s, v} = hexToHsv(seededHex);
@@ -484,6 +524,7 @@ export default defineComponent({
             this.sat = s;
             this.light = l;
             this.view = "grid";
+            this.hexText = DEFAULT_HEX;
             this.isShown = true;
         },
 
