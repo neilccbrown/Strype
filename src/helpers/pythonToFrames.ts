@@ -1326,7 +1326,7 @@ function copyTryStatement(node: TSSyntaxNode, s: CopyState) : CopyState {
             // The except clause's own value/pattern is everything between "except" and ":" -- it
             // may be absent (blank except), a plain expression, or an "X as y" as_pattern:
             const valueChild = clause.child(1);
-            let exceptFrame: FrameObject;
+            let exceptFrame: FrameObject | null;
             if (!valueChild || valueChild.type === ":") {
                 exceptFrame = makeFrame(AllFrameTypesIdentifier.except, {0: {slotStructures: {fields: [{code: ""}], operators: []}}}, s.isSPY);
             }
@@ -1339,14 +1339,29 @@ function copyTryStatement(node: TSSyntaxNode, s: CopyState) : CopyState {
                 exceptFrame = makeFrame(AllFrameTypesIdentifier.except, {0: {slotStructures: concatSlots(nodeToSlots(exceptType), "as", nodeToSlots(alias))}}, s.isSPY);
             }
             else {
-                exceptFrame = makeFrame(AllFrameTypesIdentifier.except, {0: {slotStructures: nodeToSlots(valueChild)}}, s.isSPY);
+                const valueSlots = nodeToSlots(valueChild);
+                // A "solo try" (one with no except the user actually wrote) still needs *some*
+                // except clause to be valid Python syntax, so Strype's own save logic (parser.ts)
+                // writes a placeholder identifier (STRYPE_DUMMY_FIELD, "___strype_dummy") as its
+                // type in that case; recognise that placeholder here and skip adding any except
+                // frame at all for it -- matching the old Skulpt-based code's identical check and
+                // its exceptFrame=null-then-skip handling, not just blanking the slot (Strype's try
+                // frame doesn't need a real except child to render a solo try). Confirmed as a real
+                // gap by e2e: this placeholder was round-tripping as a literal "___strype_dummy"
+                // identifier left in a genuine (non-blank) except frame's slot, rather than being
+                // recognised and the whole clause dropped:
+                const isDummyPlaceholder = valueSlots.fields.length === 1 && valueSlots.operators.length === 0
+                    && (valueSlots.fields[0] as BaseSlot).code === STRYPE_DUMMY_FIELD;
+                exceptFrame = isDummyPlaceholder ? null : makeFrame(AllFrameTypesIdentifier.except, {0: {slotStructures: valueSlots}}, s.isSPY);
             }
-            const exceptBody = clause.childForFieldName("block") ?? clause.child(clause.childCount - 1);
-            if (!exceptBody) {
-                throw new Error("Malformed except_clause: " + clause.text);
+            if (exceptFrame) {
+                const exceptBody = clause.childForFieldName("block") ?? clause.child(clause.childCount - 1);
+                if (!exceptBody) {
+                    throw new Error("Malformed except_clause: " + clause.text);
+                }
+                const exceptState = addFrame(exceptFrame, tsLineno(clause), {...s, addToJoint: tryFrame.jointFrameIds, jointParent: tryFrame});
+                updateFrom(s, copyBlockBody(exceptBody, clause, {...exceptState, addToNonJoint: exceptFrame.childrenIds, addToJoint: undefined, parent: exceptFrame, transformTopComment: undefined}, nextClauseRow));
             }
-            const exceptState = addFrame(exceptFrame, tsLineno(clause), {...s, addToJoint: tryFrame.jointFrameIds, jointParent: tryFrame});
-            updateFrom(s, copyBlockBody(exceptBody, clause, {...exceptState, addToNonJoint: exceptFrame.childrenIds, addToJoint: undefined, parent: exceptFrame, transformTopComment: undefined}, nextClauseRow));
         }
         else if (clause.type === "finally_clause") {
             const finallyBody = clause.childForFieldName("block") ?? clause.child(clause.childCount - 1);
