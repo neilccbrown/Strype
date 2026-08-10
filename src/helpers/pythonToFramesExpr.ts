@@ -123,6 +123,18 @@ function comprehensionToSlots(node : SyntaxNode, openBracket : string) : SlotsSt
     return {fields: [{code: ""}, {...latest, openingBracketValue: openBracket}, {code: ""}], operators: [{code: ""}, {code: ""}]};
 }
 
+// Whether the source currently being walked is SPY format -- set once per parse via
+// setIsSPYForDocStrings() (called from copyFramesFromParsedPython() in pythonToFrames.ts, which
+// already knows the format) rather than threaded as a parameter through every nodeToSlots() call
+// site, since only stringNodeToSlots() below actually needs it. Module-level mutable state is a
+// bit of a blunt instrument, but the alternative -- an extra parameter on every recursive
+// nodeToSlots()/flattenChildren() call across this whole file -- is worse for something this
+// narrowly scoped, and parses are never concurrent (this module has no async boundaries mid-walk).
+let currentIsSPY = false;
+export function setIsSPYForDocStrings(isSPY : boolean) : void {
+    currentIsSPY = isSPY;
+}
+
 // Strings (including f-strings) are flattened back to their raw source text rather than walked --
 // tree-sitter's byte ranges make this easier than reconstructing token values, and Strype only ever
 // stores a whole string literal as one opaque slot anyway (see toSlots()'s old strMatch regex, which
@@ -132,7 +144,21 @@ function stringNodeToSlots(node : SyntaxNode) : SlotsStructure {
     // ([\s\S] matches any char, including newlines, present if the string is triple-quoted):
     const strMatch = /^([rbfRBF]*)(["'])([\s\S]+)$/.exec(val);
     if (strMatch) {
-        const str : StringSlot = {code: strMatch[3].slice(0, strMatch[3].length - strMatch[2].length), quote: strMatch[2]};
+        let code = strMatch[3].slice(0, strMatch[3].length - strMatch[2].length);
+        // A multi-line (triple-quoted) docstring in a .spy file has each of its continuation lines
+        // indented to match the surrounding code's indentation, by Strype's own save logic (see
+        // parser.ts) -- reversed here on load by stripping that same indentation (the column the
+        // string itself starts at) back off, so the stored slot content matches what was actually
+        // typed rather than accumulating extra indentation on every load/save round-trip. Only
+        // done for .spy (not plain .py, where a docstring's internal indentation is genuine
+        // user content and must be preserved verbatim) -- confirmed as a real, not just
+        // theoretical, gap: multi-line class/function doc-comments were gaining 4 extra spaces of
+        // indentation on every re-save of a .spy fixture.
+        if (currentIsSPY && code.includes("\n")) {
+            const indent = " ".repeat(node.startPosition.column);
+            code = code.split("\n").map((line, i) => (i > 0 && line.startsWith(indent)) ? line.slice(indent.length) : line).join("\n");
+        }
+        const str : StringSlot = {code, quote: strMatch[2]};
         return {fields: [{code: strMatch[1]}, str, {code: ""}], operators: [{code: ""}, {code: ""}]};
     }
     // Shouldn't happen for a genuine `string` node, but fall back to treating it as plain text:

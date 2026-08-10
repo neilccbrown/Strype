@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import Parser from "web-tree-sitter";
 import path from "path";
-import { nodeToSlots, UnsupportedConstructError } from "@/helpers/pythonToFramesExpr";
+import { nodeToSlots, UnsupportedConstructError, setIsSPYForDocStrings } from "@/helpers/pythonToFramesExpr";
 import { SlotsStructure } from "@/types/types";
 
 // NOTE: this is really a *unit* test for the pure nodeToSlots() function (see
@@ -64,6 +64,58 @@ test.describe("nodeToSlots: literals", () => {
         expect(exprSlots("f\"hello {name}\"\n")).toEqual({
             fields: [field("f"), {code: "hello {name}", quote: "\""}, field("")],
             operators: [field(""), field("")],
+        });
+    });
+
+    test.describe("multi-line docstring dedenting (SPY format only)", () => {
+        // Strype's own save logic (parser.ts) re-indents a multi-line docstring's continuation
+        // lines to match the surrounding code's indentation when writing a .spy file; loading must
+        // reverse that, or the indentation grows by one level on every load/save round-trip --
+        // confirmed as a real bug this way (found via a failing e2e round-trip test), not just a
+        // theoretical gap. Wrapped in a function body (rather than pasted at module level like
+        // exprSlots()'s other callers) so the 4-space indentation before the string is itself
+        // syntactically valid Python.
+        function docstringSlots(src: string) : SlotsStructure {
+            const tree = parser.parse("def f():\n" + src);
+            const funcdef = tree.rootNode.child(0);
+            const block = funcdef?.childForFieldName("body");
+            const stmt = block?.child(0);
+            const inner = stmt?.child(0);
+            if (!inner) {
+                throw new Error("Couldn't find the docstring expression in: " + tree.rootNode.toString());
+            }
+            return nodeToSlots(inner);
+        }
+
+        test.afterEach(() => {
+            setIsSPYForDocStrings(false); // don't leak into other tests
+        });
+
+        test("dedents continuation lines when isSPY is true", () => {
+            setIsSPYForDocStrings(true);
+            // The docstring starts at column 4 (right after the block's own "    " indent), so
+            // "    line2"/"    " (the closing line) should have that same 4-space indent stripped.
+            // Note the "''" left at each end: the generic quote-stripping regex only knows how to
+            // strip a single quote character, so a triple-quoted string keeps 2 residual quote
+            // characters in its slot content -- matching the old Skulpt-based code's exact same
+            // convention (see makeFrame()'s own triple-quote handling, which expects and strips
+            // these same residual "''"/'""'-wrapped strings elsewhere), not a bug here:
+            const result = docstringSlots("    '''line1\n    line2\n    '''\n");
+            expect((result.fields[1] as {code: string}).code).toBe("''line1\nline2\n''");
+        });
+
+        test("leaves continuation line indentation untouched when isSPY is false (plain .py)", () => {
+            setIsSPYForDocStrings(false);
+            const result = docstringSlots("    '''line1\n    line2\n    '''\n");
+            expect((result.fields[1] as {code: string}).code).toBe("''line1\n    line2\n    ''");
+        });
+
+        test("does not touch a single-line string even when isSPY is true", () => {
+            setIsSPYForDocStrings(true);
+            expect(docstringSlots("    'hello'\n")).toEqual({
+                fields: [field(""), {code: "hello", quote: "'"}, field("")],
+                operators: [field(""), field("")],
+            });
         });
     });
 });

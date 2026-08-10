@@ -8,7 +8,7 @@ import {AppName, AppSPYFullPrefix, eventBus, projectDocumentationFrameId} from "
 import {stringToCollapsed, stringToFrozen} from "@/parser/parser";
 import {nextTick} from "vue";
 import type Parser from "web-tree-sitter";
-import {nodeToSlots, flattenChildren, UnsupportedConstructError} from "@/helpers/pythonToFramesExpr";
+import {nodeToSlots, flattenChildren, UnsupportedConstructError, setIsSPYForDocStrings} from "@/helpers/pythonToFramesExpr";
 import {getBlockItems, getLeadingSiblingComments} from "@/helpers/pythonToFramesBlockWalk";
 import {preprocessBeforeParse} from "@/helpers/pythonToFramesPreprocess";
 import {getPythonParserSync} from "@/helpers/treeSitterPython";
@@ -371,6 +371,9 @@ function copyFramesFromParsedPython(codeLines: string[], currentStrypeLocation: 
 
     try {
         const result : CopiedFrames = {frameIds: [], frames: {}, docSlots: undefined};
+        // Must be set before the tree walk starts -- stringNodeToSlots() (pythonToFramesExpr.ts)
+        // reads this to decide whether to dedent multi-line docstring content:
+        setIsSPYForDocStrings(format === "spy");
         // We assign new IDs starting from 1, later on they are offset:
         processBlockItems(parsed.tree.rootNode.children, -1, undefined, {nextId: 1, addToNonJoint: result.frameIds, addToJoint: undefined, loadedFrames: result.frames, disabledLines: parsed.disabledLines, frameStateLines: new Map<number, SavedFrameState>(), parent: null, jointParent: null, lastLineProcessed: 0, lineNumberToIndentation: indents, isSPY: format === "spy", transformTopComment: (c) => {
             result.docSlots = c;
@@ -1050,15 +1053,20 @@ function processCommentNode(node: TSSyntaxNode, s: CopyState) : CopyState {
         const value = m[2];
         if (key == "Library" || key == "LibraryDisabled") {
             const frame = makeFrame(AllFrameTypesIdentifier.library, {0: {slotStructures: {fields: [{code: value}], operators: []}}}, s.isSPY);
+            const newState = addFrame(frame, tsLineno(node), s);
             if (key == "LibraryDisabled") {
                 // Unlike the "#(=> Disabled:" prefix on a real code line (stripped and recorded in
                 // preprocessBeforeParse()'s disabledLines before parsing even starts), a disabled
                 // library is a distinct directive keyword recognised only here, post-parse -- so
                 // mark it disabled directly rather than relying on the disabledLines lookup in
-                // addFrame():
+                // addFrame(). Must happen *after* addFrame(), not before: addFrame() unconditionally
+                // overwrites frame.isDisabled from its own disabledLines lookup (which will be false
+                // here, since this line was never in disabledLines), clobbering a value set earlier
+                // -- confirmed as a real bug this way: a "#(=> LibraryDisabled:" round-tripped back
+                // out as a plain (non-disabled) "#(=> Library:".
                 frame.isDisabled = true;
             }
-            return addFrame(frame, tsLineno(node), s);
+            return newState;
         }
         if (key == "FrameState") {
             const states = value.trim().split(";");
