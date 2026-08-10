@@ -2083,7 +2083,19 @@ export default defineComponent({
 
         async loadMediaPreview(): Promise<LoadedMedia> {
             let slot = retrieveSlotFromSlotInfos(this.coreSlotInfo) as MediaSlot;
-            if (slot.mediaType.startsWith("image") && !slot.mediaType.startsWith("image/svg+xml")) {
+            if (slot.mediaType === "colour") {
+                const hex = slot.code.replace(/["']/g, "");
+                const canvas = document.createElement("canvas");
+                canvas.width = 32;
+                canvas.height = 32;
+                const ctx = canvas.getContext("2d");
+                if (ctx) {
+                    ctx.fillStyle = hex;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                }
+                return {mediaType: slot.mediaType, imageDataURL: canvas.toDataURL()};
+            }
+            else if (slot.mediaType.startsWith("image") && !slot.mediaType.startsWith("image/svg+xml")) {
                 return {mediaType: slot.mediaType, imageDataURL: "data:" + slot.mediaType + ";" + /base64,[^"']+/.exec(slot.code)?.[0]};
             }
             else if (slot.mediaType.startsWith("audio")) {
