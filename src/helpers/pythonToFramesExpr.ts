@@ -228,7 +228,17 @@ export function nodeToSlots(node : SyntaxNode) : SlotsStructure {
         if (!func || !args) {
             throw new Error("Malformed call node: " + node.text);
         }
-        return concatSlots(nodeToSlots(func), "", nodeToSlots(args));
+        // Must go through replaceMediaLiteralsAndInvalidOps() here too, not just inside
+        // flattenChildren() -- it specifically recognises an "<ident>(<bracketed-arg>)" call
+        // pattern (load_image(...)/load_sound(...) media literals, and the
+        // STRYPE_INVALID_OPS_WRAPPER round-trip placeholder for content that can't be
+        // represented as valid Python), but a `call` node is dispatched directly here rather
+        // than through flattenChildren()'s generic operand/operator walk, so without this it's
+        // silently skipped for every call -- confirmed as a real bug: a saved
+        // "___strype_opsinvalid(...)" placeholder (used to round-trip an otherwise-unrepresentable
+        // slot, e.g. grapheme clusters used outside a string) was round-tripping back out as a
+        // literal, still-wrapped call instead of being unwrapped back to its original content.
+        return replaceMediaLiteralsAndInvalidOps(concatSlots(nodeToSlots(func), "", nodeToSlots(args)));
     }
     case "subscript": {
         const value = node.childForFieldName("value");
