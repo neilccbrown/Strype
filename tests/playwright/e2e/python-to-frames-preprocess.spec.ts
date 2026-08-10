@@ -1,7 +1,14 @@
-import { describe, expect, test } from "vitest";
+import { test, expect } from "@playwright/test";
 import { preprocessBeforeParse } from "@/helpers/pythonToFramesPreprocess";
 
-describe("preprocessBeforeParse", () => {
+// NOTE: this is really a *unit* test for the pure preprocessBeforeParse() function (see
+// src/helpers/pythonToFramesPreprocess.ts) -- none of it touches a browser page, the DOM, or the
+// live app. It's written as a Playwright spec purely to reuse the test infrastructure already in
+// this repo (it runs alongside the rest of the Playwright suite with `npm run test:playwright`),
+// rather than pulling in a second test framework (e.g. Vitest) just for one module -- see
+// operator-precedence-calculation.spec.ts in this same directory for the established precedent.
+
+test.describe("preprocessBeforeParse", () => {
     test("leaves ordinary code untouched", () => {
         const result = preprocessBeforeParse(["x = 1", "y = 2"]);
         expect(result.source).toBe("x = 1\ny = 2");
