@@ -1110,14 +1110,18 @@ export default defineComponent({
                 };
 
                 const commitReplacement = (hex: string) => {
-                    this.appStore.setFrameEditableSlotContent({...targetSlotInfos, code: hex, initCode: "", isFirstChange: true});
-                    const cursorInfo: SlotCursorInfos = {slotInfos: targetSlotInfos, cursorPos: hex.length};
+                    // Converts the whole string to a colour literal (now an atomic, 1-char-wide field), so
+                    // rather than leaving the cursor "inside" it, we place it in the adjacent sibling field.
+                    this.appStore.convertStringSlotToColourLiteral(targetSlotInfos, hex);
+                    const {parentId, slotIndex} = getSlotParentIdAndIndexSplit(targetSlotInfos.slotId);
+                    const rhsSlotInfos: SlotCoreInfos = {...targetSlotInfos, slotId: getSlotIdFromParentIdAndIndexSplit(parentId, slotIndex + 1)};
+                    const cursorInfo: SlotCursorInfos = {slotInfos: rhsSlotInfos, cursorPos: 0};
                     nextTick(() => {
                         setDocumentSelection(cursorInfo, cursorInfo);
                         this.appStore.setSlotTextCursors(cursorInfo, cursorInfo);
                         this.appStore.setFocusEditableSlot({
-                            frameSlotInfos: targetSlotInfos,
-                            caretPosition: this.appStore.getAllowedChildren(targetSlotInfos.frameId) ? CaretPosition.body : CaretPosition.below,
+                            frameSlotInfos: rhsSlotInfos,
+                            caretPosition: this.appStore.getAllowedChildren(rhsSlotInfos.frameId) ? CaretPosition.body : CaretPosition.below,
                         });
                     });
                 };
@@ -1143,9 +1147,9 @@ export default defineComponent({
                 };
 
                 const commitInsertion = (hex: string) => {
-                    this.appStore.addNewSlot(targetSlotInfos, "\"", lhsCode, rhsCode, SlotType.string, false, hex);
+                    this.appStore.addNewSlot(targetSlotInfos, "colour", lhsCode, rhsCode, SlotType.media, false, "\"" + hex + "\"");
                     // Place the cursor in the new trailing (empty) field right after the inserted
-                    // string, mirroring commitInsertion in triggerMediaRecording above:
+                    // colour literal, mirroring commitInsertion in triggerMediaRecording above:
                     const {parentId, slotIndex} = getSlotParentIdAndIndexSplit(targetSlotInfos.slotId);
                     const rhsSlotInfos: SlotCoreInfos = {...targetSlotInfos, slotId: getSlotIdFromParentIdAndIndexSplit(parentId, slotIndex + 2)};
                     const cursorInfo: SlotCursorInfos = {slotInfos: rhsSlotInfos, cursorPos: 0};
