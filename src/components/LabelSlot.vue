@@ -736,6 +736,16 @@ export default defineComponent({
                         keepEditingModeOn
                     );
                 }
+                // Give a plain string one last check as we leave it: if its content now matches a hex
+                // colour literal (e.g. the user just typed "#aabbcc"), auto-convert it to a colour swatch.
+                // Mere cursor movement (Tab/click-away/arrow-out) never fires onInput, so this is the only
+                // point such a conversion can happen -- reusing the same reparse pipeline as organic typing
+                // gets cursor repositioning, undo/redo and structural re-rendering for free.
+                if (this.slotType === SlotType.string) {
+                    const stateBeforeChanges = cloneDeep(this.appStore.$state);
+                    this.$emit(CustomEventTypes.requestSlotsRefactoring, this.UID, stateBeforeChanges, {useFlatMediaDataCode: true, treatAsBlurred: true});
+                }
+
                 //reset the flag for first code change
                 this.isFirstChange = true;
 
