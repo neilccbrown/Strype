@@ -15,7 +15,7 @@ type SyntaxNode = Parser.SyntaxNode;
 // or between the last child and `beforeRow`, if given).
 export type BlockItem =
     | { kind: "node"; node: SyntaxNode }
-    | { kind: "blank"; count: number };
+    | { kind: "blank"; count: number; startRow: number };
 
 // `afterRow` is the (zero-based) row immediately before this block's content is expected to start
 // -- typically the row of the compound statement's own header (e.g. the "if x:" line), so a blank
@@ -31,7 +31,7 @@ export function getBlockItems(containerNode: SyntaxNode, afterRow: number, befor
         const child = containerNode.child(i) as SyntaxNode;
         const gap = child.startPosition.row - prevEndRow - 1;
         if (gap > 0) {
-            items.push({kind: "blank", count: gap});
+            items.push({kind: "blank", count: gap, startRow: prevEndRow + 1});
         }
         items.push({kind: "node", node: child});
         prevEndRow = child.endPosition.row;
@@ -39,7 +39,7 @@ export function getBlockItems(containerNode: SyntaxNode, afterRow: number, befor
     if (beforeRow !== undefined) {
         const gap = beforeRow - prevEndRow - 1;
         if (gap > 0) {
-            items.push({kind: "blank", count: gap});
+            items.push({kind: "blank", count: gap, startRow: prevEndRow + 1});
         }
     }
     return items;

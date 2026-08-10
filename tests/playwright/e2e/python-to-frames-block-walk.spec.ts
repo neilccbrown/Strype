@@ -22,7 +22,7 @@ function summarise(src: string, afterRow: number, beforeRow?: number) {
     const tree = parser.parse(src);
     const module = tree.rootNode;
     return getBlockItems(module, afterRow, beforeRow).map((item) =>
-        item.kind === "blank" ? `blank(${item.count})` : item.node.type + ":" + item.node.text.replace(/\n/g, "\\n"));
+        item.kind === "blank" ? `blank(${item.count})@${item.startRow}` : item.node.type + ":" + item.node.text.replace(/\n/g, "\\n"));
 }
 
 test.describe("getBlockItems", () => {
@@ -36,7 +36,7 @@ test.describe("getBlockItems", () => {
     test("a single blank line between two statements", () => {
         expect(summarise("a = 1\n\nb = 2\n", -1)).toEqual([
             "expression_statement:a = 1",
-            "blank(1)",
+            "blank(1)@1",
             "expression_statement:b = 2",
         ]);
     });
@@ -44,7 +44,7 @@ test.describe("getBlockItems", () => {
     test("multiple consecutive blank lines are counted", () => {
         expect(summarise("a = 1\n\n\n\nb = 2\n", -1)).toEqual([
             "expression_statement:a = 1",
-            "blank(3)",
+            "blank(3)@1",
             "expression_statement:b = 2",
         ]);
     });
@@ -53,7 +53,7 @@ test.describe("getBlockItems", () => {
         // afterRow = -1 means "row -1 is the last row before content starts" i.e. row 0 is the
         // first possible content row -- so a blank line 0 followed by content on row 1 is a gap:
         expect(summarise("\na = 1\n", -1)).toEqual([
-            "blank(1)",
+            "blank(1)@0",
             "expression_statement:a = 1",
         ]);
     });
@@ -73,7 +73,7 @@ test.describe("getBlockItems", () => {
     test("a blank line between a statement and a following comment", () => {
         expect(summarise("a = 1\n\n# hello\nb = 2\n", -1)).toEqual([
             "expression_statement:a = 1",
-            "blank(1)",
+            "blank(1)@1",
             "comment:# hello",
             "expression_statement:b = 2",
         ]);
@@ -84,7 +84,7 @@ test.describe("getBlockItems", () => {
         // starting on row 2 (passed in as beforeRow), so the gap is exactly the one blank row 1:
         expect(summarise("a = 1\n\n", -1, 2)).toEqual([
             "expression_statement:a = 1",
-            "blank(1)",
+            "blank(1)@1",
         ]);
     });
 
