@@ -4,17 +4,37 @@ import Parser from "web-tree-sitter";
 // happens, matching how skulpt.min.js/skulpt-stdlib.js were loaded eagerly before this migration.
 // Both .wasm files are vendored under public/js/ (never fetched from a CDN) per the project's
 // no-runtime-server-contact-for-JS/wasm principle -- see CLAUDE.md.
+let resolvedLanguage: Parser.Language | undefined;
+
 const pythonLanguagePromise: Promise<Parser.Language> = (async () => {
     await Parser.init({
         locateFile: () => `${import.meta.env.BASE_URL}js/tree-sitter.wasm`,
     });
-    return await Parser.Language.load(`${import.meta.env.BASE_URL}js/tree-sitter-python.wasm`);
+    const language = await Parser.Language.load(`${import.meta.env.BASE_URL}js/tree-sitter-python.wasm`);
+    resolvedLanguage = language;
+    return language;
 })();
 
 export async function getPythonParser(): Promise<Parser> {
     const language = await pythonLanguagePromise;
     const parser = new Parser();
     parser.setLanguage(language);
+    return parser;
+}
+
+// Synchronous accessor for callers that can't await (pasteMixedPython() and its many call sites
+// are synchronous throughout the app -- converting that whole chain to async would be a much
+// larger, riskier change than this migration's actual scope). Safe in practice because parsing is
+// eager-loaded at app startup (see startEagerLoad() below, called from main.ts before the UI
+// becomes interactive), so by the time a user can trigger a paste/load, this promise has long
+// since resolved. Throws only in the pathological case where parsing is somehow attempted before
+// that eager load finishes.
+export function getPythonParserSync(): Parser {
+    if (!resolvedLanguage) {
+        throw new Error("Python parser not yet loaded -- getPythonParserSync() called too early");
+    }
+    const parser = new Parser();
+    parser.setLanguage(resolvedLanguage);
     return parser;
 }
 

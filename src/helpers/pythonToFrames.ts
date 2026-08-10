@@ -5,11 +5,13 @@ import {CustomEventTypes, getLastCaretPosInsideParent, operators, trimmedKeyword
 import i18n from "@/i18n";
 import {cloneDeep, escapeRegExp} from "lodash";
 import {AppName, AppSPYFullPrefix, eventBus, projectDocumentationFrameId} from "@/helpers/appContext";
-import {toUnicodeEscapes, stringToCollapsed, stringToFrozen} from "@/parser/parser";
+import {stringToCollapsed, stringToFrozen} from "@/parser/parser";
 import {nextTick} from "vue";
 import type Parser from "web-tree-sitter";
 import {nodeToSlots, flattenChildren, UnsupportedConstructError} from "@/helpers/pythonToFramesExpr";
 import {getBlockItems} from "@/helpers/pythonToFramesBlockWalk";
+import {preprocessBeforeParse} from "@/helpers/pythonToFramesPreprocess";
+import {getPythonParserSync} from "@/helpers/treeSitterPython";
 
 type TSSyntaxNode = Parser.SyntaxNode;
 
@@ -165,52 +167,73 @@ function makeFrame(type: string, slots: { [index: number]: LabelSlotsContent}, i
     };
 }
 
-function parseWithSkulpt(codeLines: string[], mapErrorLineno : (lineno : number) => number) : string | { parseTree: any, addedFakeJoinParent: number } {
-    // Special case: things beginning with joint frames (else, elif, except, finally) are
-    // not parsed by Skulpt as-is (because they lack the main construct before), but we
-    // would like to support parsing them.  So we look for them and try gluing on
-    // the mandatory first part (if, try) then if the only parsed thing is the single compound
-    // frame (because we don't want to allow else, then some other arbitrary frames)
-    // then we take off the head and keep the rest.
-
-    // 0 if we added none, 1 if we added only a parent, 2 if we add a parent and an initial join:
+// Same joint-frame gluing trick that the old, now-deleted Skulpt-based parseWithSkulpt() used, ported to build a plain codeLines
+// array (rather than mutating one in place with embedded "\n"s, which parseWithSkulpt's version
+// does -- that's harmless for Skulpt's Sk.parse(codeLines.join("\n")) call, since it just produces
+// harmless extra blank lines, but tree-sitter is far more literal about row positions, so this
+// version is careful to add exactly 2 (elif) or 4 (else/except/finally) real lines, matching the
+// "2 lines per fake-parent unit" assumption used by the line-offset math in parseWithTreeSitter()
+// below): parser-agnostic in principle, kept as a separate copy rather than shared code because
+// parseWithSkulpt() is deleted once this migration's cutover is complete.
+function glueJointFrameHeader(codeLines: string[]) : { codeLines: string[], addedFakeJoinParent: number } {
     let addedFakeJoinParent = 0;
-    // So, find first word of first non-blank line:
     const firstNonBlank = codeLines.find((l) => l.trim() != "");
     if (firstNonBlank) {
         const leadingIndent = firstNonBlank.replace(/[^ ].*/, "");
         const firstWord = firstNonBlank.replace(/[^a-z].*/, "").trim();
-        switch(firstWord) {
+        switch (firstWord) {
         case "elif":
-            // We glue an if on:
-            codeLines.unshift(leadingIndent + "if True:\n", leadingIndent + "    pass\n");
+            codeLines = [leadingIndent + "if True:", leadingIndent + "    pass", ...codeLines];
             addedFakeJoinParent = 1;
             break;
-        // So else can actually be with "if" or "try".  We take advantage of the fact that if it's with
-        // "if", nothing valid can follow an else.  So it will always be the last item.  With "try"
-        // that's not the case.  But if we always glue a "try" on the front, it will work for the solitary-else
-        // case for "if", and it will work with "try".  So we do that:
         case "else":
         case "except":
         case "finally":
-            // We glue a try on.  We must also glue on an except, because actually "else" is only valid if it follows an "except",
-            // and all three are valid to follow a try/except.
-            codeLines.unshift(leadingIndent + "try:\n", leadingIndent + "    pass\n", leadingIndent + "except:\n", leadingIndent + "    pass\n");
+            codeLines = [leadingIndent + "try:", leadingIndent + "    pass", leadingIndent + "except:", leadingIndent + "    pass", ...codeLines];
             addedFakeJoinParent = 2;
             break;
         }
     }
-        
-    // Have to configure Skulpt even though we're only using it for parsing:
-    Sk.configure({});
-    let parsed;
-    try {
-        parsed = Sk.parse("pasted_content.py", codeLines.join("\n"));
+    return {codeLines, addedFakeJoinParent};
+}
+
+// Depth-first search for the first ERROR or MISSING node in a parsed tree -- tree-sitter never
+// throws on invalid input (unlike Sk.parse()), it always returns a complete tree with these
+// error-marker nodes standing in for the unparseable part. See PLAN.md §5 for why the resulting
+// user-facing message is deliberately generic ("Invalid Python code at line N") rather than trying
+// to synthesise a specific reason from the error node's grammar context.
+function findFirstErrorNode(node: TSSyntaxNode) : TSSyntaxNode | null {
+    if (node.type === "ERROR" || node.isMissing) {
+        return node;
     }
-    catch (e) {
-        return ((e as any).$offset?.v?.[2]?.$mangled ?? (e as any).$msg?.$mangled) + " line: " + mapErrorLineno((e as any).traceback?.[0].lineno);
+    for (let i = 0; i < node.childCount; i++) {
+        const child = node.child(i);
+        if (child) {
+            const found = findFirstErrorNode(child);
+            if (found) {
+                return found;
+            }
+        }
     }
-    return {parseTree: parsed["cst"], addedFakeJoinParent: addedFakeJoinParent};
+    return null;
+}
+
+// The tree-sitter-based replacement for parseWithSkulpt() above. `mapErrorLineno` is expected to
+// operate on plain, un-glued codeLines line numbers (1-based) -- this function itself subtracts
+// the fake-join-parent glue offset before calling it, so callers don't need to know about gluing.
+function parseWithTreeSitter(codeLines: string[], mapErrorLineno : (lineno : number) => number) : string | { tree: Parser.Tree, disabledLines: number[], addedFakeJoinParent: number } {
+    const glued = glueJointFrameHeader(codeLines);
+    const preprocessed = preprocessBeforeParse(glued.codeLines);
+    const parser = getPythonParserSync();
+    const tree = parser.parse(preprocessed.source);
+    if (tree.rootNode.hasError) {
+        const errorNode = findFirstErrorNode(tree.rootNode);
+        const gluedLineno = errorNode ? errorNode.startPosition.row + 1 : 1;
+        const glueOffsetLines = glued.addedFakeJoinParent * 2;
+        const originalLineno = Math.max(1, gluedLineno - glueOffsetLines);
+        return i18n.global.t("messageBannerMessage.invalidPythonCodeSyntax") + " line: " + mapErrorLineno(originalLineno);
+    }
+    return {tree, disabledLines: preprocessed.disabledLines, addedFakeJoinParent: glued.addedFakeJoinParent};
 }
 
 // Gets the leading indent of a string
@@ -236,326 +259,15 @@ export interface SavedFrameState {
     // Could be more in future, potentially
 }
 
-// Given a line and a start index, looks for the given closing quote from startIndex (inclusive) onwards.
-// Ensures that the quote is not escaped by looking at preceding backslashes.  If there's:
-// '     --> 0, not escaped
-// \'    --> 1, escaped
-// \\'   --> 2, not escaped (preceding escaped backslash)
-// \\\'  --> 3, escaped (after a preceding escaped backslash)
-// \\\\' --> 4, not escaped (after two preceding escaped backslashes)
-// General rule: must have even number of backslash before to be not-escaped.
-// Returns -1 if not found, or otherwise the position just after the end of the closing quote
-function findStringEnd(line : string, startIndex : number, quoteType : string) : number {
-    const quoteLen = quoteType.length;
-    let pos = startIndex;
-    while (pos < line.length) {
-        const nextQuoteIndex = line.indexOf(quoteType, pos);
-        if (nextQuoteIndex === -1) {
-            return -1; // Not found
-        }
-        else {
-            // Found, but check if it's escaped.
-
-            // Count backslashes immediately before the quote
-            let backslashes = 0;
-            for (let j = nextQuoteIndex - 1; j >= 0 && line[j] === "\\"; j--) {
-                backslashes++;
-            }
-
-            // Even number of backslashes; quote is not escaped, so it's the real end
-            if (backslashes % 2 === 0) {
-                return nextQuoteIndex + quoteLen;
-            }
-
-            // Otherwise, escaped → skip past and keep looking
-            pos = nextQuoteIndex + 1;
-        }
-    }
-    return -1;
-}
-
-// Takes the original code lines, and specification of py or spy format.
-// Returns a list of transformed lines with recording for frame states for a particular line
-// (and similarly but separatedly, which lines are disabled), any non-line-specific Strype states
-// and a list of transformed lines.  Comments are transformed to identifiers, as are blanks, so that
-// we can see them after Skulpt's parse.
-// Note the disabledLines are one-based, not zero-based
-// transformedLineOrigin[i] gives the (one-based) index into codeLines that transformedLines[i] came
-// from. A single codeLine can produce zero lines (lines fully inside a multi-line triple-quoted
-// string, which are collapsed onto the line where the string closes), one line, or two lines (code
-// with a trailing comment, which is moved onto its own line) -- so transformedLines.length does not
-// generally equal codeLines.length, and callers that need to map a Skulpt-reported line number back
-// to the original source must go through this array rather than assuming a 1:1 correspondence.
-function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") : {disabledLines : number[], frameStateLines : Map<number, SavedFrameState>, transformedLines : string[], transformedLineOrigin : number[], strypeDirectives: Map<string, string>} {
-    codeLines = [...codeLines];
-    const disabledLines : number[] = [];
-    const frameStateLines : Map<number, SavedFrameState> = new Map<number, SavedFrameState>();
-    const transformedLines : string[] = [];
-    // Parallel to transformedLines; see doc comment above.
-    const transformedLineOrigin : number[] = [];
-    const pushTransformedLine = (i : number, line : string) : void => {
-        transformedLines.push(line);
-        transformedLineOrigin.push(i + 1);
-    };
-    const strypeDirectives: Map<string, string> = new Map<string, string>();
-
-    // A reference to the lines containing a comment block (that is, consecutive comment lines), see inline-method below for details.
-    const aCommentBlockLines: number[] = [];
-    const checkRearrangeCommentsIdent = () => {
-        // When the parser have reached a line that is past a block of comments, we need to see if the comments of this block
-        // are indented "properly": in Python, comments can be indented anyhow, but since we transform them for Skulpt, any indentation that is not
-        // following the Python indentation rule would be seen as an error by Skulpt.
-        // The logic is: 
-        // - if there is no line before the comments (they are at the start of the code) the indent is 0.
-        // - if there is no line after the comments (they are at then end of the code), we indent the block as before or leave it to 0 if it was (and all others).
-        // - if lines before and after the comments are with the same indentation: we change the comments' indentation for the same
-        // - if the line before the comments has a different indent than the line after, we indent the block as after.
-        if(aCommentBlockLines.length == 0){
-            // There is no comment to check, we can just return
-            return;
-        }
-        if (format == "spy") {
-            // SPYs are assumed to have the comments exactly where they should be, so we don't rearrange:
-            return;
-        }
-
-        const commentBlockStartLineIndex = aCommentBlockLines[0], commentBlockEndLineIndex = aCommentBlockLines[aCommentBlockLines.length - 1];
-        let hasZeroIndent = false;     
-        const subrange = transformedLines.slice(commentBlockStartLineIndex, commentBlockEndLineIndex + 1).map((line) => {
-            if(commentBlockStartLineIndex == 0){
-                return line.trimStart();
-            }
-            else{
-                const indentBefore = /^(\s*).*$/.exec(transformedLines[commentBlockStartLineIndex - 1])?.[1]??"";
-                if(commentBlockEndLineIndex == transformedLines.length - 1){
-                    hasZeroIndent ||= (/^\s.*$/.exec(line)==null);
-                    return (hasZeroIndent ? "" : indentBefore) + line.trimStart();
-                }
-                else{
-                    const indentAfter = /^(\s*).*$/.exec(transformedLines[commentBlockEndLineIndex + 1])?.[1]??"";
-                    return indentAfter + line.trimStart();
-                }
-            }
-        });
-        transformedLines.splice(commentBlockStartLineIndex, subrange.length , ...subrange);
-
-        // Clear the comment block reference
-        aCommentBlockLines.splice(0);
-    };
-
-    // Skulpt doesn't preserve blanks or comments so we must find them and transform
-    // them into something that does parse.
-    
-    // The content here includes the original starting line, opening quote and all string content.
-    // We turn all triple quotes into single lines with \n to avoid issues with indents on subsequent lines:
-    let mostRecentIndent = "", currentTripleQuoteString: {quote: "'''" | "\"\"\"", content: string, disabled: boolean } | null = null;
-    for (let i = 0; i < codeLines.length; i++) {
-        // The #(=> directives are only valid if they appear on a line with only whitespace before them:
-        const directiveMatch = new RegExp("^( *)" + escapeRegExp(AppSPYFullPrefix) + "([^:]+):(.*)$").exec(codeLines[i]);
-        if (directiveMatch && (currentTripleQuoteString == null || (currentTripleQuoteString.disabled && directiveMatch[2].trim() == "Disabled"))) {
-            // By default, directives are just added to the map:
-            const directiveIndent = directiveMatch[1];
-            // Note we trim() keys but not values; space may well be important in values:
-            const key = directiveMatch[2].trim();
-            const value = directiveMatch[3];
-            
-            if (key == "Disabled") {
-                // Process line again:
-                codeLines[i] = directiveIndent + value;
-                disabledLines.push(transformedLines.length + 1);
-                i -= 1;
-                continue;
-            }
-            else if (key == "Library" || key == "LibraryDisabled") {
-                if (key == "LibraryDisabled") {
-                    disabledLines.push(transformedLines.length + 1);
-                }
-                pushTransformedLine(i, directiveIndent + STRYPE_LIBRARY_PREFIX + toUnicodeEscapes(value));
-                // We know this is only whitespace because directiveMatch also matched:
-                mostRecentIndent = directiveIndent;
-            }
-            else if (key == "FrameState") {
-                const states = value.trim().split(";");
-                const composite = {} as SavedFrameState;
-                for (const s of states) {
-                    if (s.trim() in stringToCollapsed) {
-                        composite.collapsed = stringToCollapsed[s.trim()];
-                    }
-                    if (s.trim() in stringToFrozen) {
-                        composite.frozen = stringToFrozen[s.trim()];
-                    }
-                }
-                // Push a blank to make line numbers match:
-                pushTransformedLine(i, "");
-                // +1 to mean the line after us:
-                frameStateLines.set(transformedLines.length + 1, composite);
-            }
-            else {
-                // Not one we have to deal with during parsing, probably a config setting, so record for later processing:
-                strypeDirectives.set(key, value);
-                // Push a blank to make line numbers match:
-                pushTransformedLine(i, "");
-                mostRecentIndent = "";
-            }
-        }
-        else if (codeLines[i].trim() === "" && currentTripleQuoteString == null) {
-            // Blank line, outside a string:
-            // We indent this to the largest of its indent,
-            // and the (smallest of the indent before us and the indent after us).
-            let nextIndent = "";
-            let nextIsJointContinuation = false;
-            for (let j = i + 1; j < codeLines.length; j++) {
-                if (codeLines[j].trim() != "") {
-                    nextIndent = getIndent(codeLines[j]);
-                    // If the next line is elif/else/except/finally, it's a continuation of the
-                    // compound statement the blank line is inside, not a new statement at its own
-                    // (shallower) indent.  Dedenting the blank line to match it would insert a
-                    // statement between the two parts of the compound statement, which Python
-                    // doesn't allow, so we must keep the blank line at the deeper indent instead:
-                    nextIsJointContinuation = /^\s*(elif|else|except|finally)\b/.test(codeLines[j]);
-                    break;
-                }
-            }
-            let smallestAdjIndent : string;
-            if (nextIsJointContinuation && mostRecentIndent.length > nextIndent.length) {
-                // Dedenting all the way to the elif/else/except/finally's own indent would insert a
-                // statement between the two parts of that compound statement, which Python doesn't
-                // allow. But the blank may be nested several levels deeper than the joint continuation
-                // (e.g. inside an if-chain that's itself inside the body the elif/else is continuing),
-                // in which case only the immediate nesting matters -- so find the shallowest indent
-                // among the lines back to (but excluding) the joint continuation's own level, which is
-                // the indentation of the body that directly and immediately precedes it, and hence where
-                // the blank line actually belongs:
-                let directChildIndent : string | null = null;
-                for (let k = i - 1; k >= 0; k--) {
-                    if (codeLines[k].trim() === "") {
-                        continue;
-                    }
-                    const ind = getIndent(codeLines[k]);
-                    if (ind.length <= nextIndent.length) {
-                        break;
-                    }
-                    if (directChildIndent === null || ind.length < directChildIndent.length) {
-                        directChildIndent = ind;
-                    }
-                }
-                smallestAdjIndent = directChildIndent ?? mostRecentIndent;
-            }
-            else {
-                smallestAdjIndent = mostRecentIndent.length <= nextIndent.length ? mostRecentIndent : nextIndent;
-            }
-            if (codeLines[i].length > smallestAdjIndent.length) {
-                pushTransformedLine(i, codeLines[i] + STRYPE_WHOLE_LINE_BLANK);
-            }
-            else {
-                pushTransformedLine(i, smallestAdjIndent + STRYPE_WHOLE_LINE_BLANK);
-            }
-            checkRearrangeCommentsIdent();
-        }
-        else {
-            // We have a line which could contain strings, multiline string start/end, comments, some awkward sequence of the set.
-            
-            // We have to go character by character to process it fully:
-            let charIndex = 0;
-            let line = codeLines[i];
-            while (charIndex < line.length) {
-                if (currentTripleQuoteString != null) {
-                    // We're currently in a triple-quoted string looking for the end.  Use indexOf rather than going char-by-char:
-                    const afterEndQuote = findStringEnd(line, charIndex, currentTripleQuoteString.quote);
-                    if (afterEndQuote != -1) {
-                        // The end exists on this line, jump to it:
-                        charIndex = afterEndQuote;
-                        if (line.startsWith(mostRecentIndent) && currentTripleQuoteString.content.includes(STRYPE_DOC_NEWLINE) && format == "spy") {
-                            currentTripleQuoteString.content = currentTripleQuoteString.content + line.substring(mostRecentIndent.length, afterEndQuote);
-                        }
-                        else {
-                            currentTripleQuoteString.content = currentTripleQuoteString.content + line.slice(0, afterEndQuote);
-                        }
-                        line = currentTripleQuoteString.content + line.slice(afterEndQuote);
-                        charIndex = currentTripleQuoteString.content.length; 
-                        currentTripleQuoteString = null;
-                        // Continue on line because could be more, e.g. '''a''' + '''b''' is valid.
-                    }
-                    else {
-                        // Whole line is in string, add it to string and remove indent if SPY, indent present, and not first line of string:
-                        if (line.startsWith(mostRecentIndent) && currentTripleQuoteString.content.includes(STRYPE_DOC_NEWLINE) && format == "spy") {
-                            currentTripleQuoteString.content = currentTripleQuoteString.content + line.substring(mostRecentIndent.length);
-                        }
-                        else {
-                            currentTripleQuoteString.content = currentTripleQuoteString.content + line;
-                        }
-                        // New line is pushed after the loop:
-                        break;
-                    }
-                }
-                else {
-                    // Must check triple quote possibility before single quote characters:
-                    const next3 = line.slice(charIndex, charIndex + 3);
-                    if (next3 == "'''" || next3 == "\"\"\"") {
-                        currentTripleQuoteString = {quote: next3, content: line.slice(0, charIndex+3), disabled: disabledLines.includes(transformedLines.length + 1)};
-                        mostRecentIndent = getIndent(line);
-                        // Process the rest of the line:
-                        line = line.slice(charIndex + 3);
-                        charIndex = 0;
-                    }
-                    else if (line.slice(charIndex, charIndex+1) == "'" || line.slice(charIndex, charIndex+1) == "\"") {
-                        // This is a standard string so it must finish on this line to be valid.
-                        // We look for end or otherwise proceed as if it finished on this line:
-                        const afterEnd = findStringEnd(line, charIndex+1, line.slice(charIndex, charIndex+1));
-                        if (afterEnd != -1) {
-                            charIndex = afterEnd;
-                        }
-                        else {
-                            // No closing quote on this line; treat the rest of the line as part of the string:
-                            charIndex = line.length;
-                        }
-                    }
-                    else if (line.slice(charIndex, charIndex+1) == "#") {
-                        // Start of a comment and we're not in a string, so rest of the line is comment
-                        const before = line.slice(0, charIndex);
-                        const after = line.slice(charIndex+1);
-                        if (before.trim() == "") {
-                            // Just a single line comment by itself:
-                            pushTransformedLine(i, before + STRYPE_COMMENT_PREFIX + toUnicodeEscapes(after));
-                            mostRecentIndent = before;
-                            aCommentBlockLines.push(transformedLines.length-1);
-                        }
-                        else {
-                            // Code followed by comment, put comment on next line.  Both lines originate
-                            // from this same source line i, so both get the same origin entry -- this is
-                            // deliberately not a 1:1 push, see transformedLineOrigin's doc comment above:
-                            mostRecentIndent = getIndent(before);
-                            pushTransformedLine(i, before);
-                            checkRearrangeCommentsIdent();
-                            pushTransformedLine(i, mostRecentIndent + STRYPE_COMMENT_PREFIX + toUnicodeEscapes(after));
-                        }
-                        // Make sure we don't push the line again:
-                        charIndex = -1;
-                        break;
-                    }
-                    else {
-                        // Nothing string or comment related, keep going:
-                        charIndex = charIndex + 1;
-                    }
-                }
-            }
-            if (charIndex >= 0 && currentTripleQuoteString == null) {
-                // Got to the end without finding a comment, and we're not in a string (processed specially) so preserve it in full:
-                pushTransformedLine(i, line);
-                mostRecentIndent = getIndent(line.trimEnd());
-                checkRearrangeCommentsIdent();
-            }
-            else if (currentTripleQuoteString != null) {
-                // Record the newline here, which is an escaped newline:
-                currentTripleQuoteString.content = currentTripleQuoteString.content + STRYPE_DOC_NEWLINE;
-            }
-        }
-    }
-    // We might have comments at the end of the code, so we need to check their indentation:
-    checkRearrangeCommentsIdent();
-
-    return { disabledLines, frameStateLines: frameStateLines, transformedLines, transformedLineOrigin, strypeDirectives };
-}
+// findStringEnd() and transformCommentsAndBlanks() (the old Skulpt-era preprocessing pass,
+// replaced by preprocessBeforeParse() in pythonToFramesPreprocess.ts -- see PLAN.md §2 for the
+// design rationale) used to live here. Deleted outright rather than left as dead code: both had
+// zero remaining references once copyFramesFromParsedPython() was rewired to the new tree-sitter
+// pipeline, and `npm run lint:check`'s no-unused-vars rule doesn't allow genuinely unreferenced
+// functions to linger -- unlike the rest of the old Skulpt-based cluster below
+// (copyFramesFromPython() and its own helpers), which is still self-referentially "used" (they
+// call each other) and so stays for now, to be deleted together once the new pipeline is proven
+// via the e2e suite (PLAN.md §3 step 6).
 
 // Information about a set of "copied" frames.  This is the result of parsing
 // Python into a set of frame objects.
@@ -606,9 +318,16 @@ export function offsetAllIds(frames: CopiedFrames, offset: number) : CopiedFrame
 // The main entry point to this module.  Given a string of Python code that the user
 // has pasted in, return the string after turning it into frames.
 // If unsuccessful, throws CopyFailure with a string with some info about where the Python parse failed.
+// The main entry point to this module. Given a string of Python code that the user has pasted in
+// (already split into lines), return the frames after parsing with tree-sitter. If unsuccessful,
+// throws CopyFailure with a string with some info about where the Python parse failed.
+// This now calls the new tree-sitter-based parse/walk pipeline (parseWithTreeSitter() +
+// processBlockItems()) instead of the Skulpt-based parseWithSkulpt() + copyFramesFromPython() it
+// used before -- those (and transformCommentsAndBlanks()) are now unreachable dead code, left in
+// place for one more commit to keep this diff reviewable, and deleted next (PLAN.md §3 step 6).
 function copyFramesFromParsedPython(codeLines: string[], currentStrypeLocation: STRYPE_LOCATION, format: "py" | "spy", linenoMapping?: Record<number, number>) : CopiedFrames {
     const indents = new Map<number, string>();
-    
+
     // Then find the common amount of indentation on non-blank lines and remove it:
     // This way if the user parses in something like this from the middle of some Python:
     // "    if x > 8:"
@@ -638,24 +357,22 @@ function copyFramesFromParsedPython(codeLines: string[], currentStrypeLocation: 
         indents.set(i + 1, getIndent(codeLines[i]));
     }
 
-    const transformed = transformCommentsAndBlanks(codeLines, format);
-    // A Skulpt-reported line number is an index into transformed.transformedLines, which doesn't
-    // correspond 1:1 with codeLines (see transformedLineOrigin's doc comment), so we must go via
-    // transformedLineOrigin to get back to a codeLines line number before applying linenoMapping:
-    const mapLineno = (lineno : number) : number => {
-        const originalLineno = transformed.transformedLineOrigin[lineno - 1] ?? lineno;
-        return linenoMapping ? linenoMapping[originalLineno] : originalLineno;
-    };
-    const parsedBySkulpt = parseWithSkulpt(transformed.transformedLines, mapLineno);
-    if (typeof parsedBySkulpt === "string") {
-        throw new CopyFailure(parsedBySkulpt);
+    // Unlike Skulpt's transformCommentsAndBlanks(), preprocessBeforeParse() (called inside
+    // parseWithTreeSitter()) never changes the line count, so -- unlike the old mapLineno, which
+    // had to go via transformedLineOrigin to undo that -- codeLines line numbers already line up
+    // directly with what parseWithTreeSitter() reports (once it's undone its own glue offset):
+    const mapLineno = (lineno : number) : number => linenoMapping ? linenoMapping[lineno] : lineno;
+
+    const parsed = parseWithTreeSitter(codeLines, mapLineno);
+    if (typeof parsed === "string") {
+        throw new CopyFailure(parsed);
     }
-    const addedFakeJoinParent = parsedBySkulpt.addedFakeJoinParent;
+    const addedFakeJoinParent = parsed.addedFakeJoinParent;
 
     try {
         const result : CopiedFrames = {frameIds: [], frames: {}, docSlots: undefined};
         // We assign new IDs starting from 1, later on they are offset:
-        copyFramesFromPython(parsedBySkulpt.parseTree, {nextId: 1, addToNonJoint: result.frameIds, addToJoint: undefined, loadedFrames: result.frames, disabledLines: transformed.disabledLines, frameStateLines: transformed.frameStateLines, parent: null, jointParent: null, lastLineProcessed: 0, lineNumberToIndentation: indents, isSPY: transformed.strypeDirectives.size > 0, transformTopComment: (c) => {
+        processBlockItems(parsed.tree.rootNode, -1, undefined, {nextId: 1, addToNonJoint: result.frameIds, addToJoint: undefined, loadedFrames: result.frames, disabledLines: parsed.disabledLines, frameStateLines: new Map<number, SavedFrameState>(), parent: null, jointParent: null, lastLineProcessed: 0, lineNumberToIndentation: indents, isSPY: format === "spy", transformTopComment: (c) => {
             result.docSlots = c;
         }});
         // At this stage, we can make a sanity check that we can copy the given Python code in the current position in Strype (for example, no "import" in a function definition section)
@@ -677,11 +394,11 @@ function copyFramesFromParsedPython(codeLines: string[], currentStrypeLocation: 
         return result;
     }
     catch (e) {
-        console.warn(e); // + "On:\n" + debugToString(parsedBySkulpt, "  "));
+        console.warn(e);
         if (e instanceof CopyFailure) {
             throw e;
         }
-        throw new CopyFailure(((e as any).$offset?.v?.[2]?.$mangled ?? (e as any).$msg?.$mangled) + " line: " + mapLineno((e as any).traceback?.[0].lineno));
+        throw new CopyFailure(e instanceof Error ? e.message : String(e));
     }
 }
 
@@ -1477,6 +1194,15 @@ function copyIfStatement(node: TSSyntaxNode, s: CopyState) : CopyState {
     const ifFrame = makeFrame(AllFrameTypesIdentifier.if, {0: {slotStructures: nodeToSlots(condition)}}, s.isSPY);
     s = addFrame(ifFrame, tsLineno(node), s);
     const clauses = node.children.filter((c) => c.type === "elif_clause" || c.type === "else_clause");
+    const firstClauseRow = clauses.length > 0 ? clauses[0].startPosition.row : undefined;
+    // Only pull nextId/lastLineProcessed back from the recursive body walk (via updateFrom()),
+    // never reassign `s` wholesale to its return value -- that would clobber s.parent/addToJoint/
+    // etc. with whatever the deepest-processed nested item's state happened to be, which is
+    // exactly the bug this comment is here to stop from reappearing (found by manually smoke-
+    // testing this code in a real browser before wiring it in further -- an `if` statement's own
+    // body was silently coming out empty because of it). Matches the old Skulpt-based code's own
+    // makeAndAddFrameWithBody(), which does the same for exactly this reason.
+    updateFrom(s, copyBlockBody(consequence, node, {...s, addToNonJoint: ifFrame.childrenIds, addToJoint: undefined, parent: ifFrame}, firstClauseRow));
     for (let i = 0; i < clauses.length; i++) {
         const clause = clauses[i];
         const nextClauseRow = i + 1 < clauses.length ? clauses[i + 1].startPosition.row : undefined;
@@ -1511,7 +1237,7 @@ function copyWhileStatement(node: TSSyntaxNode, s: CopyState) : CopyState {
     }
     const whileFrame = makeFrame(AllFrameTypesIdentifier.while, {0: {slotStructures: nodeToSlots(condition)}}, s.isSPY);
     s = addFrame(whileFrame, tsLineno(node), s);
-    s = copyBlockBody(body, node, {...s, addToNonJoint: whileFrame.childrenIds, addToJoint: undefined, parent: whileFrame}, alternative?.startPosition.row);
+    updateFrom(s, copyBlockBody(body, node, {...s, addToNonJoint: whileFrame.childrenIds, addToJoint: undefined, parent: whileFrame}, alternative?.startPosition.row));
     if (alternative) {
         const elseBody = alternative.childForFieldName("body");
         if (!elseBody) {
@@ -1534,7 +1260,7 @@ function copyForStatement(node: TSSyntaxNode, s: CopyState) : CopyState {
     }
     const forFrame = makeFrame(AllFrameTypesIdentifier.for, {0: {slotStructures: nodeToSlots(left)}, 1: {slotStructures: nodeToSlots(right)}}, s.isSPY);
     s = addFrame(forFrame, tsLineno(node), s);
-    s = copyBlockBody(body, node, {...s, addToNonJoint: forFrame.childrenIds, addToJoint: undefined, parent: forFrame}, alternative?.startPosition.row);
+    updateFrom(s, copyBlockBody(body, node, {...s, addToNonJoint: forFrame.childrenIds, addToJoint: undefined, parent: forFrame}, alternative?.startPosition.row));
     if (alternative) {
         const elseBody = alternative.childForFieldName("body");
         if (!elseBody) {
@@ -1556,7 +1282,7 @@ function copyTryStatement(node: TSSyntaxNode, s: CopyState) : CopyState {
     const firstClauseRow = clauses.length > 0 ? clauses[0].startPosition.row : undefined;
     const tryFrame = makeFrame(AllFrameTypesIdentifier.try, {}, s.isSPY);
     s = addFrame(tryFrame, tsLineno(node), s);
-    s = copyBlockBody(body, node, {...s, addToNonJoint: tryFrame.childrenIds, addToJoint: undefined, parent: tryFrame}, firstClauseRow);
+    updateFrom(s, copyBlockBody(body, node, {...s, addToNonJoint: tryFrame.childrenIds, addToJoint: undefined, parent: tryFrame}, firstClauseRow));
 
     for (let i = 0; i < clauses.length; i++) {
         const clause = clauses[i];
@@ -1637,7 +1363,14 @@ function copyWithStatement(node: TSSyntaxNode, s: CopyState) : CopyState {
     }
     const withFrame = makeFrame(AllFrameTypesIdentifier.with, {0: {slotStructures: nodeToSlots(contextManager)}, 1: {slotStructures: tsSlotsOrBlank(target)}}, s.isSPY);
     s = addFrame(withFrame, tsLineno(node), s);
-    return copyBlockBody(body, node, {...s, addToNonJoint: withFrame.childrenIds, addToJoint: undefined, parent: withFrame});
+    // Must pull nextId/lastLineProcessed back via updateFrom() rather than returning the nested
+    // body walk's state directly -- that state's `parent` is withFrame, not this statement's own
+    // outer parent, and returning it as-is would leak into whatever sibling statement gets
+    // processed next (processBlockItems() does `s = copyFramesFromTreeSitterNode(...)`, so any
+    // handler that returns a body-walk's raw result corrupts every later sibling's parent too, not
+    // just its own). See copyIfStatement()'s comment for how this was actually found.
+    updateFrom(s, copyBlockBody(body, node, {...s, addToNonJoint: withFrame.childrenIds, addToJoint: undefined, parent: withFrame}));
+    return s;
 }
 
 function copyFunctionDefinition(node: TSSyntaxNode, s: CopyState) : CopyState {
@@ -1656,7 +1389,15 @@ function copyFunctionDefinition(node: TSSyntaxNode, s: CopyState) : CopyState {
     }
     const funcdefFrame = makeFrame(AllFrameTypesIdentifier.funcdef, {0: {slotStructures: nodeToSlots(name)}, 1: {slotStructures: nodeToSlots(parameters)}}, s.isSPY);
     s = addFrame(funcdefFrame, tsLineno(node), s);
-    s = copyBlockBody(body, node, {
+    // Check this *before* the recursive body walk, not after -- s.parent must still be the
+    // outer/enclosing frame at that point (whether this def is directly inside a class), not
+    // whatever the body walk's nested state last set parent to (see copyIfStatement()'s comment
+    // for the general hazard this avoids -- this was the other bug it caught: a method's own
+    // params ended up with a literal duplicate "self" typed into them, because this check read
+    // s.parent *after* it had already been clobbered to funcdefFrame by the reassignment that
+    // used to be here, so it was always false and removeFirstFuncParam() never ran):
+    const isMethod = s.parent?.frameType.type == AllFrameTypesIdentifier.classdef;
+    updateFrom(s, copyBlockBody(body, node, {
         ...s,
         addToNonJoint: funcdefFrame.childrenIds,
         addToJoint: undefined,
@@ -1664,11 +1405,11 @@ function copyFunctionDefinition(node: TSSyntaxNode, s: CopyState) : CopyState {
         transformTopComment: (comment) => {
             funcdefFrame.labelSlotsDict[3] = {slotStructures: comment};
         },
-    });
+    }));
     if (!(3 in funcdefFrame.labelSlotsDict)) {
         funcdefFrame.labelSlotsDict[3] = {slotStructures: {operators: [], fields: [{code: ""}]}};
     }
-    if (s.parent?.frameType.type == AllFrameTypesIdentifier.classdef) {
+    if (isMethod) {
         // Remove the first param, assuming it is the "self" parameter that Strype adds automatically:
         removeFirstFuncParam(funcdefFrame.labelSlotsDict[1]);
     }
@@ -1693,7 +1434,7 @@ function copyClassDefinition(node: TSSyntaxNode, s: CopyState) : CopyState {
     }
     const classdefFrame = makeFrame(AllFrameTypesIdentifier.classdef, {0: {slotStructures: nameSlots}}, s.isSPY);
     s = addFrame(classdefFrame, tsLineno(node), s);
-    s = copyBlockBody(body, node, {
+    updateFrom(s, copyBlockBody(body, node, {
         ...s,
         addToNonJoint: classdefFrame.childrenIds,
         addToJoint: undefined,
@@ -1701,7 +1442,7 @@ function copyClassDefinition(node: TSSyntaxNode, s: CopyState) : CopyState {
         transformTopComment: (comment) => {
             classdefFrame.labelSlotsDict[2] = {slotStructures: comment};
         },
-    });
+    }));
     if (!(2 in classdefFrame.labelSlotsDict)) {
         classdefFrame.labelSlotsDict[2] = {slotStructures: {operators: [], fields: [{code: ""}]}};
     }
@@ -1721,20 +1462,29 @@ function copyMatchStatement(node: TSSyntaxNode, s: CopyState) : CopyState {
     // written) error-reporting step will surface, so no equivalent check is needed here.
     const matchFrame = makeFrame(AllFrameTypesIdentifier.match, {0: {slotStructures: nodeToSlots(subject)}}, s.isSPY);
     s = addFrame(matchFrame, tsLineno(node), s);
-    return copyBlockBody(body, node, {...s, addToNonJoint: matchFrame.childrenIds, addToJoint: undefined, parent: matchFrame});
+    updateFrom(s, copyBlockBody(body, node, {...s, addToNonJoint: matchFrame.childrenIds, addToJoint: undefined, parent: matchFrame}));
+    return s;
 }
 
 function copyCaseClause(node: TSSyntaxNode, s: CopyState) : CopyState {
     const pattern = node.childForFieldName("pattern") ?? node.child(1);
     const body = node.childForFieldName("consequence") ?? node.childForFieldName("body") ?? node.child(node.childCount - 1);
+    // The "guard" field is an if_clause node ([if, <condition>], the same shape used inside
+    // comprehensions -- see comprehensionToSlots()), not the bare condition, so its "if" keyword
+    // child must be skipped here to avoid it appearing twice: once as part of nodeToSlots(guard)
+    // itself, and once more from the explicit "if" operator below (found via the same real-browser
+    // smoke test that caught the state-clobbering bugs above -- "case 2 if x > 0:" was rendering
+    // as "case 2 if if x > 0:"):
     const guard = node.childForFieldName("guard");
+    const guardCondition = guard?.child(1);
     if (!pattern || !body) {
         throw new Error("Malformed case_clause: " + node.text);
     }
-    const patternSlots = guard ? concatSlots(nodeToSlots(pattern), "if", nodeToSlots(guard)) : nodeToSlots(pattern);
+    const patternSlots = guardCondition ? concatSlots(nodeToSlots(pattern), "if", nodeToSlots(guardCondition)) : nodeToSlots(pattern);
     const caseFrame = makeFrame(AllFrameTypesIdentifier.case, {0: {slotStructures: patternSlots}}, s.isSPY);
     s = addFrame(caseFrame, tsLineno(node), s);
-    return copyBlockBody(body, node, {...s, addToNonJoint: caseFrame.childrenIds, addToJoint: undefined, parent: caseFrame});
+    updateFrom(s, copyBlockBody(body, node, {...s, addToNonJoint: caseFrame.childrenIds, addToJoint: undefined, parent: caseFrame}));
+    return s;
 }
 
 function copyFramesFromTreeSitterNode(node: TSSyntaxNode, s: CopyState) : CopyState {
