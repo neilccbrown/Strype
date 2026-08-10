@@ -135,7 +135,13 @@ test.describe("Graphics preview", () => {
 });
 
 test.describe("Inserting and editing colour string literals", () => {
-    test("Typing a hex value and confirming inserts that literal string into an empty expression slot", async ({page}) => {
+    // Since the colour-literals feature (see colour-literals.spec.ts), confirming the picker no
+    // longer inserts/replaces a plain string -- it produces a colour MediaSlot, rendered as an
+    // <img class="...labelSlotMediaClassName..." data-mediatype="colour" data-code='"#hex"'>,
+    // the same way image/sound literals are (media-recording.spec.ts), so we assert via that
+    // element's data-code attribute rather than the raw frame header text (which no longer
+    // contains the hex as visible text).
+    test("Typing a hex value and confirming inserts a colour literal into an empty expression slot", async ({page}) => {
         await openIfFrame(page);
         await page.keyboard.press("ControlOrMeta+Shift+Y");
         await page.locator("button", {hasText: "Fine-grained selector"}).click();
@@ -143,14 +149,13 @@ test.describe("Inserting and editing colour string literals", () => {
         await visibleOKButton(page).click();
         await waitForEditorSettled(page);
 
-        const text = await getRawFrameHeaderText(page);
-        expect(text).toContain("#3366cc");
-        // A bare condition consisting of just a string literal is valid Python (truthy check), so
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveAttribute("data-code", "\"#3366cc\"");
+        // A bare condition consisting of just a colour literal is valid Python (truthy check), so
         // this should never show a syntax error:
         await checkFrameErrorCount(page, 0);
     });
 
-    test("Invoking the picker inside an existing string replaces its whole content with the picked hex", async ({page}) => {
+    test("Invoking the picker inside an existing string replaces the whole string with a colour literal", async ({page}) => {
         await openIfFrame(page);
         await page.keyboard.type("\"notacolour");
         await waitForEditorSettled(page);
@@ -166,8 +171,8 @@ test.describe("Inserting and editing colour string literals", () => {
         await visibleOKButton(page).click();
         await waitForEditorSettled(page);
 
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveAttribute("data-code", "\"#996633\"");
         const text = await getRawFrameHeaderText(page);
-        expect(text).toContain("#996633");
         expect(text).not.toContain("notacolour");
         await checkFrameErrorCount(page, 0);
     });
