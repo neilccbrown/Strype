@@ -1369,3 +1369,9 @@ export type EditSoundInDialogFunction = (sound: AudioBuffer, callback: (replacem
 export type RecordNewImageInDialogFunction = (callback: (replacement: { code: string, mediaType: string }) => void, onCancelled: () => void) => void;
 export type RecordNewSoundInDialogFunction = (callback: (replacement: { code: string, mediaType: string }) => void, onCancelled: () => void) => void;
 
+// Opens the colour picker dialog (Ctrl-Shift-L). initialColour, if given, seeds the picker (a hex
+// code or recognised CSS colour name); otherwise the picker starts from an arbitrary default.
+// callback receives the picked colour as a "#rrggbb" hex string only on "OK"; onCancelled is called
+// instead if the user cancels -- exactly one of the two is ever called.
+export type OpenColourPickerInDialogFunction = (initialColour: string | null, callback: (hex: string) => void, onCancelled: () => void) => void;
+

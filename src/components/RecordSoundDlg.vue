@@ -1,5 +1,5 @@
 <template>
-    <ModalDlg :dlgId="dlgId" :dlgTitle="dlgTitle" hideDlgBtns>
+    <ModalDlg dlgId="recordSoundDlg" :dlgTitle="$t('media.recordSoundTitle')" hideDlgBtns>
         <div v-if="errorMessage" class="RecordSoundDlg-error">{{ errorMessage }}</div>
         <canvas ref="waveformCanvas" class="RecordSoundDlg-waveform" width="600" height="150"></canvas>
         <div class="d-flex justify-content-center align-items-center RecordSoundDlg-button-wrapper">
@@ -25,17 +25,15 @@ import { closeAudioContext, createOrGetAudioContext } from "@/helpers/audioConte
 // startWaveformLoop() below):
 const WAVEFORM_WINDOW_MS = 5000;
 
+// Only ever one instance of this dialog (see App.vue), so its id is fixed rather than a prop.
+const DLG_ID = "recordSoundDlg";
+
 export default defineComponent({
     name: "RecordSoundDlg",
 
     components: {
         ModalDlg,
         BButton,
-    },
-
-    props: {
-        dlgId: String,
-        dlgTitle: String,
     },
 
     data: function () {
@@ -81,7 +79,7 @@ export default defineComponent({
 
     methods: {
         onShownModalDlg(event: BvTriggerableEvent) {
-            if (event.componentId != this.dlgId) {
+            if (event.componentId != DLG_ID) {
                 return;
             }
             // Fresh state every time the dialog is (re-)shown, e.g. via "Re-record":
@@ -128,7 +126,7 @@ export default defineComponent({
         },
 
         onHideModalDlg(event: BvTriggerableEvent) {
-            if (event.componentId != this.dlgId) {
+            if (event.componentId != DLG_ID) {
                 return;
             }
             this.cleanUp();
@@ -252,7 +250,7 @@ export default defineComponent({
                     // Release the microphone as soon as we have the recording, rather than waiting
                     // for the (animated) modal-hide transition to finish:
                     this.cleanUp();
-                    eventBus.emit(CustomEventTypes.hideStrypeModal, {trigger: "captured", componentId: this.dlgId});
+                    eventBus.emit(CustomEventTypes.hideStrypeModal, {trigger: "captured", componentId: DLG_ID});
                 }).catch((err) => {
                     console.error("Error decoding recorded audio:", err);
                     this.errorMessage = this.$t("media.recordingProcessingError") as string;
@@ -267,7 +265,7 @@ export default defineComponent({
         },
 
         doCancel() {
-            eventBus.emit(CustomEventTypes.hideStrypeModal, {trigger: "cancel", componentId: this.dlgId});
+            eventBus.emit(CustomEventTypes.hideStrypeModal, {trigger: "cancel", componentId: DLG_ID});
         },
     },
 });

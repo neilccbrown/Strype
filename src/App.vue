@@ -105,8 +105,9 @@
             <MediaPreviewPopup ref="mediaPreviewPopup" />
             <EditImageDlg dlgId="editImageDlg" ref="editImageDlg" :imgToEdit="imgToEditInDialog" :showImgPreview="showImgPreview" :showReRecordButton="editImageDlgShowReRecord" />
             <EditSoundDlg dlgId="editSoundDlg" ref="editSoundDlg" :soundToEdit="soundToEditInDialog" :showReRecordButton="editSoundDlgShowReRecord" />
-            <RecordImageDlg dlgId="recordImageDlg" ref="recordImageDlg" :dlgTitle="$t('media.recordImageTitle')" />
-            <RecordSoundDlg dlgId="recordSoundDlg" ref="recordSoundDlg" :dlgTitle="$t('media.recordSoundTitle')" />
+            <RecordImageDlg ref="recordImageDlg" />
+            <RecordSoundDlg ref="recordSoundDlg" />
+            <ColourPickerDlg ref="colourPickerDlg" :initialColour="colourPickerInitialColour" />
             <canvas v-show="appStore.isDraggingFrame" :id="getCompanionDndCanvasId" class="companion-canvas-dnd"/>
             <ModalDlg :dlgId="confirmNewProjectModalDlgId" :okCustomTitle="$t('buttonLabel.continue')">
                 <span style="white-space:pre-wrap" v-html="$t('appMessage.newProjectConfirmation')"></span>
@@ -130,7 +131,7 @@ import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane} from "splitpanes";
 import { useStore, settingsStore, getEditorTabId } from "@/store/store";
-import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, FrozenState, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, RecordNewImageInDialogFunction, RecordNewSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition, CollapsedState, LoadRequestReason, StateAppObject, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders } from "@/types/types";
+import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, FrozenState, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, RecordNewImageInDialogFunction, RecordNewSoundInDialogFunction, OpenColourPickerInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition, CollapsedState, LoadRequestReason, StateAppObject, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders } from "@/types/types";
 import { CloudDriveAPIState, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
 import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getActiveContextMenu, actOnGraphicsImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames, getFrameHeaderUID, closeRenameIdentifierPopups, newStrypeProject } from "./helpers/editor";
 import { AllFrameTypesIdentifier} from "@/types/types";
@@ -149,6 +150,7 @@ import EditImageDlg from "@/components/EditImageDlg.vue";
 import EditSoundDlg from "@/components/EditSoundDlg.vue";
 import RecordImageDlg from "@/components/RecordImageDlg.vue";
 import RecordSoundDlg from "@/components/RecordSoundDlg.vue";
+import ColourPickerDlg from "@/components/ColourPickerDlg.vue";
 import axios from "axios";
 import scssVars from "@/assets/style/_export.module.scss";
 import {loadDivider} from "@/helpers/load-save";
@@ -203,6 +205,7 @@ export default defineComponent({
         EditSoundDlg,
         RecordImageDlg,
         RecordSoundDlg,
+        ColourPickerDlg,
         MediaPreviewPopup,
         Menu,
         ModalDlg,
@@ -231,6 +234,7 @@ export default defineComponent({
             // already in progress, which would otherwise register a second competing
             // strypeModalHidden listener chain:
             isRecordingMediaFlowActive: false,
+            colourPickerInitialColour: null as string | null,
         };
     },
 
@@ -1971,9 +1975,42 @@ export default defineComponent({
 
             eventBus.emit(CustomEventTypes.showStrypeModal, "recordSoundDlg");
         },
+        // Public entry point for the colour picker (Ctrl-Shift-L). callback is only called if the
+        // user confirms with "OK"; onCancelled is called instead if the user cancels. Guarded by
+        // appStore.isModalDlgShown (checked by the caller in LabelSlot.vue) rather than a dedicated
+        // flag, since -- unlike the record-then-edit media flows above -- this is a single dialog
+        // with no follow-on modal to chain into.
+        openColourPickerInDialog(initialColour: string | null, callback: (hex: string) => void, onCancelled: () => void) {
+            const colourPickerDlgComponentAPI = vueComponentsAPIHandler.colourPickerDlgComponentAPI;
+            this.colourPickerInitialColour = initialColour;
+
+            const picked = (event: BvTriggerableEvent) => {
+                if (event.componentId != "colourPickerDlg") {
+                    return;
+                }
+                eventBus.off(CustomEventTypes.strypeModalHidden, picked);
+                this.colourPickerInitialColour = null;
+
+                if (event.trigger == "ok") {
+                    const hex = colourPickerDlgComponentAPI?.getHexValue();
+                    if (hex) {
+                        callback(hex);
+                    }
+                    else {
+                        onCancelled();
+                    }
+                }
+                else {
+                    onCancelled();
+                }
+            };
+            eventBus.on(CustomEventTypes.strypeModalHidden, picked);
+
+            eventBus.emit(CustomEventTypes.showStrypeModal, "colourPickerDlg");
+        },
     },
 
-    provide() : { peaComponent: any, editImageInDialog : EditImageInDialogFunction, editSoundInDialog : EditSoundInDialogFunction, recordNewImageInDialog : RecordNewImageInDialogFunction, recordNewSoundInDialog : RecordNewSoundInDialogFunction} {
+    provide() : { peaComponent: any, editImageInDialog : EditImageInDialogFunction, editSoundInDialog : EditSoundInDialogFunction, recordNewImageInDialog : RecordNewImageInDialogFunction, recordNewSoundInDialog : RecordNewSoundInDialogFunction, openColourPickerInDialog : OpenColourPickerInDialogFunction} {
         return {
             peaComponent: this.getPeaComponent,
             // Note, this provides the function:
@@ -1981,6 +2018,7 @@ export default defineComponent({
             editSoundInDialog: this.editSoundInDialog,
             recordNewImageInDialog: this.recordNewImageInDialog,
             recordNewSoundInDialog: this.recordNewSoundInDialog,
+            openColourPickerInDialog: this.openColourPickerInDialog,
         };
     },
 });
