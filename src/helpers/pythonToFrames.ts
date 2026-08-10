@@ -7,6 +7,11 @@ import {cloneDeep, escapeRegExp} from "lodash";
 import {AppName, AppSPYFullPrefix, eventBus, projectDocumentationFrameId} from "@/helpers/appContext";
 import {toUnicodeEscapes, stringToCollapsed, stringToFrozen} from "@/parser/parser";
 import {nextTick} from "vue";
+import type Parser from "web-tree-sitter";
+import {nodeToSlots, flattenChildren, UnsupportedConstructError} from "@/helpers/pythonToFramesExpr";
+import {getBlockItems} from "@/helpers/pythonToFramesBlockWalk";
+
+type TSSyntaxNode = Parser.SyntaxNode;
 
 const TOP_LEVEL_TEMP_ID = -999;
 
@@ -1284,11 +1289,516 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
             // forth is the body
             r = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.case, 0, [1], 3, s);
         }
-        s = r.s;        
+        s = r.s;
         break;
     }
     }
     return s;
+}
+
+// ---------------------------------------------------------------------------------------------
+// New tree-sitter-based statement walker (replaces copyFramesFromPython() above once complete
+// and validated -- see docs/replace-skulpt-parser/PLAN.md §3 step 4). Not wired into
+// copyFramesFromParsedPython() yet: that still calls the Skulpt-based version above. Driven by
+// tree-sitter's field API instead of positional child indices, and by nodeToSlots()/
+// flattenChildren() (pythonToFramesExpr.ts) for expression content and getBlockItems()
+// (pythonToFramesBlockWalk.ts) for blank-line/comment recovery -- see those modules' own doc
+// comments for the design rationale. Can't be unit-tested standalone the way those two modules
+// are (it needs makeFrame()/addFrame(), which need real FrameObject/i18n machinery), so -- like
+// the Skulpt-based version it replaces -- its correctness is validated via the existing e2e
+// paste/load suites once wired in, not via Playwright-as-unit-test specs.
+// ---------------------------------------------------------------------------------------------
+
+const spyDirectiveRegex = new RegExp("^" + escapeRegExp(AppSPYFullPrefix) + "([^:]+):(.*)$");
+
+function tsLineno(node: TSSyntaxNode) : number {
+    return node.startPosition.row + 1;
+}
+
+// Given an expression node, returns its SlotsStructure, or a single blank field if the node is
+// undefined (mirrors the old code's handling of e.g. a bare "return"/"raise" with no value).
+function tsSlotsOrBlank(node: TSSyntaxNode | null) : SlotsStructure {
+    return node ? nodeToSlots(node) : {fields: [{code: ""}], operators: []};
+}
+
+// Processes a single comment node: either a plain comment, a Library:/LibraryDisabled: directive
+// (-> library frame), or a FrameState: directive (-> recorded against the following line, no frame
+// produced), or (if s.transformTopComment is set, i.e. this is the first item directly inside a
+// funcdef/classdef body) consumed as that def's doc "comment".
+function processCommentNode(node: TSSyntaxNode, s: CopyState) : CopyState {
+    const text = node.text; // includes the leading "#"
+    const m = spyDirectiveRegex.exec(text);
+    if (m) {
+        const key = m[1].trim();
+        const value = m[2];
+        if (key == "Library" || key == "LibraryDisabled") {
+            const frame = makeFrame(AllFrameTypesIdentifier.library, {0: {slotStructures: {fields: [{code: value}], operators: []}}}, s.isSPY);
+            if (key == "LibraryDisabled") {
+                // Unlike the "#(=> Disabled:" prefix on a real code line (stripped and recorded in
+                // preprocessBeforeParse()'s disabledLines before parsing even starts), a disabled
+                // library is a distinct directive keyword recognised only here, post-parse -- so
+                // mark it disabled directly rather than relying on the disabledLines lookup in
+                // addFrame():
+                frame.isDisabled = true;
+            }
+            return addFrame(frame, tsLineno(node), s);
+        }
+        if (key == "FrameState") {
+            const states = value.trim().split(";");
+            const composite = {} as SavedFrameState;
+            for (const st of states) {
+                if (st.trim() in stringToCollapsed) {
+                    composite.collapsed = stringToCollapsed[st.trim()];
+                }
+                if (st.trim() in stringToFrozen) {
+                    composite.frozen = stringToFrozen[st.trim()];
+                }
+            }
+            // Applies to the line immediately following this comment (matching the old code's "+1"
+            // semantics), regardless of any further blanks/comments between here and the next real
+            // frame -- frameStateLines is a Map reference shared via CopyState, so mutating it here
+            // is visible to the addFrame() call for that following frame:
+            s.frameStateLines.set(node.startPosition.row + 2, composite);
+            return s;
+        }
+        // Any other directive (e.g. a stray/malformed one) -- Section:* headers are already
+        // stripped out before parsing by splitLinesToSections(), so there's nothing else
+        // recognised here; fall through and treat it as a plain comment rather than erroring, to
+        // stay lenient with malformed SPY metadata (matches the old code's "not one we have to
+        // deal with during parsing" fallback).
+    }
+    const commentText = text.slice(1); // drop the leading "#"; no unicode-escape decoding needed
+    // -- unlike the old disguised-as-identifier comments, this is the real source text already.
+    if (s.transformTopComment) {
+        s.transformTopComment({fields: [{code: commentText}], operators: []});
+        return {...s, transformTopComment: undefined};
+    }
+    return addFrame(makeFrame(AllFrameTypesIdentifier.comment, {0: {slotStructures: {fields: [{code: commentText}], operators: []}}}, s.isSPY), tsLineno(node), s);
+}
+
+// Processes every item (statement, comment, or blank-line run) directly inside a block-like
+// container (a `block` node, or the top-level `module` node), in source order. `afterRow`/
+// `beforeRow` are passed straight through to getBlockItems() -- see its doc comment.
+function processBlockItems(container: TSSyntaxNode, afterRow: number, beforeRow: number | undefined, s: CopyState) : CopyState {
+    for (const item of getBlockItems(container, afterRow, beforeRow)) {
+        if (item.kind === "blank") {
+            for (let i = 0; i < item.count; i++) {
+                // Blanks are not allowed directly inside class defs (matching old behaviour):
+                if (s.parent?.frameType.type != AllFrameTypesIdentifier.classdef) {
+                    s = addFrame(makeFrame(AllFrameTypesIdentifier.blank, {}, s.isSPY), item.startRow + i + 1, s);
+                }
+            }
+        }
+        else if (item.node.type === "comment") {
+            s = processCommentNode(item.node, s);
+        }
+        else {
+            s = copyFramesFromTreeSitterNode(item.node, s);
+        }
+        // Only the very first item in a block can be a def's doc "comment" -- once anything at all
+        // has been processed (even a blank or an ordinary comment), that possibility is gone:
+        s = {...s, transformTopComment: undefined};
+    }
+    return s;
+}
+
+// Handles an expr_stmt-equivalent's inner "assignment" node specially (splitting into separate
+// target/value slots) rather than going through nodeToSlots() generically -- a chained assignment
+// like "a = b = 1" still works, since nodeToSlots() on the nested "right" assignment node falls
+// through to its generic flattenChildren() case (treating the nested "=" as an ordinary operator),
+// matching the old Skulpt-based code's behaviour for the same input.
+function copyAssignmentStatement(node: TSSyntaxNode, s: CopyState) : CopyState {
+    const left = node.childForFieldName("left");
+    const right = node.childForFieldName("right");
+    if (!left || !right) {
+        throw new Error("Malformed assignment node: " + node.text);
+    }
+    const lhs = nodeToSlots(left);
+    const rhs = nodeToSlots(right);
+    return addFrame(makeFrame(AllFrameTypesIdentifier.varassign, {0: {slotStructures: lhs}, 1: {slotStructures: rhs}}, s.isSPY), tsLineno(node), s);
+}
+
+// Strype has no dedicated frame for augmented assignment (e.g. "a += b"), so -- matching the old
+// code -- it's expanded into the equivalent "a = a + b" instead. This isn't behaviour-compliant
+// for targets with side effects (e.g. "a().x += b" would evaluate "a()" twice) but that's an
+// accepted, unlikely-to-occur limitation, carried over unchanged.
+function copyAugmentedAssignmentStatement(node: TSSyntaxNode, s: CopyState) : CopyState {
+    const left = node.childForFieldName("left");
+    const opNode = node.childForFieldName("operator");
+    const right = node.childForFieldName("right");
+    if (!left || !opNode || !right) {
+        throw new Error("Malformed augmented_assignment node: " + node.text);
+    }
+    const lhs = nodeToSlots(left);
+    const rhsOperand = nodeToSlots(right);
+    const op = opNode.text.slice(0, -1); // strip the trailing "=" from e.g. "+=" to get "+"
+    const bracketedRhsOperand = isSimpleAugAssignOperand(rhsOperand) ? rhsOperand :
+        {fields: [{code: ""}, {...rhsOperand, openingBracketValue: "("}, {code: ""}], operators: [{code: ""}, {code: ""}]};
+    const rhs = concatSlots(cloneDeep(lhs), op, bracketedRhsOperand);
+    return addFrame(makeFrame(AllFrameTypesIdentifier.varassign, {0: {slotStructures: lhs}, 1: {slotStructures: rhs}}, s.isSPY), tsLineno(node), s);
+}
+
+function copyExpressionStatement(node: TSSyntaxNode, s: CopyState) : CopyState {
+    const inner = node.child(0);
+    if (!inner) {
+        throw new Error("Empty expression_statement");
+    }
+    if (inner.type === "assignment") {
+        return copyAssignmentStatement(inner, s);
+    }
+    if (inner.type === "augmented_assignment") {
+        return copyAugmentedAssignmentStatement(inner, s);
+    }
+    // Everything else (a bare call, attribute access, identifier, etc.) goes in a "misc" frame --
+    // makeFrame() itself detects the standalone-triple-quoted-string special case and converts it
+    // to a comment frame, same as the old code:
+    const slots = nodeToSlots(inner);
+    const misc = makeFrame(AllFrameTypesIdentifier.funccall, {0: {slotStructures: slots}}, s.isSPY);
+    if (misc.frameType.type == AllFrameTypesIdentifier.comment && s.transformTopComment) {
+        s.transformTopComment(misc.labelSlotsDict[0].slotStructures);
+        return {...s, transformTopComment: undefined};
+    }
+    return addFrame(misc, tsLineno(node), s);
+}
+
+// A block-like container's own startPosition/endPosition only span its actual statements (no
+// visibility of the header line before it or a following elif/else/except sibling after it), so
+// callers must pass in the right row bounds explicitly -- see getBlockItems()'s doc comment.
+function copyBlockBody(blockNode: TSSyntaxNode, headerNode: TSSyntaxNode, s: CopyState, beforeRow?: number) : CopyState {
+    return processBlockItems(blockNode, headerNode.startPosition.row, beforeRow, s);
+}
+
+function copyIfStatement(node: TSSyntaxNode, s: CopyState) : CopyState {
+    const condition = node.childForFieldName("condition");
+    const consequence = node.childForFieldName("consequence");
+    if (!condition || !consequence) {
+        throw new Error("Malformed if_statement: " + node.text);
+    }
+    const ifFrame = makeFrame(AllFrameTypesIdentifier.if, {0: {slotStructures: nodeToSlots(condition)}}, s.isSPY);
+    s = addFrame(ifFrame, tsLineno(node), s);
+    const clauses = node.children.filter((c) => c.type === "elif_clause" || c.type === "else_clause");
+    for (let i = 0; i < clauses.length; i++) {
+        const clause = clauses[i];
+        const nextClauseRow = i + 1 < clauses.length ? clauses[i + 1].startPosition.row : undefined;
+        const body = clause.childForFieldName("consequence") ?? clause.childForFieldName("body");
+        if (!body) {
+            throw new Error("Malformed elif/else clause: " + clause.text);
+        }
+        if (clause.type === "elif_clause") {
+            const cond = clause.childForFieldName("condition");
+            if (!cond) {
+                throw new Error("Malformed elif_clause: " + clause.text);
+            }
+            const elifFrame = makeFrame(AllFrameTypesIdentifier.elif, {0: {slotStructures: nodeToSlots(cond)}}, s.isSPY);
+            const elifState = addFrame(elifFrame, tsLineno(clause), {...s, addToJoint: ifFrame.jointFrameIds, jointParent: ifFrame});
+            updateFrom(s, copyBlockBody(body, clause, {...elifState, addToNonJoint: elifFrame.childrenIds, addToJoint: undefined, parent: elifFrame}, nextClauseRow));
+        }
+        else {
+            const elseFrame = makeFrame(AllFrameTypesIdentifier.else, {}, s.isSPY);
+            const elseState = addFrame(elseFrame, tsLineno(clause), {...s, addToJoint: ifFrame.jointFrameIds, jointParent: ifFrame});
+            updateFrom(s, copyBlockBody(body, clause, {...elseState, addToNonJoint: elseFrame.childrenIds, addToJoint: undefined, parent: elseFrame}, nextClauseRow));
+        }
+    }
+    return s;
+}
+
+function copyWhileStatement(node: TSSyntaxNode, s: CopyState) : CopyState {
+    const condition = node.childForFieldName("condition");
+    const body = node.childForFieldName("body");
+    const alternative = node.childForFieldName("alternative"); // else_clause, if present
+    if (!condition || !body) {
+        throw new Error("Malformed while_statement: " + node.text);
+    }
+    const whileFrame = makeFrame(AllFrameTypesIdentifier.while, {0: {slotStructures: nodeToSlots(condition)}}, s.isSPY);
+    s = addFrame(whileFrame, tsLineno(node), s);
+    s = copyBlockBody(body, node, {...s, addToNonJoint: whileFrame.childrenIds, addToJoint: undefined, parent: whileFrame}, alternative?.startPosition.row);
+    if (alternative) {
+        const elseBody = alternative.childForFieldName("body");
+        if (!elseBody) {
+            throw new Error("Malformed else_clause: " + alternative.text);
+        }
+        const elseFrame = makeFrame(AllFrameTypesIdentifier.else, {}, s.isSPY);
+        const elseState = addFrame(elseFrame, tsLineno(alternative), {...s, addToJoint: whileFrame.jointFrameIds, jointParent: whileFrame});
+        updateFrom(s, copyBlockBody(elseBody, alternative, {...elseState, addToNonJoint: elseFrame.childrenIds, addToJoint: undefined, parent: elseFrame}));
+    }
+    return s;
+}
+
+function copyForStatement(node: TSSyntaxNode, s: CopyState) : CopyState {
+    const left = node.childForFieldName("left");
+    const right = node.childForFieldName("right");
+    const body = node.childForFieldName("body");
+    const alternative = node.childForFieldName("alternative"); // else_clause, if present
+    if (!left || !right || !body) {
+        throw new Error("Malformed for_statement: " + node.text);
+    }
+    const forFrame = makeFrame(AllFrameTypesIdentifier.for, {0: {slotStructures: nodeToSlots(left)}, 1: {slotStructures: nodeToSlots(right)}}, s.isSPY);
+    s = addFrame(forFrame, tsLineno(node), s);
+    s = copyBlockBody(body, node, {...s, addToNonJoint: forFrame.childrenIds, addToJoint: undefined, parent: forFrame}, alternative?.startPosition.row);
+    if (alternative) {
+        const elseBody = alternative.childForFieldName("body");
+        if (!elseBody) {
+            throw new Error("Malformed else_clause: " + alternative.text);
+        }
+        const elseFrame = makeFrame(AllFrameTypesIdentifier.else, {}, s.isSPY);
+        const elseState = addFrame(elseFrame, tsLineno(alternative), {...s, addToJoint: forFrame.jointFrameIds, jointParent: forFrame});
+        updateFrom(s, copyBlockBody(elseBody, alternative, {...elseState, addToNonJoint: elseFrame.childrenIds, addToJoint: undefined, parent: elseFrame}));
+    }
+    return s;
+}
+
+function copyTryStatement(node: TSSyntaxNode, s: CopyState) : CopyState {
+    const body = node.childForFieldName("body");
+    if (!body) {
+        throw new Error("Malformed try_statement: " + node.text);
+    }
+    const clauses = node.children.filter((c) => c.type === "except_clause" || c.type === "else_clause" || c.type === "finally_clause");
+    const firstClauseRow = clauses.length > 0 ? clauses[0].startPosition.row : undefined;
+    const tryFrame = makeFrame(AllFrameTypesIdentifier.try, {}, s.isSPY);
+    s = addFrame(tryFrame, tsLineno(node), s);
+    s = copyBlockBody(body, node, {...s, addToNonJoint: tryFrame.childrenIds, addToJoint: undefined, parent: tryFrame}, firstClauseRow);
+
+    for (let i = 0; i < clauses.length; i++) {
+        const clause = clauses[i];
+        const nextClauseRow = i + 1 < clauses.length ? clauses[i + 1].startPosition.row : undefined;
+        if (clause.type === "except_clause") {
+            // The except clause's own value/pattern is everything between "except" and ":" -- it
+            // may be absent (blank except), a plain expression, or an "X as y" as_pattern:
+            const valueChild = clause.child(1);
+            let exceptFrame: FrameObject;
+            if (!valueChild || valueChild.type === ":") {
+                exceptFrame = makeFrame(AllFrameTypesIdentifier.except, {0: {slotStructures: {fields: [{code: ""}], operators: []}}}, s.isSPY);
+            }
+            else if (valueChild.type === "as_pattern") {
+                const exceptType = valueChild.child(0);
+                const alias = valueChild.childForFieldName("alias");
+                if (!exceptType || !alias) {
+                    throw new Error("Malformed except-as clause: " + clause.text);
+                }
+                exceptFrame = makeFrame(AllFrameTypesIdentifier.except, {0: {slotStructures: concatSlots(nodeToSlots(exceptType), "as", nodeToSlots(alias))}}, s.isSPY);
+            }
+            else {
+                exceptFrame = makeFrame(AllFrameTypesIdentifier.except, {0: {slotStructures: nodeToSlots(valueChild)}}, s.isSPY);
+            }
+            const exceptBody = clause.childForFieldName("block") ?? clause.child(clause.childCount - 1);
+            if (!exceptBody) {
+                throw new Error("Malformed except_clause: " + clause.text);
+            }
+            const exceptState = addFrame(exceptFrame, tsLineno(clause), {...s, addToJoint: tryFrame.jointFrameIds, jointParent: tryFrame});
+            updateFrom(s, copyBlockBody(exceptBody, clause, {...exceptState, addToNonJoint: exceptFrame.childrenIds, addToJoint: undefined, parent: exceptFrame}, nextClauseRow));
+        }
+        else if (clause.type === "finally_clause") {
+            const finallyBody = clause.childForFieldName("block") ?? clause.child(clause.childCount - 1);
+            if (!finallyBody) {
+                throw new Error("Malformed finally_clause: " + clause.text);
+            }
+            const finallyFrame = makeFrame(AllFrameTypesIdentifier.finally, {}, s.isSPY);
+            const finallyState = addFrame(finallyFrame, tsLineno(clause), {...s, addToJoint: tryFrame.jointFrameIds, jointParent: tryFrame});
+            updateFrom(s, copyBlockBody(finallyBody, clause, {...finallyState, addToNonJoint: finallyFrame.childrenIds, addToJoint: undefined, parent: finallyFrame}, nextClauseRow));
+        }
+        else {
+            // else_clause
+            const elseBody = clause.childForFieldName("body");
+            if (!elseBody) {
+                throw new Error("Malformed else_clause: " + clause.text);
+            }
+            const elseFrame = makeFrame(AllFrameTypesIdentifier.else, {}, s.isSPY);
+            const elseState = addFrame(elseFrame, tsLineno(clause), {...s, addToJoint: tryFrame.jointFrameIds, jointParent: tryFrame});
+            updateFrom(s, copyBlockBody(elseBody, clause, {...elseState, addToNonJoint: elseFrame.childrenIds, addToJoint: undefined, parent: elseFrame}, nextClauseRow));
+        }
+    }
+    return s;
+}
+
+function copyWithStatement(node: TSSyntaxNode, s: CopyState) : CopyState {
+    const withClause = node.child(1);
+    const body = node.childForFieldName("body");
+    if (!withClause || withClause.type !== "with_clause" || !body) {
+        throw new Error("Malformed with_statement: " + node.text);
+    }
+    const withItems = withClause.children.filter((c) => c.type === "with_item");
+    if (withItems.length !== 1) {
+        // Strype's "with" frame only has slots for a single context-manager/target pair -- the old
+        // Skulpt-based grammar only ever exposed one with_item too, so this isn't a new gap, but
+        // unlike that old code (which would have just silently used/dropped whichever items it
+        // happened to index into), reject explicitly:
+        throw new UnsupportedConstructError("Only a single 'with ... as ...' item is supported");
+    }
+    const value = withItems[0].childForFieldName("value");
+    if (!value) {
+        throw new Error("Malformed with_item: " + withItems[0].text);
+    }
+    let target: TSSyntaxNode | null = null;
+    let contextManager = value;
+    if (value.type === "as_pattern") {
+        contextManager = value.child(0) as TSSyntaxNode;
+        const alias = value.childForFieldName("alias");
+        target = alias ? alias.child(0) ?? alias : null;
+    }
+    const withFrame = makeFrame(AllFrameTypesIdentifier.with, {0: {slotStructures: nodeToSlots(contextManager)}, 1: {slotStructures: tsSlotsOrBlank(target)}}, s.isSPY);
+    s = addFrame(withFrame, tsLineno(node), s);
+    return copyBlockBody(body, node, {...s, addToNonJoint: withFrame.childrenIds, addToJoint: undefined, parent: withFrame});
+}
+
+function copyFunctionDefinition(node: TSSyntaxNode, s: CopyState) : CopyState {
+    const name = node.childForFieldName("name");
+    const parameters = node.childForFieldName("parameters");
+    const body = node.childForFieldName("body");
+    const returnType = node.childForFieldName("return_type");
+    if (!name || !parameters || !body) {
+        throw new Error("Malformed function_definition: " + node.text);
+    }
+    if (returnType) {
+        throw new UnsupportedConstructError("Return type annotations are not supported");
+    }
+    if (parameters.children.some((c) => c.type === "typed_parameter" || c.type === "typed_default_parameter")) {
+        throw new UnsupportedConstructError("Parameter type annotations are not supported");
+    }
+    const funcdefFrame = makeFrame(AllFrameTypesIdentifier.funcdef, {0: {slotStructures: nodeToSlots(name)}, 1: {slotStructures: nodeToSlots(parameters)}}, s.isSPY);
+    s = addFrame(funcdefFrame, tsLineno(node), s);
+    s = copyBlockBody(body, node, {
+        ...s,
+        addToNonJoint: funcdefFrame.childrenIds,
+        addToJoint: undefined,
+        parent: funcdefFrame,
+        transformTopComment: (comment) => {
+            funcdefFrame.labelSlotsDict[3] = {slotStructures: comment};
+        },
+    });
+    if (!(3 in funcdefFrame.labelSlotsDict)) {
+        funcdefFrame.labelSlotsDict[3] = {slotStructures: {operators: [], fields: [{code: ""}]}};
+    }
+    if (s.parent?.frameType.type == AllFrameTypesIdentifier.classdef) {
+        // Remove the first param, assuming it is the "self" parameter that Strype adds automatically:
+        removeFirstFuncParam(funcdefFrame.labelSlotsDict[1]);
+    }
+    return s;
+}
+
+function copyClassDefinition(node: TSSyntaxNode, s: CopyState) : CopyState {
+    const name = node.childForFieldName("name");
+    const body = node.childForFieldName("body");
+    const superclasses = node.childForFieldName("superclasses"); // an argument_list, if present
+    if (!name || !body) {
+        throw new Error("Malformed class_definition: " + node.text);
+    }
+    let nameSlots = nodeToSlots(name);
+    if (superclasses) {
+        // Strype represents the parent-class list as a bracketed sub-structure appended directly
+        // into the single "name" slot (matching the old code's approach), rather than as a
+        // separate slot of its own:
+        const parents = nodeToSlots(superclasses);
+        parents.openingBracketValue = "(";
+        nameSlots = {fields: [...nameSlots.fields, parents, {code: ""}], operators: [...nameSlots.operators, {code: ""}, {code: ""}]};
+    }
+    const classdefFrame = makeFrame(AllFrameTypesIdentifier.classdef, {0: {slotStructures: nameSlots}}, s.isSPY);
+    s = addFrame(classdefFrame, tsLineno(node), s);
+    s = copyBlockBody(body, node, {
+        ...s,
+        addToNonJoint: classdefFrame.childrenIds,
+        addToJoint: undefined,
+        parent: classdefFrame,
+        transformTopComment: (comment) => {
+            classdefFrame.labelSlotsDict[2] = {slotStructures: comment};
+        },
+    });
+    if (!(2 in classdefFrame.labelSlotsDict)) {
+        classdefFrame.labelSlotsDict[2] = {slotStructures: {operators: [], fields: [{code: ""}]}};
+    }
+    return s;
+}
+
+function copyMatchStatement(node: TSSyntaxNode, s: CopyState) : CopyState {
+    const subject = node.childForFieldName("subject");
+    const body = node.childForFieldName("body");
+    if (!subject || !body) {
+        throw new Error("Malformed match_statement: " + node.text);
+    }
+    // Unlike the old code's customised, permissive Skulpt grammar (which allowed bare simple
+    // statements directly under a match block, requiring checkValidMatchContent() to reject them
+    // after the fact), standard tree-sitter-python's match_statement.body structurally only
+    // accepts case_clauses -- anything else comes back as an ERROR node, which the (not yet
+    // written) error-reporting step will surface, so no equivalent check is needed here.
+    const matchFrame = makeFrame(AllFrameTypesIdentifier.match, {0: {slotStructures: nodeToSlots(subject)}}, s.isSPY);
+    s = addFrame(matchFrame, tsLineno(node), s);
+    return copyBlockBody(body, node, {...s, addToNonJoint: matchFrame.childrenIds, addToJoint: undefined, parent: matchFrame});
+}
+
+function copyCaseClause(node: TSSyntaxNode, s: CopyState) : CopyState {
+    const pattern = node.childForFieldName("pattern") ?? node.child(1);
+    const body = node.childForFieldName("consequence") ?? node.childForFieldName("body") ?? node.child(node.childCount - 1);
+    const guard = node.childForFieldName("guard");
+    if (!pattern || !body) {
+        throw new Error("Malformed case_clause: " + node.text);
+    }
+    const patternSlots = guard ? concatSlots(nodeToSlots(pattern), "if", nodeToSlots(guard)) : nodeToSlots(pattern);
+    const caseFrame = makeFrame(AllFrameTypesIdentifier.case, {0: {slotStructures: patternSlots}}, s.isSPY);
+    s = addFrame(caseFrame, tsLineno(node), s);
+    return copyBlockBody(body, node, {...s, addToNonJoint: caseFrame.childrenIds, addToJoint: undefined, parent: caseFrame});
+}
+
+function copyFramesFromTreeSitterNode(node: TSSyntaxNode, s: CopyState) : CopyState {
+    switch (node.type) {
+    case "expression_statement":
+        return copyExpressionStatement(node, s);
+    case "pass_statement":
+        return {...s, lastLineProcessed: tsLineno(node)};
+    case "break_statement":
+        return addFrame(makeFrame(AllFrameTypesIdentifier.break, {}, s.isSPY), tsLineno(node), s);
+    case "continue_statement":
+        return addFrame(makeFrame(AllFrameTypesIdentifier.continue, {}, s.isSPY), tsLineno(node), s);
+    case "global_statement":
+        return addFrame(makeFrame(AllFrameTypesIdentifier.global, {0: {slotStructures: flattenChildren(node.children.slice(1))}}, s.isSPY), tsLineno(node), s);
+    case "import_statement":
+        return addFrame(makeFrame(AllFrameTypesIdentifier.import, {0: {slotStructures: flattenChildren(node.children.slice(1))}}, s.isSPY), tsLineno(node), s);
+    case "import_from_statement": {
+        const moduleNode = node.childForFieldName("module_name");
+        const importIdx = node.children.findIndex((c) => c.type === "import" && c.childCount === 0);
+        if (!moduleNode || importIdx < 0) {
+            throw new Error("Malformed import_from_statement: " + node.text);
+        }
+        const names = flattenChildren(node.children.slice(importIdx + 1));
+        return addFrame(makeFrame(AllFrameTypesIdentifier.fromimport, {0: {slotStructures: nodeToSlots(moduleNode)}, 1: {slotStructures: names}}, s.isSPY), tsLineno(node), s);
+    }
+    case "raise_statement": {
+        if (node.childCount > 2) {
+            // "raise X from Y" -- the old Skulpt-based grammar's raise_stmt never had more than one
+            // value child, so this is a genuinely new case, not previously exercised; reject
+            // explicitly rather than silently dropping the "from" clause:
+            throw new UnsupportedConstructError("'raise ... from ...' is not supported");
+        }
+        return addFrame(makeFrame(AllFrameTypesIdentifier.raise, {0: {slotStructures: tsSlotsOrBlank(node.child(1))}}, s.isSPY), tsLineno(node), s);
+    }
+    case "return_statement":
+        return addFrame(makeFrame(AllFrameTypesIdentifier.return, {0: {slotStructures: tsSlotsOrBlank(node.child(1))}}, s.isSPY), tsLineno(node), s);
+    case "if_statement":
+        return copyIfStatement(node, s);
+    case "while_statement":
+        return copyWhileStatement(node, s);
+    case "for_statement":
+        return copyForStatement(node, s);
+    case "try_statement":
+        return copyTryStatement(node, s);
+    case "with_statement":
+        return copyWithStatement(node, s);
+    case "function_definition":
+        return copyFunctionDefinition(node, s);
+    case "class_definition":
+        return copyClassDefinition(node, s);
+    case "match_statement":
+        return copyMatchStatement(node, s);
+    case "case_clause":
+        return copyCaseClause(node, s);
+    case "decorated_definition":
+        // Decorators are confirmed unsupported -- see PLAN.md §1:
+        throw new UnsupportedConstructError("Decorators are not supported");
+    default:
+        // Anything else (del, assert, nonlocal, a module-level yield/await, etc.) is grammatically
+        // parseable by tree-sitter but has no corresponding Strype frame -- reject explicitly
+        // rather than silently dropping the statement, which is what the old code's switch (with
+        // no matching case) would otherwise have done:
+        throw new UnsupportedConstructError("Unsupported Python construct: " + node.type);
+    }
 }
 
 // Function to check the current position in Strype.
