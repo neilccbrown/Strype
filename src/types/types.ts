@@ -1345,6 +1345,8 @@ export interface LoadedMedia {
     imageDataURL: string,
     // But only sounds have this item:
     audioBuffer?: AudioBuffer,
+    // Only colour literals have this item -- the hex code itself, shown as the popup header text:
+    hex?: string,
 }
 
 export interface MediaDataAndDim {

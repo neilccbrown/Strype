@@ -2093,7 +2093,7 @@ export default defineComponent({
                     ctx.fillStyle = hex;
                     ctx.fillRect(0, 0, canvas.width, canvas.height);
                 }
-                return {mediaType: slot.mediaType, imageDataURL: canvas.toDataURL()};
+                return {mediaType: slot.mediaType, imageDataURL: canvas.toDataURL(), hex: hex};
             }
             else if (slot.mediaType.startsWith("image") && !slot.mediaType.startsWith("image/svg+xml")) {
                 return {mediaType: slot.mediaType, imageDataURL: "data:" + slot.mediaType + ";" + /base64,[^"']+/.exec(slot.code)?.[0]};
