@@ -15,6 +15,11 @@ import { startVersionCheck } from "./helpers/versionCheck";
 import { openIndexedDBConnection, tidyUpDatabaseState } from "@/store/store-db-storage";
 import { getEditorTabId } from "@/store/store";
 import { showIndexDBError } from "@/helpers/storeMethods";
+import { startEagerLoad as startEagerTreeSitterLoad } from "@/helpers/treeSitterPython";
+
+// Loaded eagerly (not on first paste/load use) so parsing is ready immediately -- see
+// src/helpers/treeSitterPython.ts.
+startEagerTreeSitterLoad();
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import {getPEATabContentContainerDivId} from "./helpers/editor";
 // #v-endif
