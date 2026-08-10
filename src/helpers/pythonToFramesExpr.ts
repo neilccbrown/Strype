@@ -1,0 +1,204 @@
+import type Parser from "web-tree-sitter";
+import type { SlotsStructure, StringSlot } from "@/types/types";
+import { operators, trimmedKeywordOperators } from "@/helpers/pythonOperators";
+import { concatSlots, replaceMediaLiteralsAndInvalidOps, fromUnicodeEscapes, STRYPE_EXPRESSION_BLANK, STRYPE_INVALID_SLOT } from "@/helpers/pythonSlotsShared";
+
+type SyntaxNode = Parser.SyntaxNode;
+
+// The tree-sitter-based replacement for pythonToFrames.ts's toSlots()/parseNextTerm()/digValue().
+// See docs/replace-skulpt-parser/PLAN.md §3 step 4.
+//
+// Key structural difference from the old Skulpt-based version: Skulpt's grammar produced a flat
+// token sequence per precedence level (so the old code had to manually walk operators/operands
+// token-by-token via ParseState), whereas tree-sitter nests operators by precedence as real binary
+// trees (e.g. "1 + 2 * 3" is binary_operator(1, +, binary_operator(2, *, 3))). But Strype's flat
+// slot model (SlotsStructure.fields/operators) has no precedence grouping of its own -- checking
+// the old code confirms it flattens across precedence levels too, via recursive concatSlots(), only
+// stopping at explicit source parentheses. So this new nodeToSlots() achieves the same flattening
+// by recursing through the tree-sitter node tree and concatSlots()-ing every step, relying on
+// tree-sitter's *structure* (not manual operator-precedence bookkeeping) to know where each
+// sub-expression begins and ends.
+
+export class UnsupportedConstructError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = "UnsupportedConstructError";
+    }
+}
+
+const BRACKET_OPEN = new Set(["(", "[", "{"]);
+
+function blankField() : SlotsStructure {
+    return {fields: [{code: ""}], operators: []};
+}
+
+function isOperatorToken(n : SyntaxNode) : boolean {
+    return n.childCount === 0 && (operators.includes(n.text) || trimmedKeywordOperators.includes(n.text));
+}
+
+// Walks a flat ordered list of sibling nodes (which may include bare operator/punctuation tokens),
+// alternating operand/operator/operand/... -- the tree-sitter equivalent of the old parseNextTerm()
+// loop, except each "operand" here is always a single already-structured child node (tree-sitter has
+// already resolved precedence/associativity into real sub-trees, so unlike the old code there's no
+// need to manually scan ahead for e.g. unary +/- prefixes).
+function flattenChildren(nodes : SyntaxNode[]) : SlotsStructure {
+    let idx = 0;
+    const readOperand = () : SlotsStructure => {
+        if (idx < nodes.length && !isOperatorToken(nodes[idx])) {
+            return nodeToSlots(nodes[idx++]);
+        }
+        // Blank operand: either a leading operator (e.g. the ":" in "a[:2]") or trailing/adjacent
+        // operators with nothing between them (e.g. "a[::2]"), or an empty node list altogether.
+        return blankField();
+    };
+    let latest = readOperand();
+    while (idx < nodes.length) {
+        let opText = nodes[idx].text;
+        idx++;
+        // Merge two adjacent operator tokens that form one compound keyword operator, e.g.
+        // "is"+"not" -> "is not", or "not"+"in" -> "not in" (comparison_operator surfaces these
+        // as two sibling tokens, both under the "operators" field):
+        if (idx < nodes.length && isOperatorToken(nodes[idx])) {
+            const combined = opText + " " + nodes[idx].text;
+            if (trimmedKeywordOperators.includes(combined)) {
+                opText = combined;
+                idx++;
+            }
+        }
+        latest = concatSlots(latest, opText, readOperand());
+    }
+    return replaceMediaLiteralsAndInvalidOps(latest);
+}
+
+// Wraps already-extracted inner content (the nodes between an opening and closing bracket) as a
+// bracketed sub-structure, matching the shape the rest of Strype expects for e.g. call arguments,
+// list/tuple/dict/set literals, and parenthesized groups.
+function bracketed(inner : SyntaxNode[], openBracket : string) : SlotsStructure {
+    const content = flattenChildren(inner);
+    return {fields: [{code: ""}, {...content, openingBracketValue: openBracket}, {code: ""}], operators: [{code: ""}, {code: ""}]};
+}
+
+// Comprehensions ([x for x in y if z], {x for x in y}, {k:v for k,v in y}, (x for x in y)) have a
+// body followed by one or more for_in_clause/if_clause siblings with no operator tokens joining
+// them at this level (the "for"/"in"/"if" keywords are fields *inside* those clause nodes, not
+// siblings alongside them) -- so unlike ordinary bracketed content, this can't reuse
+// flattenChildren() directly and needs its own walk, mirroring the old code's explicit
+// comp_for/comp_iter/comp_if handling.
+function comprehensionToSlots(node : SyntaxNode, openBracket : string) : SlotsStructure {
+    const body = node.childForFieldName("body");
+    let latest = body ? nodeToSlots(body) : blankField();
+    for (let i = 0; i < node.childCount; i++) {
+        const child = node.child(i);
+        if (!child) {
+            continue;
+        }
+        if (child.type === "for_in_clause") {
+            const left = child.childForFieldName("left");
+            const right = child.childForFieldName("right");
+            if (left && right) {
+                latest = concatSlots(latest, "for", concatSlots(nodeToSlots(left), "in", nodeToSlots(right)));
+            }
+        }
+        else if (child.type === "if_clause") {
+            // Children: ["if", <condition>]
+            const cond = child.child(1);
+            if (cond) {
+                latest = concatSlots(latest, "if", nodeToSlots(cond));
+            }
+        }
+    }
+    return {fields: [{code: ""}, {...latest, openingBracketValue: openBracket}, {code: ""}], operators: [{code: ""}, {code: ""}]};
+}
+
+// Strings (including f-strings) are flattened back to their raw source text rather than walked --
+// tree-sitter's byte ranges make this easier than reconstructing token values, and Strype only ever
+// stores a whole string literal as one opaque slot anyway (see toSlots()'s old strMatch regex, which
+// this mirrors exactly).
+function stringNodeToSlots(node : SyntaxNode) : SlotsStructure {
+    const val = node.text;
+    // ([\s\S] matches any char, including newlines, present if the string is triple-quoted):
+    const strMatch = /^([rbfRBF]*)(["'])([\s\S]+)$/.exec(val);
+    if (strMatch) {
+        const str : StringSlot = {code: strMatch[3].slice(0, strMatch[3].length - strMatch[2].length), quote: strMatch[2]};
+        return {fields: [{code: strMatch[1]}, str, {code: ""}], operators: [{code: ""}, {code: ""}]};
+    }
+    // Shouldn't happen for a genuine `string` node, but fall back to treating it as plain text:
+    return {fields: [{code: val}], operators: []};
+}
+
+function terminalToSlots(node : SyntaxNode) : SlotsStructure {
+    let val = node.text;
+    if (val === STRYPE_EXPRESSION_BLANK) {
+        val = "";
+    }
+    else if (val.startsWith(STRYPE_INVALID_SLOT)) {
+        val = fromUnicodeEscapes(val.slice(STRYPE_INVALID_SLOT.length));
+    }
+    return {fields: [{code: val}], operators: []};
+}
+
+export function nodeToSlots(node : SyntaxNode) : SlotsStructure {
+    if (node.type === "string") {
+        return stringNodeToSlots(node);
+    }
+    if (node.type === "named_expression") {
+        // Walrus operator (:=) -- deliberately kept unsupported, per the migration's decision to
+        // keep the parser swap scope-neutral (see PLAN.md §5):
+        throw new UnsupportedConstructError("The walrus operator (:=) is not supported");
+    }
+    if (node.childCount === 0) {
+        return terminalToSlots(node);
+    }
+    if (node.childCount === 1) {
+        // Mirrors the old code's collapse of single-child wrapper nodes:
+        return nodeToSlots(node.child(0) as SyntaxNode);
+    }
+
+    const first = node.child(0) as SyntaxNode;
+    if (first.childCount === 0 && BRACKET_OPEN.has(first.text)) {
+        // parenthesized_expression, tuple, list, dictionary, set, argument_list, parameters,
+        // lambda_parameters is NOT bracketed so doesn't hit this branch, *_comprehension,
+        // generator_expression:
+        if (node.type.endsWith("_comprehension") || node.type === "generator_expression") {
+            return comprehensionToSlots(node, first.text);
+        }
+        const inner : SyntaxNode[] = [];
+        for (let i = 1; i < node.childCount - 1; i++) {
+            inner.push(node.child(i) as SyntaxNode);
+        }
+        if (node.type === "parameters") {
+            // Parameters are handled like the old Skulpt-based code did: brackets dropped, only
+            // the content kept (the surrounding frame's own slot syntax supplies the parens):
+            return flattenChildren(inner);
+        }
+        return bracketed(inner, first.text);
+    }
+
+    switch (node.type) {
+    case "call": {
+        const func = node.childForFieldName("function");
+        const args = node.childForFieldName("arguments");
+        if (!func || !args) {
+            throw new Error("Malformed call node: " + node.text);
+        }
+        return concatSlots(nodeToSlots(func), "", nodeToSlots(args));
+    }
+    case "subscript": {
+        const value = node.childForFieldName("value");
+        if (!value) {
+            throw new Error("Malformed subscript node: " + node.text);
+        }
+        const bracketIdx = node.children.findIndex((c) => c.text === "[");
+        const inner = node.children.slice(bracketIdx + 1, node.children.length - 1);
+        return concatSlots(nodeToSlots(value), "", bracketed(inner, "["));
+    }
+    default:
+        // binary_operator, boolean_operator, comparison_operator, not_operator, unary_operator,
+        // attribute (joined by "."), lambda, conditional_expression (ternary), keyword_argument,
+        // default_parameter, slice, and generic comma/keyword-joined sequences (global_statement's
+        // variable list, delete_statement, assert_statement, expression_list, pattern_list, etc.)
+        // all reduce to the same flat operand/operator/operand/... shape once bracket-detection and
+        // the structural cases above are out of the way:
+        return flattenChildren(node.children);
+    }
+}
