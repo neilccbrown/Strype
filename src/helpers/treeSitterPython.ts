@@ -38,9 +38,20 @@ export function getPythonParserSync(): Parser {
     return parser;
 }
 
-// Kick the load off immediately at module load time (eager, not on first use).
-export function startEagerLoad(): void {
-    pythonLanguagePromise.catch((err) => {
+// Kick the load off immediately at module load time (eager, not on first use), and let callers
+// await full readiness. main.ts awaits this before app.mount() -- unlike Skulpt's blocking
+// `<script defer>` tags (which the browser guarantees finish before DOMContentLoaded, and hence
+// before Vue mounts), this loading is fetch()-based and otherwise has no such guarantee, so
+// without this await, getPythonParserSync() could be called (and throw) before the wasm has
+// actually finished loading. Confirmed as a real, not just theoretical, race: it reproduced as a
+// genuine CI failure (a load/paste silently failing -- caught into an error-message banner that
+// the test never checks for -- immediately after a fast page load in Cypress, later in the same
+// run than a slower first test that happened not to hit the race).
+export async function startEagerLoad(): Promise<void> {
+    try {
+        await pythonLanguagePromise;
+    }
+    catch (err) {
         console.error("Failed to load tree-sitter Python grammar:", err);
-    });
+    }
 }
