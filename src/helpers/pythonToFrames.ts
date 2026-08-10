@@ -1078,11 +1078,19 @@ function processCommentNode(node: TSSyntaxNode, s: CopyState) : CopyState {
             s.frameStateLines.set(node.startPosition.row + 2, composite);
             return s;
         }
-        // Any other directive (e.g. a stray/malformed one) -- Section:* headers are already
-        // stripped out before parsing by splitLinesToSections(), so there's nothing else
-        // recognised here; fall through and treat it as a plain comment rather than erroring, to
-        // stay lenient with malformed SPY metadata (matches the old code's "not one we have to
-        // deal with during parsing" fallback).
+        // Any other directive (e.g. a stray/malformed one, or -- confirmed the real case here by a
+        // failing e2e run -- splitLinesToSections()'s main-section loop terminating on
+        // "Section:Main" instead of "Section:End", a pre-existing, unrelated bug that lets the
+        // trailing "#(=> Section:End" line leak into the main section's content instead of being
+        // stripped before parsing like the other Section:* headers are): swallow it silently,
+        // producing no frame at all, matching the old Skulpt-based code's "not one we have to deal
+        // with during parsing, probably a config setting, so record for later processing" fallback
+        // (which pushed a *blank*, unmarked source line -- not a STRYPE_WHOLE_LINE_BLANK marker --
+        // so Skulpt never turned it into a frame either). Rendering it as a plain comment instead
+        // (an earlier version of this code did) surfaces that latent splitLinesToSections bug as a
+        // visible regression: e2e specs assert no comment frame's text starts with "(=>", since
+        // that would mean a special directive comment leaked through unprocessed.
+        return s;
     }
     const commentText = text.slice(1); // drop the leading "#"; no unicode-escape decoding needed
     // -- unlike the old disguised-as-identifier comments, this is the real source text already.
