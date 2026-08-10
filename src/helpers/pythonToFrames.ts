@@ -1102,10 +1102,17 @@ function processCommentNode(node: TSSyntaxNode, s: CopyState) : CopyState {
     }
     const commentText = text.slice(1); // drop the leading "#"; no unicode-escape decoding needed
     // -- unlike the old disguised-as-identifier comments, this is the real source text already.
-    if (s.transformTopComment) {
-        s.transformTopComment({fields: [{code: commentText}], operators: []});
-        return {...s, transformTopComment: undefined};
-    }
+    // Deliberately never consumes s.transformTopComment, even if set: in the old Skulpt-based code,
+    // a real "#"-prefixed comment was *never* eligible to become a funcdef/classdef/project doc --
+    // only a triple-quoted *string literal* (parsed as an expression, then makeFrame()'s own
+    // special case converting it to a "comment"-type frame) was, entirely inside
+    // copyExpressionStatement()'s misc/funccall path below, which is the only place that checks
+    // s.transformTopComment. Checking it here too (an earlier version of this code did) is what
+    // actually caused a real, confirmed-by-e2e bug: a plain "# some text" comment placed right
+    // before a def/class -- as its own standalone comment frame, the common paste pattern -- was
+    // silently swallowed by copyFramesFromParsedPython()'s unconditional docSlots-capturing
+    // transformTopComment (set up for every section, e.g. the funcDefs section's own independent
+    // parse, not just the actual project-doc parse) instead of becoming the comment frame it should.
     return addFrame(makeFrame(AllFrameTypesIdentifier.comment, {0: {slotStructures: {fields: [{code: commentText}], operators: []}}}, s.isSPY), tsLineno(node), s);
 }
 
