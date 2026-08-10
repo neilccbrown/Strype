@@ -9,7 +9,7 @@ import {stringToCollapsed, stringToFrozen} from "@/parser/parser";
 import {nextTick} from "vue";
 import type Parser from "web-tree-sitter";
 import {nodeToSlots, flattenChildren, UnsupportedConstructError} from "@/helpers/pythonToFramesExpr";
-import {getBlockItems} from "@/helpers/pythonToFramesBlockWalk";
+import {getBlockItems, getLeadingSiblingComments} from "@/helpers/pythonToFramesBlockWalk";
 import {preprocessBeforeParse} from "@/helpers/pythonToFramesPreprocess";
 import {getPythonParserSync} from "@/helpers/treeSitterPython";
 
@@ -372,7 +372,7 @@ function copyFramesFromParsedPython(codeLines: string[], currentStrypeLocation: 
     try {
         const result : CopiedFrames = {frameIds: [], frames: {}, docSlots: undefined};
         // We assign new IDs starting from 1, later on they are offset:
-        processBlockItems(parsed.tree.rootNode, -1, undefined, {nextId: 1, addToNonJoint: result.frameIds, addToJoint: undefined, loadedFrames: result.frames, disabledLines: parsed.disabledLines, frameStateLines: new Map<number, SavedFrameState>(), parent: null, jointParent: null, lastLineProcessed: 0, lineNumberToIndentation: indents, isSPY: format === "spy", transformTopComment: (c) => {
+        processBlockItems(parsed.tree.rootNode.children, -1, undefined, {nextId: 1, addToNonJoint: result.frameIds, addToJoint: undefined, loadedFrames: result.frames, disabledLines: parsed.disabledLines, frameStateLines: new Map<number, SavedFrameState>(), parent: null, jointParent: null, lastLineProcessed: 0, lineNumberToIndentation: indents, isSPY: format === "spy", transformTopComment: (c) => {
             result.docSlots = c;
         }});
         // At this stage, we can make a sanity check that we can copy the given Python code in the current position in Strype (for example, no "import" in a function definition section)
@@ -1101,11 +1101,13 @@ function processCommentNode(node: TSSyntaxNode, s: CopyState) : CopyState {
     return addFrame(makeFrame(AllFrameTypesIdentifier.comment, {0: {slotStructures: {fields: [{code: commentText}], operators: []}}}, s.isSPY), tsLineno(node), s);
 }
 
-// Processes every item (statement, comment, or blank-line run) directly inside a block-like
-// container (a `block` node, or the top-level `module` node), in source order. `afterRow`/
-// `beforeRow` are passed straight through to getBlockItems() -- see its doc comment.
-function processBlockItems(container: TSSyntaxNode, afterRow: number, beforeRow: number | undefined, s: CopyState) : CopyState {
-    for (const item of getBlockItems(container, afterRow, beforeRow)) {
+// Processes every item (statement, comment, or blank-line run) in an already-assembled, ordered
+// list of a block's items (a block/consequence/body node's own .children, typically prefixed with
+// any leading sibling comments -- see getLeadingSiblingComments() -- or the top-level module
+// node's .children). `afterRow`/`beforeRow` are passed straight through to getBlockItems() -- see
+// its doc comment.
+function processBlockItems(nodes: TSSyntaxNode[], afterRow: number, beforeRow: number | undefined, s: CopyState) : CopyState {
+    for (const item of getBlockItems(nodes, afterRow, beforeRow)) {
         if (item.kind === "blank") {
             for (let i = 0; i < item.count; i++) {
                 // Blanks are not allowed directly inside class defs (matching old behaviour):
@@ -1188,9 +1190,12 @@ function copyExpressionStatement(node: TSSyntaxNode, s: CopyState) : CopyState {
 
 // A block-like container's own startPosition/endPosition only span its actual statements (no
 // visibility of the header line before it or a following elif/else/except sibling after it), so
-// callers must pass in the right row bounds explicitly -- see getBlockItems()'s doc comment.
+// callers must pass in the right row bounds explicitly -- see getBlockItems()'s doc comment. Also
+// prepends any leading sibling comments (see getLeadingSiblingComments()) that tree-sitter attached
+// to `headerNode` instead of `blockNode` itself.
 function copyBlockBody(blockNode: TSSyntaxNode, headerNode: TSSyntaxNode, s: CopyState, beforeRow?: number) : CopyState {
-    return processBlockItems(blockNode, headerNode.startPosition.row, beforeRow, s);
+    const nodes = [...getLeadingSiblingComments(headerNode, blockNode), ...blockNode.children];
+    return processBlockItems(nodes, headerNode.startPosition.row, beforeRow, s);
 }
 
 function copyIfStatement(node: TSSyntaxNode, s: CopyState) : CopyState {
@@ -1210,7 +1215,14 @@ function copyIfStatement(node: TSSyntaxNode, s: CopyState) : CopyState {
     // testing this code in a real browser before wiring it in further -- an `if` statement's own
     // body was silently coming out empty because of it). Matches the old Skulpt-based code's own
     // makeAndAddFrameWithBody(), which does the same for exactly this reason.
-    updateFrom(s, copyBlockBody(consequence, node, {...s, addToNonJoint: ifFrame.childrenIds, addToJoint: undefined, parent: ifFrame}, firstClauseRow));
+    // transformTopComment must be cleared, not inherited, whenever recursing into a *nested* body
+    // that isn't itself a funcdef/classdef -- otherwise a doc-comment callback set up for an
+    // *outer* funcdef/classdef/the module (project doc) leaks several levels down and silently
+    // swallows the first comment of this unrelated nested block instead of it becoming its own
+    // comment frame. This was a real bug, not a hypothetical one: e.g. a comment that happened to
+    // be the first line inside an `if` nested inside a funcdef vanished entirely from a round-trip
+    // paste/save, because it got misidentified as that funcdef's doc-comment.
+    updateFrom(s, copyBlockBody(consequence, node, {...s, addToNonJoint: ifFrame.childrenIds, addToJoint: undefined, parent: ifFrame, transformTopComment: undefined}, firstClauseRow));
     for (let i = 0; i < clauses.length; i++) {
         const clause = clauses[i];
         const nextClauseRow = i + 1 < clauses.length ? clauses[i + 1].startPosition.row : undefined;
@@ -1225,12 +1237,12 @@ function copyIfStatement(node: TSSyntaxNode, s: CopyState) : CopyState {
             }
             const elifFrame = makeFrame(AllFrameTypesIdentifier.elif, {0: {slotStructures: nodeToSlots(cond)}}, s.isSPY);
             const elifState = addFrame(elifFrame, tsLineno(clause), {...s, addToJoint: ifFrame.jointFrameIds, jointParent: ifFrame});
-            updateFrom(s, copyBlockBody(body, clause, {...elifState, addToNonJoint: elifFrame.childrenIds, addToJoint: undefined, parent: elifFrame}, nextClauseRow));
+            updateFrom(s, copyBlockBody(body, clause, {...elifState, addToNonJoint: elifFrame.childrenIds, addToJoint: undefined, parent: elifFrame, transformTopComment: undefined}, nextClauseRow));
         }
         else {
             const elseFrame = makeFrame(AllFrameTypesIdentifier.else, {}, s.isSPY);
             const elseState = addFrame(elseFrame, tsLineno(clause), {...s, addToJoint: ifFrame.jointFrameIds, jointParent: ifFrame});
-            updateFrom(s, copyBlockBody(body, clause, {...elseState, addToNonJoint: elseFrame.childrenIds, addToJoint: undefined, parent: elseFrame}, nextClauseRow));
+            updateFrom(s, copyBlockBody(body, clause, {...elseState, addToNonJoint: elseFrame.childrenIds, addToJoint: undefined, parent: elseFrame, transformTopComment: undefined}, nextClauseRow));
         }
     }
     return s;
@@ -1245,7 +1257,7 @@ function copyWhileStatement(node: TSSyntaxNode, s: CopyState) : CopyState {
     }
     const whileFrame = makeFrame(AllFrameTypesIdentifier.while, {0: {slotStructures: nodeToSlots(condition)}}, s.isSPY);
     s = addFrame(whileFrame, tsLineno(node), s);
-    updateFrom(s, copyBlockBody(body, node, {...s, addToNonJoint: whileFrame.childrenIds, addToJoint: undefined, parent: whileFrame}, alternative?.startPosition.row));
+    updateFrom(s, copyBlockBody(body, node, {...s, addToNonJoint: whileFrame.childrenIds, addToJoint: undefined, parent: whileFrame, transformTopComment: undefined}, alternative?.startPosition.row));
     if (alternative) {
         const elseBody = alternative.childForFieldName("body");
         if (!elseBody) {
@@ -1253,7 +1265,7 @@ function copyWhileStatement(node: TSSyntaxNode, s: CopyState) : CopyState {
         }
         const elseFrame = makeFrame(AllFrameTypesIdentifier.else, {}, s.isSPY);
         const elseState = addFrame(elseFrame, tsLineno(alternative), {...s, addToJoint: whileFrame.jointFrameIds, jointParent: whileFrame});
-        updateFrom(s, copyBlockBody(elseBody, alternative, {...elseState, addToNonJoint: elseFrame.childrenIds, addToJoint: undefined, parent: elseFrame}));
+        updateFrom(s, copyBlockBody(elseBody, alternative, {...elseState, addToNonJoint: elseFrame.childrenIds, addToJoint: undefined, parent: elseFrame, transformTopComment: undefined}));
     }
     return s;
 }
@@ -1268,7 +1280,7 @@ function copyForStatement(node: TSSyntaxNode, s: CopyState) : CopyState {
     }
     const forFrame = makeFrame(AllFrameTypesIdentifier.for, {0: {slotStructures: nodeToSlots(left)}, 1: {slotStructures: nodeToSlots(right)}}, s.isSPY);
     s = addFrame(forFrame, tsLineno(node), s);
-    updateFrom(s, copyBlockBody(body, node, {...s, addToNonJoint: forFrame.childrenIds, addToJoint: undefined, parent: forFrame}, alternative?.startPosition.row));
+    updateFrom(s, copyBlockBody(body, node, {...s, addToNonJoint: forFrame.childrenIds, addToJoint: undefined, parent: forFrame, transformTopComment: undefined}, alternative?.startPosition.row));
     if (alternative) {
         const elseBody = alternative.childForFieldName("body");
         if (!elseBody) {
@@ -1276,7 +1288,7 @@ function copyForStatement(node: TSSyntaxNode, s: CopyState) : CopyState {
         }
         const elseFrame = makeFrame(AllFrameTypesIdentifier.else, {}, s.isSPY);
         const elseState = addFrame(elseFrame, tsLineno(alternative), {...s, addToJoint: forFrame.jointFrameIds, jointParent: forFrame});
-        updateFrom(s, copyBlockBody(elseBody, alternative, {...elseState, addToNonJoint: elseFrame.childrenIds, addToJoint: undefined, parent: elseFrame}));
+        updateFrom(s, copyBlockBody(elseBody, alternative, {...elseState, addToNonJoint: elseFrame.childrenIds, addToJoint: undefined, parent: elseFrame, transformTopComment: undefined}));
     }
     return s;
 }
@@ -1290,7 +1302,7 @@ function copyTryStatement(node: TSSyntaxNode, s: CopyState) : CopyState {
     const firstClauseRow = clauses.length > 0 ? clauses[0].startPosition.row : undefined;
     const tryFrame = makeFrame(AllFrameTypesIdentifier.try, {}, s.isSPY);
     s = addFrame(tryFrame, tsLineno(node), s);
-    updateFrom(s, copyBlockBody(body, node, {...s, addToNonJoint: tryFrame.childrenIds, addToJoint: undefined, parent: tryFrame}, firstClauseRow));
+    updateFrom(s, copyBlockBody(body, node, {...s, addToNonJoint: tryFrame.childrenIds, addToJoint: undefined, parent: tryFrame, transformTopComment: undefined}, firstClauseRow));
 
     for (let i = 0; i < clauses.length; i++) {
         const clause = clauses[i];
@@ -1319,7 +1331,7 @@ function copyTryStatement(node: TSSyntaxNode, s: CopyState) : CopyState {
                 throw new Error("Malformed except_clause: " + clause.text);
             }
             const exceptState = addFrame(exceptFrame, tsLineno(clause), {...s, addToJoint: tryFrame.jointFrameIds, jointParent: tryFrame});
-            updateFrom(s, copyBlockBody(exceptBody, clause, {...exceptState, addToNonJoint: exceptFrame.childrenIds, addToJoint: undefined, parent: exceptFrame}, nextClauseRow));
+            updateFrom(s, copyBlockBody(exceptBody, clause, {...exceptState, addToNonJoint: exceptFrame.childrenIds, addToJoint: undefined, parent: exceptFrame, transformTopComment: undefined}, nextClauseRow));
         }
         else if (clause.type === "finally_clause") {
             const finallyBody = clause.childForFieldName("block") ?? clause.child(clause.childCount - 1);
@@ -1328,7 +1340,7 @@ function copyTryStatement(node: TSSyntaxNode, s: CopyState) : CopyState {
             }
             const finallyFrame = makeFrame(AllFrameTypesIdentifier.finally, {}, s.isSPY);
             const finallyState = addFrame(finallyFrame, tsLineno(clause), {...s, addToJoint: tryFrame.jointFrameIds, jointParent: tryFrame});
-            updateFrom(s, copyBlockBody(finallyBody, clause, {...finallyState, addToNonJoint: finallyFrame.childrenIds, addToJoint: undefined, parent: finallyFrame}, nextClauseRow));
+            updateFrom(s, copyBlockBody(finallyBody, clause, {...finallyState, addToNonJoint: finallyFrame.childrenIds, addToJoint: undefined, parent: finallyFrame, transformTopComment: undefined}, nextClauseRow));
         }
         else {
             // else_clause
@@ -1338,7 +1350,7 @@ function copyTryStatement(node: TSSyntaxNode, s: CopyState) : CopyState {
             }
             const elseFrame = makeFrame(AllFrameTypesIdentifier.else, {}, s.isSPY);
             const elseState = addFrame(elseFrame, tsLineno(clause), {...s, addToJoint: tryFrame.jointFrameIds, jointParent: tryFrame});
-            updateFrom(s, copyBlockBody(elseBody, clause, {...elseState, addToNonJoint: elseFrame.childrenIds, addToJoint: undefined, parent: elseFrame}, nextClauseRow));
+            updateFrom(s, copyBlockBody(elseBody, clause, {...elseState, addToNonJoint: elseFrame.childrenIds, addToJoint: undefined, parent: elseFrame, transformTopComment: undefined}, nextClauseRow));
         }
     }
     return s;
@@ -1377,7 +1389,7 @@ function copyWithStatement(node: TSSyntaxNode, s: CopyState) : CopyState {
     // processed next (processBlockItems() does `s = copyFramesFromTreeSitterNode(...)`, so any
     // handler that returns a body-walk's raw result corrupts every later sibling's parent too, not
     // just its own). See copyIfStatement()'s comment for how this was actually found.
-    updateFrom(s, copyBlockBody(body, node, {...s, addToNonJoint: withFrame.childrenIds, addToJoint: undefined, parent: withFrame}));
+    updateFrom(s, copyBlockBody(body, node, {...s, addToNonJoint: withFrame.childrenIds, addToJoint: undefined, parent: withFrame, transformTopComment: undefined}));
     return s;
 }
 
@@ -1435,8 +1447,15 @@ function copyClassDefinition(node: TSSyntaxNode, s: CopyState) : CopyState {
     if (superclasses) {
         // Strype represents the parent-class list as a bracketed sub-structure appended directly
         // into the single "name" slot (matching the old code's approach), rather than as a
-        // separate slot of its own:
-        const parents = nodeToSlots(superclasses);
+        // separate slot of its own. Unlike Skulpt's arglist (which excluded the parens
+        // themselves), tree-sitter's `superclasses` field is the *whole* argument_list node,
+        // parens included -- nodeToSlots() on that already returns a correctly bracketed
+        // SlotsStructure (its own bracket-detection kicks in), so flattening just its inner
+        // children directly here (skipping the "(" and ")" tokens) and marking *that* as
+        // bracketed is correct; calling nodeToSlots(superclasses) and then also setting
+        // openingBracketValue on the result double-wraps it -- confirmed as a real bug this way,
+        // not just theoretically: "class Foo(Parent):" was round-tripping as "class Foo((Parent)):".
+        const parents = flattenChildren(superclasses.children.slice(1, superclasses.childCount - 1));
         parents.openingBracketValue = "(";
         nameSlots = {fields: [...nameSlots.fields, parents, {code: ""}], operators: [...nameSlots.operators, {code: ""}, {code: ""}]};
     }
@@ -1470,7 +1489,7 @@ function copyMatchStatement(node: TSSyntaxNode, s: CopyState) : CopyState {
     // written) error-reporting step will surface, so no equivalent check is needed here.
     const matchFrame = makeFrame(AllFrameTypesIdentifier.match, {0: {slotStructures: nodeToSlots(subject)}}, s.isSPY);
     s = addFrame(matchFrame, tsLineno(node), s);
-    updateFrom(s, copyBlockBody(body, node, {...s, addToNonJoint: matchFrame.childrenIds, addToJoint: undefined, parent: matchFrame}));
+    updateFrom(s, copyBlockBody(body, node, {...s, addToNonJoint: matchFrame.childrenIds, addToJoint: undefined, parent: matchFrame, transformTopComment: undefined}));
     return s;
 }
 
@@ -1491,7 +1510,7 @@ function copyCaseClause(node: TSSyntaxNode, s: CopyState) : CopyState {
     const patternSlots = guardCondition ? concatSlots(nodeToSlots(pattern), "if", nodeToSlots(guardCondition)) : nodeToSlots(pattern);
     const caseFrame = makeFrame(AllFrameTypesIdentifier.case, {0: {slotStructures: patternSlots}}, s.isSPY);
     s = addFrame(caseFrame, tsLineno(node), s);
-    updateFrom(s, copyBlockBody(body, node, {...s, addToNonJoint: caseFrame.childrenIds, addToJoint: undefined, parent: caseFrame}));
+    updateFrom(s, copyBlockBody(body, node, {...s, addToNonJoint: caseFrame.childrenIds, addToJoint: undefined, parent: caseFrame, transformTopComment: undefined}));
     return s;
 }
 

@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import Parser from "web-tree-sitter";
 import path from "path";
-import { getBlockItems } from "@/helpers/pythonToFramesBlockWalk";
+import { getBlockItems, getLeadingSiblingComments } from "@/helpers/pythonToFramesBlockWalk";
 
 // NOTE: this is really a *unit* test for the pure getBlockItems() function (see
 // src/helpers/pythonToFramesBlockWalk.ts) -- see python-to-frames-expr.spec.ts in this same
@@ -21,7 +21,7 @@ test.beforeAll(async () => {
 function summarise(src: string, afterRow: number, beforeRow?: number) {
     const tree = parser.parse(src);
     const module = tree.rootNode;
-    return getBlockItems(module, afterRow, beforeRow).map((item) =>
+    return getBlockItems(module.children, afterRow, beforeRow).map((item) =>
         item.kind === "blank" ? `blank(${item.count})@${item.startRow}` : item.node.type + ":" + item.node.text.replace(/\n/g, "\\n"));
 }
 
@@ -90,5 +90,43 @@ test.describe("getBlockItems", () => {
 
     test("no trailing blank reported when beforeRow is immediately after the last statement", () => {
         expect(summarise("a = 1\n", -1, 1)).toEqual(["expression_statement:a = 1"]);
+    });
+});
+
+test.describe("getLeadingSiblingComments", () => {
+    // A comment between a compound statement's ":" and the first real statement of its body
+    // attaches as a direct child of the *enclosing* statement node, not of the block/consequence/
+    // body node itself -- confirmed by spike across if/while/for/function_definition. This is the
+    // real-world bug this function exists to work around: without it, such a comment vanished
+    // entirely (the block appeared empty) because copyBlockBody() only ever looked at the block
+    // node's own .children.
+    test("a single leading comment attaches to the header node, not the block", () => {
+        const tree = parser.parse("if True:\n    # c1\n    pass\n");
+        const ifStatement = tree.rootNode.child(0) as Parser.SyntaxNode;
+        const block = ifStatement.childForFieldName("consequence") as Parser.SyntaxNode;
+        expect(block.children.map((c) => c.type)).toEqual(["pass_statement"]);
+        expect(getLeadingSiblingComments(ifStatement, block).map((c) => c.text)).toEqual(["# c1"]);
+    });
+
+    test("multiple leading comments, including a blank line among them, all attach to the header", () => {
+        const tree = parser.parse("if True:\n    # c1\n    # c2\n\n    # c3\n    pass\n");
+        const ifStatement = tree.rootNode.child(0) as Parser.SyntaxNode;
+        const block = ifStatement.childForFieldName("consequence") as Parser.SyntaxNode;
+        expect(getLeadingSiblingComments(ifStatement, block).map((c) => c.text)).toEqual(["# c1", "# c2", "# c3"]);
+    });
+
+    test("a comment after the block's first real statement stays inside the block (nothing to do)", () => {
+        const tree = parser.parse("def foo():\n    a = 1\n    # comment\n    b = 2\n");
+        const funcdef = tree.rootNode.child(0) as Parser.SyntaxNode;
+        const block = funcdef.childForFieldName("body") as Parser.SyntaxNode;
+        expect(block.children.map((c) => c.type)).toEqual(["expression_statement", "comment", "expression_statement"]);
+        expect(getLeadingSiblingComments(funcdef, block)).toEqual([]);
+    });
+
+    test("no leading comment at all", () => {
+        const tree = parser.parse("if True:\n    pass\n");
+        const ifStatement = tree.rootNode.child(0) as Parser.SyntaxNode;
+        const block = ifStatement.childForFieldName("consequence") as Parser.SyntaxNode;
+        expect(getLeadingSiblingComments(ifStatement, block)).toEqual([]);
     });
 });
