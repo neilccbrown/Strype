@@ -7,6 +7,13 @@ import Parser from "web-tree-sitter";
 let resolvedLanguage: Parser.Language | undefined;
 
 const pythonLanguagePromise: Promise<Parser.Language> = (async () => {
+    // Tried lowering INITIAL_MEMORY below web-tree-sitter's default 32MB here, hoping to reduce
+    // the per-page-load WASM footprint (every Cypress/Playwright test does a full page
+    // navigation, re-triggering this eager load -- thousands of times across the suite). Not
+    // possible: the compiled tree-sitter.wasm binary itself declares a hard minimum memory
+    // import of 512 pages (32MB) -- confirmed by trying 128 pages (8MB) and getting a genuine
+    // LinkError ("memory import has 128 pages which is smaller than the declared initial of
+    // 512"), not just a soft default being overridden. 32MB is a floor, not a starting point.
     await Parser.init({
         locateFile: () => `${import.meta.env.BASE_URL}js/tree-sitter.wasm`,
     });
