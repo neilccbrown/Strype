@@ -46,6 +46,11 @@ function colourSwatch(page: import("@playwright/test").Page) {
 async function insertColourSwatch(page: import("@playwright/test").Page, hex: string) {
     await page.keyboard.press("ControlOrMeta+Shift+Y");
     await page.locator("button", {hasText: "Fine-grained selector"}).click();
+    // ColourPickerDlg.vue's own hexText seeding (onShownModalDlg) runs on bootstrap-vue's async
+    // "shown" modal event, which can fire after the dialog is already interactable -- filling
+    // immediately can race it and get silently overwritten. See colour-picker.spec.ts's
+    // waitForColourPickerSeeded for the full explanation (this hit a real, reproducible CI failure).
+    await page.waitForTimeout(500);
     await page.locator("#ColourPickerDlg-hex-input").fill(hex);
     await page.locator(".btn.btn-primary", {hasText: "OK"}).filter({visible: true}).click();
     await waitForEditorSettled(page);
