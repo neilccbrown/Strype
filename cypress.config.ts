@@ -34,6 +34,20 @@ export default defineConfig({
     supportFolder: "tests/cypress/support",
     videosFolder: "tests/cypress/videos",
     video: true,
+    // Cypress's default (50) keeps up to 50 previous tests' full DOM snapshots and command-log
+    // state alive for its time-travel debugging UI, regardless of experimentalMemoryManagement
+    // (a separate flag -- that one makes Chromium itself clean up more aggressively, but doesn't
+    // change how many test snapshots Cypress's own runner retains). Headless CI runs (`cypress
+    // run`) get essentially no benefit from that debugging feature -- nobody is scrubbing through
+    // the time-travel UI on a CI runner -- so keeping a large backlog there is close to pure
+    // memory waste. Some of the longest specs in this suite (e.g.
+    // structured-expressions-brackets.cy.ts, ~69 tests) run long enough that the default window
+    // covers most of the file, plausibly contributing to CI's intermittent "WebAssembly.Memory():
+    // could not allocate memory" failures (tree-sitter's WASM parser needs a fresh ~32MB
+    // allocation on every single test's page load -- see src/helpers/treeSitterPython.ts -- on
+    // top of whatever Cypress itself is still retaining). Lowered aggressively since CI doesn't
+    // use the debugging feature this trades away:
+    numTestsKeptInMemory: 2,
     e2e: {
         experimentalMemoryManagement: true,
         // Targets the DOM-visibility-check inefficiency that was a major contributor to
