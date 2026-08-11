@@ -226,11 +226,26 @@ function parseWithTreeSitter(codeLines: string[], mapErrorLineno : (lineno : num
     const preprocessed = preprocessBeforeParse(glued.codeLines);
     const parser = getPythonParserSync();
     const tree = parser.parse(preprocessed.source);
+    // web-tree-sitter's Parser wraps a native (Emscripten-bound) object that isn't freed by JS
+    // garbage collection -- it must be explicitly deleted, or its underlying WASM memory leaks
+    // permanently for the life of the page. The parser itself is only needed to produce the tree
+    // (which is independent once returned), so it can be freed immediately here; the tree is
+    // deleted by copyFramesFromParsedPython() once the frame-walk that consumes it is done. This
+    // was a real, unbounded leak (confirmed by counting: every paste/load call reaches here up to
+    // 5 times -- once per section -- with a fresh, never-deleted `new Parser()` each time), and is
+    // the actual root cause behind CI's intermittent "WebAssembly.Memory(): could not allocate
+    // memory" failures during long, many-test-per-process CI runs -- not "tree-sitter is just
+    // heavy" (a single parser+tree is tiny; thousands of leaked ones over a long browser session
+    // are not).
+    parser.delete();
     if (tree.rootNode.hasError) {
         const errorNode = findFirstErrorNode(tree.rootNode);
         const gluedLineno = errorNode ? errorNode.startPosition.row + 1 : 1;
         const glueOffsetLines = glued.addedFakeJoinParent * 2;
         const originalLineno = Math.max(1, gluedLineno - glueOffsetLines);
+        // This path returns just the error message, not the tree -- so unlike the success path,
+        // nothing else will ever call tree.delete() for us:
+        tree.delete();
         return i18n.global.t("messageBannerMessage.invalidPythonCodeSyntax") + " line: " + mapErrorLineno(originalLineno);
     }
     return {tree, disabledLines: preprocessed.disabledLines, addedFakeJoinParent: glued.addedFakeJoinParent};
@@ -402,6 +417,14 @@ function copyFramesFromParsedPython(codeLines: string[], currentStrypeLocation: 
             throw e;
         }
         throw new CopyFailure(e instanceof Error ? e.message : String(e));
+    }
+    finally {
+        // Frees the tree's underlying native (Emscripten-bound) WASM object -- see the comment on
+        // parser.delete() in parseWithTreeSitter() for why this matters. Runs whether the walk
+        // above succeeded or threw, so every parse -- not just the happy path -- gets cleaned up:
+        // a single copy/paste calls copyFramesFromParsedPython() up to 5 times (once per section),
+        // so a leak here would multiply fast across a long test/browser session.
+        parsed.tree.delete();
     }
 }
 
