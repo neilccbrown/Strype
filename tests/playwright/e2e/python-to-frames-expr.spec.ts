@@ -1,8 +1,8 @@
 import { test, expect } from "@playwright/test";
 import Parser from "web-tree-sitter";
-import path from "path";
 import { nodeToSlots, UnsupportedConstructError, setIsSPYForDocStrings } from "@/helpers/pythonToFramesExpr";
 import { SlotsStructure } from "@/types/types";
+import { getTestPythonParser } from "../support/testTreeSitterParser";
 
 // NOTE: this is really a *unit* test for the pure nodeToSlots() function (see
 // src/helpers/pythonToFramesExpr.ts) -- none of it touches a browser page, the DOM, or the live
@@ -14,16 +14,15 @@ import { SlotsStructure } from "@/types/types";
 // feed it, so this spec loads the actual wasm files straight out of node_modules (the same way
 // the migration's original spike script did) rather than going through
 // src/helpers/treeSitterPython.ts, which assumes a browser (import.meta.env.BASE_URL, fetch).
+//
+// The parser setup itself is shared with python-to-frames-block-walk.spec.ts via
+// getTestPythonParser() -- see that helper for why a second independent Parser.init() call in
+// this file's own beforeAll broke when both spec files ran in the same worker process.
 
 let parser: Parser;
 
 test.beforeAll(async () => {
-    await Parser.init();
-    const lang = await Parser.Language.load(
-        path.resolve(__dirname, "../../../node_modules/tree-sitter-wasms/out/tree-sitter-python.wasm")
-    );
-    parser = new Parser();
-    parser.setLanguage(lang);
+    parser = await getTestPythonParser();
 });
 
 // Parses `src` as a single expression statement and returns the SlotsStructure for its expression.

@@ -1,21 +1,18 @@
 import { test, expect } from "@playwright/test";
 import Parser from "web-tree-sitter";
-import path from "path";
 import { getBlockItems, getLeadingSiblingComments } from "@/helpers/pythonToFramesBlockWalk";
+import { getTestPythonParser } from "../support/testTreeSitterParser";
 
 // NOTE: this is really a *unit* test for the pure getBlockItems() function (see
 // src/helpers/pythonToFramesBlockWalk.ts) -- see python-to-frames-expr.spec.ts in this same
-// directory for why this is a Playwright spec rather than a Vitest one.
+// directory for why this is a Playwright spec rather than a Vitest one, and for why the parser
+// setup is shared via getTestPythonParser() rather than each spec file calling Parser.init()
+// itself.
 
 let parser: Parser;
 
 test.beforeAll(async () => {
-    await Parser.init();
-    const lang = await Parser.Language.load(
-        path.resolve(__dirname, "../../../node_modules/tree-sitter-wasms/out/tree-sitter-python.wasm")
-    );
-    parser = new Parser();
-    parser.setLanguage(lang);
+    parser = await getTestPythonParser();
 });
 
 function summarise(src: string, afterRow: number, beforeRow?: number) {
