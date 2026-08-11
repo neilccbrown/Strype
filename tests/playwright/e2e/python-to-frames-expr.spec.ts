@@ -43,6 +43,23 @@ function field(code: string) {
     return {code};
 }
 
+// Parses `src` as a single match statement and returns the SlotsStructure for its first case
+// clause's pattern (a class_pattern node, e.g. "str()", "int(n)", "complex(real=r,imag=i)") --
+// unlike exprSlots() above, a match-case pattern can't be reached by parsing a plain expression
+// statement, since match statements are a distinct top-level construct in tree-sitter's grammar.
+function classPatternSlots(src: string) : SlotsStructure {
+    const tree = parser.parse(`match x:\n    case ${src}:\n        pass\n`);
+    const matchStmt = tree.rootNode.child(0);
+    const caseClause = matchStmt?.childForFieldName("body")?.childForFieldName("alternative");
+    // Mirrors copyCaseClause() in pythonToFrames.ts: case_clause has no "pattern" field, so the
+    // pattern is found positionally, after the (anonymous, so unnamed-field) "case" keyword token:
+    const pattern = caseClause?.child(1);
+    if (!pattern) {
+        throw new Error("Couldn't find the case clause's pattern in the parsed tree: " + tree.rootNode.toString());
+    }
+    return nodeToSlots(pattern);
+}
+
 test.describe("nodeToSlots: literals", () => {
     test("identifier", () => {
         expect(exprSlots("abc\n")).toEqual({fields: [field("abc")], operators: []});
@@ -341,6 +358,36 @@ test.describe("nodeToSlots: lambda and ternary", () => {
         expect(exprSlots("a if b else c\n")).toEqual({
             fields: [field("a"), field("b"), field("c")],
             operators: [field("if"), field("else")],
+        });
+    });
+});
+
+test.describe("nodeToSlots: match-case class patterns", () => {
+    // Previously entirely unhandled: any match-case pattern using a class pattern (even the
+    // simplest, argument-less "case str():") threw UnsupportedConstructError("Unsupported
+    // construct: (") -- nodeToSlots() had no case for tree-sitter's class_pattern node type, so
+    // it fell through to the generic default case, which flattens node.children directly
+    // (including the raw "(" token). Confirmed as a real gap via CI, not synthetic: a match
+    // statement using int()/complex() patterns failed load-save-book-demo-projects.spec.ts's
+    // round-trip test for a real fixture. See the "class_pattern" case in nodeToSlots().
+    test("argument-less class pattern", () => {
+        expect(classPatternSlots("str()")).toEqual({
+            fields: [field("str"), {openingBracketValue: "(", fields: [field("")], operators: []}, field("")],
+            operators: [field(""), field("")],
+        });
+    });
+
+    test("class pattern with a single positional capture", () => {
+        expect(classPatternSlots("int(n)")).toEqual({
+            fields: [field("int"), {openingBracketValue: "(", fields: [field("n")], operators: []}, field("")],
+            operators: [field(""), field("")],
+        });
+    });
+
+    test("class pattern with multiple keyword captures", () => {
+        expect(classPatternSlots("complex(real=r,imag=i)")).toEqual({
+            fields: [field("complex"), {openingBracketValue: "(", fields: [field("real"), field("r"), field("imag"), field("i")], operators: [field("="), field(","), field("=")]}, field("")],
+            operators: [field(""), field("")],
         });
     });
 });

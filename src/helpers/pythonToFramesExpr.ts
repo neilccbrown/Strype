@@ -240,6 +240,33 @@ export function nodeToSlots(node : SyntaxNode) : SlotsStructure {
         // literal, still-wrapped call instead of being unwrapped back to its original content.
         return replaceMediaLiteralsAndInvalidOps(concatSlots(nodeToSlots(func), "", nodeToSlots(args)));
     }
+    case "class_pattern": {
+        // A match-case class pattern -- e.g. "case int(n):", "case complex(real=r,imag=i):" --
+        // is structurally almost identical to a call ("ClassName(args)"), but tree-sitter gives
+        // it its own node type rather than reusing "call", and unlike "call" it has no separate
+        // "arguments" sub-node wrapping the "(...)" span -- the "(" and ")" are direct children
+        // of the class_pattern node itself, siblings of the class name (a dotted_name). Each
+        // argument is itself wrapped in a case_pattern node (positional: a dotted_name; keyword:
+        // a keyword_pattern, structurally identical to an ordinary keyword_argument's
+        // "identifier = value" and already handled by flattenChildren()'s default fallback) --
+        // both single-child wrappers that nodeToSlots()'s own childCount===1 collapse (above)
+        // unwraps automatically, so no special-casing is needed for them here.
+        //
+        // Previously entirely unhandled -- match-case patterns using any class pattern (even the
+        // simplest, argument-less "case str():") fell through to the generic default case below,
+        // which flattens node.children directly including the raw "(" token, hitting
+        // flattenChildren()'s UnsupportedConstructError. Confirmed as a real gap via CI (a match
+        // statement using an int()/complex() pattern failed the whole file's round-trip test),
+        // not just synthetic cases -- also confirmed there's no historical support to preserve:
+        // match statements didn't exist under the old Skulpt-based parser at all.
+        const className = node.child(0);
+        const bracketIdx = node.children.findIndex((c) => c.text === "(");
+        if (!className || bracketIdx === -1) {
+            throw new Error("Malformed class_pattern node: " + node.text);
+        }
+        const inner = node.children.slice(bracketIdx + 1, node.children.length - 1);
+        return concatSlots(nodeToSlots(className), "", bracketed(inner, "("));
+    }
     case "subscript": {
         const value = node.childForFieldName("value");
         if (!value) {
