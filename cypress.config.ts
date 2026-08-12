@@ -87,6 +87,31 @@ export default defineConfig({
                 },
             });
 
+            // Chrome's headless renderer defaults to a V8 old-space heap ceiling that's far
+            // smaller than the actual machine's available memory (community reports put the
+            // default around ~500MB even on a 4GB box), regardless of how much RAM the CI runner
+            // actually has free -- see https://github.com/cypress-io/cypress/issues/27415 (an
+            // upstream Cypress/Chromium issue affecting many unrelated projects, not something
+            // specific to this repo) and the fix this mirrors:
+            // https://www.bigbinary.com/blog/how-we-fixed-the-cypress-out-of-memory-error-in-chromium-browsers.
+            // This raises that ceiling explicitly via Chrome's --js-flags, as a mitigation for
+            // CI's intermittent "WebAssembly.Memory(): could not allocate memory" crashes in our
+            // longest specs (e.g. structured-expressions-brackets.cy.ts) -- note this caps V8's
+            // JS object heap specifically, not WASM linear memory directly (a different
+            // allocator), so it's not a guaranteed fix for that exact error, but the two compete
+            // for the same renderer process's overall memory budget, and Chrome's broader
+            // OOM-avoidance heuristics (most likely what's actually rejecting the WASM
+            // allocation) key off overall pressure, not just the JS heap alone. GitHub Actions'
+            // ubuntu-latest runners have several GB of RAM actually free, so 4096 (4GB) is
+            // comfortably below genuine physical exhaustion while well above whatever
+            // conservative default Chrome would otherwise pick:
+            on("before:browser:launch", (browser, launchOptions) => {
+                if (browser.family === "chromium") {
+                    launchOptions.args.push("--js-flags=--max-old-space-size=4096");
+                }
+                return launchOptions;
+            });
+
             // downloads is a task which lists all the files in the Cypress downloads directory:
             on("task", {
                 downloads:  () => {
