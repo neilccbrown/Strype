@@ -1621,6 +1621,13 @@ function copyFramesFromTreeSitterNode(node: TSSyntaxNode, s: CopyState) : CopySt
         return copyExpressionStatement(node, s);
     case "pass_statement":
         return {...s, lastLineProcessed: tsLineno(node)};
+    case ";":
+        // A statement-terminating/-separating semicolon (e.g. "x = 1;" or "x = 1; y = 2") is its
+        // own sibling node in tree-sitter's tree, not part of the statement(s) either side of it
+        // (confirmed live: parsing "x = 1; y = 2" gives three top-level children -- expression_
+        // statement, ";", expression_statement). It carries no content of its own -- real Python
+        // treats it purely as a separator -- so it's a no-op here, same as pass_statement:
+        return {...s, lastLineProcessed: tsLineno(node)};
     case "break_statement":
         return addFrame(makeFrame(AllFrameTypesIdentifier.break, {}, s.isSPY), tsLineno(node), s);
     case "continue_statement":
