@@ -6,6 +6,7 @@
             :disabled="isDisabled ? 'true' : 'false'"
             :placeholder="defaultText"
             :empty-content="(!code || code == '\u200B') ? 'true' : 'false'"
+            :data-param-prompt-pending="paramPromptPending ? 'true' : undefined"
             :contenteditable="(isEditableSlot && !(isDisabled || isFrozen || isPythonExecuting)) ? 'true' : 'false'"
             @click.stop="onGetCaret($event, true)"
             @slotGotCaret="onGetCaret"
@@ -83,7 +84,7 @@ import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
 import {evaluateSlotType, getFlatNeighbourFieldSlotInfos, getOutmostDisabledAncestorFrameId, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
 import Parser from "@/parser/parser";
-import { cloneDeep } from "lodash";
+import { cloneDeep, debounce, DebouncedFunc } from "lodash";
 import { BPopover, useToggle } from "bootstrap-vue-next";
 import scssVars from "@/assets/style/_export.module.scss";
 import {drawSoundOnCanvas} from "@/helpers/media";
@@ -128,6 +129,14 @@ export default defineComponent({
         else{
             vueComponentsAPIHandler.labelSlotComponentAPI.forInstance[this.UID] = apiMethods;
         }
+
+        // updateAC() triggers a full-document TigerPython parse (via AutoCompletion.vue's
+        // updateAC()) on essentially every keystroke while a slot is focused, which is expensive
+        // on large documents (profiled separately). Debounce it so a burst of typing only pays
+        // that cost once it pauses, rather than on every character. Callers that need results
+        // immediately (explicit Ctrl+Space request, or gaining focus on a slot) call updateAC()
+        // and then flush() it straight after -- see onKeyDown()/onGetCaret().
+        this.updateAC = debounce(this.updateAC, 150);
     },
 
     components: {
@@ -137,6 +146,11 @@ export default defineComponent({
 
     props: {
         defaultText: String,
+        // True while this slot's placeholder text is still being resolved asynchronously (e.g. a
+        // param prompt waiting on library data to load) -- see LabelSlotsStructure.vue's
+        // placeholderText/paramPromptPending. Used purely to show a "still working on it" indicator
+        // instead of a blank/empty placeholder.
+        paramPromptPending: Boolean,
         code: {type: String, required: true},
         labelSlotsIndex: {type: Number, required: true},
         slotId: {type: String, required: true},
@@ -173,8 +187,14 @@ export default defineComponent({
         }
     },
 
-    beforeUnmounts() {
+    beforeUnmount() {
         this.appStore.removePreCompileErrors(this.UID);
+        // Cancel any pending debounced updateAC() call -- otherwise it can fire after this slot
+        // (and potentially its whole frame) no longer exists, reading stale/gone state. Concretely
+        // hit as a CI regression: updateACForModuleImport() ran against an import frame that had
+        // since been torn down, ending up with a garbage/empty library address and throwing
+        // "Failed to construct 'URL': Invalid base URL" as an unhandled rejection.
+        (this.updateAC as unknown as DebouncedFunc<() => void>).cancel();
     },
 
     data: function() {
@@ -626,6 +646,16 @@ export default defineComponent({
                 document.getElementById(getLabelSlotUID(this.coreSlotInfo))?.scrollIntoView({block: "nearest"});
 
                 this.updateAC();
+                // onGetCaret() is also invoked on essentially every keystroke -- not just real
+                // focus changes -- via checkSlotRefactoring's cursor-repositioning dispatch of
+                // "slotGotCaret" after each reparse (see LabelSlotsStructure.vue), so flushing
+                // unconditionally here would defeat updateAC()'s debounce for normal typing.
+                // fromNaturalClick is only true for an actual mouse click into the slot -- a
+                // one-off event, not a rapid-fire burst -- so it's safe (and desirable, for
+                // responsiveness) to flush immediately in that case only:
+                if (fromNaturalClick) {
+                    (this.updateAC as unknown as DebouncedFunc<() => void>).flush();
+                }
 
                 // As we receive focus, we show the error popover if required. Note that we do it programmatically as it seems the focus trigger on popover isn't working in our configuration
                 if(this.erroneous()){
@@ -710,6 +740,11 @@ export default defineComponent({
         // Event callback equivalent to what would happen for a blur event callback 
         // (the spans don't get focus anymore because the containg editable div grab it)
         onLoseCaret(event: CustomEvent<{keepIgnoreKeyEventFlagOn?: boolean, keepEditingModeOn?: boolean}>): void {
+            // A pending debounced updateAC() call is for whatever was focused before -- once we've
+            // lost the caret, that's no longer relevant (and firing it later, e.g. against a slot
+            // whose frame has since been removed, is a source of stale-state bugs; see the
+            // matching cancel() in beforeUnmount()):
+            (this.updateAC as unknown as DebouncedFunc<() => void>).cancel();
             const {keepIgnoreKeyEventFlagOn, keepEditingModeOn} = event.detail??{};
             this.$nextTick(() => vueComponentsAPIHandler.labelSlotsStructureComponentAPI?.forInstance[getFrameLabelSlotsStructureUID(this.frameId, this.labelSlotsIndex)].updatePrependTextAndCheckErrors());
             // Before anything, we make sure that the current frame still exists,
@@ -932,6 +967,11 @@ export default defineComponent({
 
             // We capture the key shortcut for opening the a/c
             if((event.metaKey || event.ctrlKey) && event.key == " "){
+                // updateAC() is debounced (see created()) so a paused-but-not-yet-fired debounce
+                // could otherwise show stale results here -- force it to run immediately, since
+                // the user explicitly asked for completions right now:
+                this.updateAC();
+                (this.updateAC as unknown as DebouncedFunc<() => void>).flush();
                 this.showAC = true;
                 event.preventDefault();
                 event.stopPropagation();
@@ -1219,8 +1259,12 @@ export default defineComponent({
             //   with operators and brackets which can create new slots.
             // - Delete and backspace are not input events so they happen elsewhere.
             
-            const stateBeforeChanges = cloneDeep(this.appStore.$state);
-            
+            // Scoped to this frame only: ordinary character input only ever mutates this.frameId's own slots
+            // (see checkSlotRefactoring()/performKeywordFrameConversion() in LabelSlotsStructure.vue -- the
+            // keyword-frame-conversion path re-widens this to a full clone itself before it reparents/attaches
+            // any other frame, since that's the one case here that can reach beyond this.frameId).
+            const stateBeforeChanges = this.appStore.cloneStateForUndo([this.frameId]);
+
             const inputSpanField = document.getElementById(this.UID) as HTMLSpanElement;
             const inputSpanFieldContent = inputSpanField.textContent ?? "";
             const currentSlot = retrieveSlotFromSlotInfos(this.coreSlotInfo) as BaseSlot;
@@ -2152,6 +2196,22 @@ export default defineComponent({
     content: attr(placeholder);
     font-style: italic;
     color: var(--prompt-color, #bbb);
+}
+
+// Overrides the rule above (extra attribute selector wins on specificity) while a param prompt is
+// still being resolved asynchronously, so users see a "still working on it" indicator instead of a
+// blank slot -- see LabelSlotsStructure.vue's paramPromptPending.
+.#{$strype-classname-label-slot-input}[empty-content="true"][data-param-prompt-pending="true"]::after {
+    content: "\2022\2022\2022";
+    font-style: normal;
+    letter-spacing: 2px;
+    color: var(--prompt-color, #bbb);
+    animation: strype-param-prompt-pending-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes strype-param-prompt-pending-pulse {
+    0%, 100% { opacity: 0.25; }
+    50% { opacity: 0.9; }
 }
 
 .#{$strype-classname-label-slot-input}.readonly {
