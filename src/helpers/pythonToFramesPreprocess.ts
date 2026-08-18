@@ -25,6 +25,18 @@ const directiveRegex = new RegExp("^( *)" + escapeRegExp(AppSPYFullPrefix) + "([
 // "#(=> Disabled:" that happens to appear as literal text inside a triple-quoted string would be
 // (mis)treated as a directive. This matches a corner case flagged during the migration as
 // low-value to preserve exactly; revisit if real .spy content is found to hit it.
+// Strips a line's "#(=> Disabled:" prefix (if present), returning the real code/blank content
+// underneath with its original indentation intact -- the marker itself always sits at column 0
+// regardless of the disabled code's actual nesting depth, so measuring a disabled line's own
+// indentation (e.g. for blank-line-ownership decisions -- see findTrailingBlankBoundary() in
+// pythonToFrames.ts) must go through this rather than the raw source line, or every disabled line
+// looks like it's at indent 0. Exported so callers other than preprocessBeforeParse() itself (e.g.
+// building the line->indentation map) apply the exact same transformation the parser sees.
+export function stripDisabledPrefix(line: string) : string {
+    const m = directiveRegex.exec(line);
+    return (m && m[2].trim() === "Disabled") ? m[1] + m[3] : line;
+}
+
 export function preprocessBeforeParse(codeLines: string[]) : PreprocessResult {
     const disabledLines : number[] = [];
     const outLines = codeLines.map((line, i) => {

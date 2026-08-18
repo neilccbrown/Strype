@@ -10,7 +10,7 @@ import {nextTick} from "vue";
 import type Parser from "web-tree-sitter";
 import {nodeToSlots, flattenChildren, UnsupportedConstructError, setIsSPYForDocStrings} from "@/helpers/pythonToFramesExpr";
 import {getBlockItems, getLeadingSiblingComments} from "@/helpers/pythonToFramesBlockWalk";
-import {preprocessBeforeParse} from "@/helpers/pythonToFramesPreprocess";
+import {preprocessBeforeParse, stripDisabledPrefix} from "@/helpers/pythonToFramesPreprocess";
 import {getPythonParserSync} from "@/helpers/treeSitterPython";
 
 type TSSyntaxNode = Parser.SyntaxNode;
@@ -366,10 +366,14 @@ function copyFramesFromParsedPython(codeLines: string[], currentStrypeLocation: 
             }
         }
     }
-    // Now remove that indent if it exists, and record remaining indent:
+    // Now remove that indent if it exists, and record remaining indent. A disabled line's
+    // "#(=> Disabled:" marker always sits at column 0 regardless of the real code's nesting depth
+    // underneath, so the indent recorded here must be measured on the de-prefixed content (see
+    // stripDisabledPrefix()), not the raw line -- otherwise every disabled line looks like it's at
+    // indent 0, which findTrailingBlankBoundary() relies on this map to get right:
     for (let i = 0; i < codeLines.length; i++) {
         codeLines[i] = codeLines[i].slice(lowestIndent);
-        indents.set(i + 1, getIndent(codeLines[i]));
+        indents.set(i + 1, getIndent(stripDisabledPrefix(codeLines[i])));
     }
 
     // Unlike Skulpt's transformCommentsAndBlanks(), preprocessBeforeParse() (called inside
@@ -1147,10 +1151,20 @@ function processCommentNode(node: TSSyntaxNode, s: CopyState) : CopyState {
 function processBlockItems(nodes: TSSyntaxNode[], afterRow: number, beforeRow: number | undefined, s: CopyState) : CopyState {
     for (const item of getBlockItems(nodes, afterRow, beforeRow)) {
         if (item.kind === "blank") {
-            for (let i = 0; i < item.count; i++) {
+            // getBlockItems()'s row range for this blank run was computed statically, before any
+            // processing happened. But if the *preceding* node was itself a compound statement,
+            // copyBlockBody() may already have claimed some of these same rows as blank lines
+            // nested inside its own body (see findTrailingBlankBoundary()'s doc comment) --
+            // s.lastLineProcessed (1-indexed) reflects how far that recursion actually got, which
+            // can run deeper than this item's row range accounts for. Skip re-emitting rows
+            // already claimed that way as this (enclosing) level's own blanks, rather than
+            // double-counting them:
+            const alreadyClaimedThroughRow = (s.lastLineProcessed ?? 0) - 1; // 0-indexed
+            const firstUnclaimedRow = Math.max(item.startRow, alreadyClaimedThroughRow + 1);
+            for (let row = firstUnclaimedRow; row < item.startRow + item.count; row++) {
                 // Blanks are not allowed directly inside class defs (matching old behaviour):
                 if (s.parent?.frameType.type != AllFrameTypesIdentifier.classdef) {
-                    s = addFrame(makeFrame(AllFrameTypesIdentifier.blank, {}, s.isSPY), item.startRow + i + 1, s);
+                    s = addFrame(makeFrame(AllFrameTypesIdentifier.blank, {}, s.isSPY), row + 1, s);
                 }
             }
         }
@@ -1226,13 +1240,47 @@ function copyExpressionStatement(node: TSSyntaxNode, s: CopyState) : CopyState {
     return addFrame(misc, tsLineno(node), s);
 }
 
+// When a compound statement's body has no following elif/else/except/case clause to anchor
+// getBlockItems()'s `beforeRow` (see copyBlockBody() below), a trailing blank line right before
+// the dedent back to the enclosing scope is otherwise invisible to this block: getBlockItems()
+// only sees the row gap between this block's own last statement and whatever the *enclosing*
+// scope's next sibling is, and -- with no beforeRow -- attributes the whole gap to that enclosing
+// scope instead, so an indented trailing blank silently moves out of the block it visually
+// belongs to. Since Python's grammar treats blank lines as pure whitespace with no node of their
+// own, indentation is the only remaining signal for which scope a blank line "belongs" to: this
+// claims blank lines immediately after `afterRow` for as long as they're indented at least as
+// deep as `minIndentCols`, using the source-derived `lineNumberToIndentation` map (built once
+// up-front in copyFramesFromParsedPython(), covering every line including blank ones). Returns
+// the 0-indexed row one past the last claimed blank line (suitable as getBlockItems'/
+// copyBlockBody's `beforeRow`), or undefined if no blank line follows.
+function findTrailingBlankBoundary(afterRow: number, minIndentCols: number, s: CopyState) : number | undefined {
+    let lastClaimedRow: number | undefined;
+    for (let candidateRow = afterRow + 1; ; candidateRow++) {
+        const lineIndent = s.lineNumberToIndentation.get(candidateRow + 1); // map is 1-indexed
+        if (lineIndent === undefined || lineIndent.length < minIndentCols) {
+            break;
+        }
+        lastClaimedRow = candidateRow;
+    }
+    return lastClaimedRow === undefined ? undefined : lastClaimedRow + 1;
+}
+
 // A block-like container's own startPosition/endPosition only span its actual statements (no
 // visibility of the header line before it or a following elif/else/except sibling after it), so
 // callers must pass in the right row bounds explicitly -- see getBlockItems()'s doc comment. Also
 // prepends any leading sibling comments (see getLeadingSiblingComments()) that tree-sitter attached
 // to `headerNode` instead of `blockNode` itself.
+//
+// If the caller has no explicit `beforeRow` (no following elif/else/except/case clause), falls
+// back to findTrailingBlankBoundary() so this block still claims its own indented trailing
+// blanks -- processBlockItems() then relies on `s.lastLineProcessed` to stop the *enclosing*
+// scope from re-claiming those same rows as its own blanks (see the comment there).
 function copyBlockBody(blockNode: TSSyntaxNode, headerNode: TSSyntaxNode, s: CopyState, beforeRow?: number) : CopyState {
     const nodes = [...getLeadingSiblingComments(headerNode, blockNode), ...blockNode.children];
+    if (beforeRow === undefined && nodes.length > 0) {
+        const lastRow = nodes[nodes.length - 1].endPosition.row;
+        beforeRow = findTrailingBlankBoundary(lastRow, nodes[0].startPosition.column, s);
+    }
     return processBlockItems(nodes, headerNode.startPosition.row, beforeRow, s);
 }
 
