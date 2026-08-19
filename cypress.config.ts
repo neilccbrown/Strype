@@ -36,6 +36,11 @@ export default defineConfig({
     video: true,
     e2e: {
         experimentalMemoryManagement: true,
+        // Targets the DOM-visibility-check inefficiency that was a major contributor to
+        // cypress-io/cypress#27415 (the "WebAssembly.Memory(): could not allocate memory"
+        // OOM issue this repo has been mitigating); added in Cypress 15.8.0, part of the
+        // fixes that led to #27415 being closed in 15.18.0:
+        experimentalFastVisibility: true,
         specPattern: "tests/cypress/e2e/**/*.cy.{js,jsx,ts,tsx}",
         supportFile: false,
         // Inspired by https://docs.cypress.io/api/plugins/configuration-api#Usage
