@@ -413,6 +413,21 @@ def foo (name,ID ) :
 foo("Anon",7) 
 #(=> Section:End
 `;
+    // The mismatched-brace f-string above loads fine (Skulpt is lenient about it), but saving it
+    // back out now goes through the new escapeUnrepresentableFStrings() check in parser.ts (see
+    // "Make an unbalanced-brace f-string round-trip through save/load"), which wraps it in
+    // ___strype_fstring_wrap(...) rather than re-emitting Python that's guaranteed to fail to
+    // re-parse -- so the *saved* content differs from what was loaded:
+    const expectedSaveWithTigerPythonError = `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+def foo (name,ID ) :
+    # Mismatched format string:
+    print(___strype_fstring_wrap("f\\"Student: {name} ({ID)\\"")) 
+#(=> Section:Main
+foo("Anon",7) 
+#(=> Section:End
+`;
 
     test("Cannot freeze if there is a syntax error #2", async ({page}) => {
         await loadContent(page, inputWithTigerPythonError);
@@ -422,7 +437,7 @@ foo("Anon",7)
         // Menu remains though so we need to dismiss it:
         await page.keyboard.press("Escape");
         // We should then not be frozen, so should be unmodified state:
-        await saveAndCheck(page, inputWithTigerPythonError);
+        await saveAndCheck(page, expectedSaveWithTigerPythonError);
     });
 });
 
@@ -475,6 +490,17 @@ def foo (name,ID ) :
 foo("Anon",7) 
 #(=> Section:End
 `;
+    // See expectedSaveWithTigerPythonError's comment in the describe block above -- same reason:
+    const expectedSaveWithTigerPythonError = `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+def foo (name,ID ) :
+    # Mismatched format string:
+    print(___strype_fstring_wrap("f\\"Student: {name} ({ID)\\"")) 
+#(=> Section:Main
+foo("Anon",7) 
+#(=> Section:End
+`;
 
     test("Cannot fold if there is a syntax error #2", async ({page}) => {
         await loadContent(page, inputWithTigerPythonError);
@@ -485,9 +511,9 @@ foo("Anon",7)
         await page.keyboard.press("Escape");
         await clickFoldFor(page, "def");
         // We should then not be folded, so should be unmodified state:
-        await saveAndCheck(page, inputWithTigerPythonError);
+        await saveAndCheck(page, expectedSaveWithTigerPythonError);
     });
-    
+
     const inputWithNestedTigerPythonError = `#(=> Strype:1:std
 #(=> Section:Imports
 #(=> Section:Definitions
@@ -500,6 +526,19 @@ class Alpha  :
 Alpha(None) 
 #(=> Section:End
 `;
+    // See expectedSaveWithTigerPythonError's comment above -- same reason, different wrapped f-string:
+    const expectedSaveWithNestedTigerPythonError = `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+class Alpha  :
+    def hasNoError (self, ) :
+        return 42 
+    def __init__ (self,y ) :
+        self.x  = ___strype_fstring_wrap("f\\"{len(y)\\"") 
+#(=> Section:Main
+Alpha(None) 
+#(=> Section:End
+`;
 
     test("Cannot fold if there is a syntax error #3", async ({page}) => {
         await loadContent(page, inputWithNestedTigerPythonError);
@@ -507,7 +546,7 @@ Alpha(None)
         // Folding all children should not fold it:
         await clickFoldChildrenFor(page, "class");
         // We should then only have folded the one without an error:
-        await saveAndCheck(page, testState({"hasNoError": "FoldToHeader"}, inputWithNestedTigerPythonError));
+        await saveAndCheck(page, testState({"hasNoError": "FoldToHeader"}, expectedSaveWithNestedTigerPythonError));
     });
 });
 
