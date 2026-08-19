@@ -228,6 +228,39 @@ export const STRYPE_INVALID_SLOT = "___strype_invalid_";
 
 export const STRYPE_INVALID_OPS_WRAPPER = "___strype_opsinvalid";
 export const STRYPE_INVALID_OP = "___strype_operator_";
+// Wraps an f-string whose content can't be emitted as valid Python (an unmatched "{"/"}" --
+// which is a genuine SyntaxError in real Python too, e.g. f"{x", not just a parsing artefact).
+// See replaceMediaLiteralsAndInvalidOps() below and transformSlotLevel() in parser.ts.
+// Deliberately NOT prefixed with STRYPE_INVALID_SLOT ("___strype_invalid_") -- that prefix is
+// stripped from any identifier that starts with it (terminalToSlots() below), which would
+// silently mangle this name too if it were a prefix match (confirmed as a real bug live
+// in-browser: the call was displayed/reloaded as bare "fstring(...)").
+export const STRYPE_INVALID_FSTRING_WRAPPER = "___strype_fstring_wrap";
+
+// A minimal, self-contained escape/unescape pair (1-char-lookahead, so unescaping is unambiguous
+// in a single left-to-right pass) used only for STRYPE_INVALID_FSTRING_WRAPPER's argument: the
+// generic string-slot generation path (parser.ts's getSlotStartsLengthsAndCodeForFrameLabel)
+// emits a StringSlot's .code completely verbatim between its quote chars (Strype's normal typed
+// input never contains an unescaped matching quote char, since typing one just closes the field
+// rather than inserting a literal character -- so there's normally nothing to escape). Here we
+// deliberately construct a StringSlot.code containing the original quote char programmatically,
+// so -- unlike normal typed input -- it must be escaped ourselves before emission.
+export function escapeForPlainStringLiteral(raw: string): string {
+    return raw.replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
+}
+export function unescapeFromPlainStringLiteral(escaped: string): string {
+    let result = "";
+    for (let i = 0; i < escaped.length; i++) {
+        if (escaped[i] === "\\" && i + 1 < escaped.length) {
+            result += escaped[i + 1];
+            i++;
+        }
+        else {
+            result += escaped[i];
+        }
+    }
+    return result;
+}
 
 export interface SavedFrameState {
     collapsed?: CollapsedState;
@@ -818,6 +851,29 @@ function replaceMediaLiteralsAndInvalidOps(s : SlotsStructure) : SlotsStructure 
                         replaced = true;
                     }
                     // Otherwise don't substitute
+                }
+            }
+            else if (curField.code === STRYPE_INVALID_FSTRING_WRAPPER) {
+                // The single argument holds the original prefix+quote+content+quote as an ordinary
+                // (non-f) string, safely re-parsed here with the same regex toSlots() uses for a
+                // terminal string node, to reconstruct the [prefix, StringSlot, blank] triple a
+                // real string literal would have produced (see transformSlotLevel() in parser.ts
+                // for the save side):
+                if (sub.fields.length == 3
+                    && sub.openingBracketValue == "("
+                    && isFieldBaseSlot(sub.fields[0]) && !(sub.fields[0] as BaseSlot).code
+                    && !sub.operators[0].code
+                    && isFieldStringSlot(sub.fields[1])
+                    && !sub.operators[1].code
+                    && isFieldBaseSlot(sub.fields[2]) && !(sub.fields[2] as BaseSlot).code) {
+                    const raw = unescapeFromPlainStringLiteral((sub.fields[1] as StringSlot).code);
+                    const strMatch = /^([rbfRBF]*)(["'])([\s\S]*)$/.exec(raw);
+                    if (strMatch) {
+                        const quote = strMatch[2];
+                        const code = strMatch[3].slice(0, strMatch[3].length - quote.length);
+                        s.fields.splice(i, 2, {code: strMatch[1]}, {code, quote} as StringSlot, {code: ""});
+                        s.operators.splice(i, 1, {code: ""}, {code: ""});
+                    }
                 }
             }
             else if (curField.code === STRYPE_INVALID_OPS_WRAPPER) {
