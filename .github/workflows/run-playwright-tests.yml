@@ -200,3 +200,23 @@ jobs:
         path: resource-monitor.log
         retention-days: 30
         if-no-files-found: ignore
+
+  # Branch protection requires a single check named "Playwright-Tests" to pass, but the matrix
+  # above produces one check per combination (e.g. "test (ubuntu-latest, chromium)"), none of
+  # which is ever named exactly that -- so a required check on any individual combination would
+  # sit pending forever whenever that particular combination is skipped, and no combination on
+  # its own represents "the whole suite passed" anyway. Mirrors run-cypress-tests.yml's
+  # Build-And-Run-Tests gate job. This job depends on the whole matrix via a single job id, so
+  # it stays correct as matrix entries are added or removed, and reports the aggregate result
+  # under the exact name branch protection expects -- without this, GitHub's auto-merge (and any
+  # required-checks gate) only waits for whatever checks *are* required, so a PR could merge
+  # while these jobs were still running (confirmed: this is what happened for PR #1054).
+  Playwright-Tests:
+    name: Playwright-Tests
+    needs: test
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check matrix result
+        if: ${{ needs.test.result != 'success' && needs.test.result != 'skipped' }}
+        run: exit 1
