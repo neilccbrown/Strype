@@ -125,13 +125,20 @@ const EXPRESSION_CASES: [string, string, OpTierInfo[]][] = [
     // an ordinary solo binary '-' would get, but with the leading margin suppressed:
     ["lambda n: -n (pass-through lambda, unary '-' after colon)", "lambda n: -n", [op("lambda", "keyword-medium", true), op(":", "colon"), op("-", "medium", true)]],
     ["-a (detected unary minus, no leading margin)", "-a", [op("-", "medium", true)]],
-    // Once '-' is pulled to 'high' by mixing with a tighter/looser sibling, "high" already
-    // has zero margin on both sides -- no separate unary-prefix marker is needed or applied
-    // (see LabelSlot.vue: the marker is only set when the tier is exactly "sign-medium"):
-    ["-a+b (unary '-' binds tighter than binary '+', pulled to 'high')", "-a+b", [op("-", "high"), op("+", "medium")]],
-    ["-a*b (unary '-' still tighter than '*', pulled to 'high')", "-a*b", [op("-", "high"), op("*", "medium")]],
+    // A detected unary sign always tags "sign-medium" (suppressed leading margin), regardless
+    // of what tier the generic precedence ladder would otherwise have computed for it (here,
+    // "high", from binding tighter than the sibling binary operator). This used to be narrower
+    // (only substituted when the ladder-computed tier was exactly "medium"), on the mistaken
+    // assumption that "high" already looks fine unsubstituted (true for the CSS margin, but
+    // parser.ts's generated Python text also keys off this same tier to decide whether an
+    // operator needs surrounding spaces -- so an unsubstituted "high" unary sign was being
+    // saved as a spaced-out *binary* minus, e.g. "x < -399" round-tripping to "x <  - 399".
+    // Confirmed as a real bug via public/book_projects/chapter12/cheese.spy failing CI, not
+    // just a hypothetical.) See calculatePrecedenceTiers() in operatorPrecedence.ts.
+    ["-a+b (unary '-' binds tighter than binary '+', pulled to 'high' then tagged sign-medium)", "-a+b", [op("-", "medium", true), op("+", "medium")]],
+    ["-a*b (unary '-' still tighter than '*', pulled to 'high' then tagged sign-medium)", "-a*b", [op("-", "medium", true), op("*", "medium")]],
     ["-a**b (unary '-' looser than '**', matches Python's -a**b == -(a**b))", "-a**b", [op("-", "medium", true), op("**", "high")]],
-    ["+a-b*c (unary '+' tight -> 'high' with no marker needed; binary '-' unaffected)", "+a-b*c", [op("+", "high"), op("-", "medium"), op("*", "high")]],
+    ["+a-b*c (unary '+' tight -> 'high' then tagged sign-medium; binary '-' unaffected)", "+a-b*c", [op("+", "medium", true), op("-", "medium"), op("*", "high")]],
     ["a+b*c**d (all three real tiers at once)", "a+b*c**d", [op("+", "low"), op("*", "medium"), op("**", "high")]],
 ];
 
@@ -386,9 +393,12 @@ test.describe("Editing an expression changes tiers dynamically", () => {
         expect(await getOperatorTierInfo(page)).toEqual([op("-", "medium", true)]);
 
         await typeIndividually(page, "+b");
-        // '-' still binds tighter than binary '+' so it's pulled to "high" -- already zero
-        // margin both sides, so the marker is dropped (nothing left to suppress):
-        expect(await getOperatorTierInfo(page)).toEqual([op("-", "high"), op("+", "medium")]);
+        // '-' still binds tighter than binary '+', pulling its ladder-computed tier to "high"
+        // -- but a detected unary sign always keeps the "sign-medium" substitution (reported
+        // here as "medium", the CSS class the two share) and its marker regardless, since the
+        // marker is also what parser.ts's generated Python text relies on to keep a unary sign
+        // tight against its operand (see calculatePrecedenceTiers()):
+        expect(await getOperatorTierInfo(page)).toEqual([op("-", "medium", true), op("+", "medium")]);
 
         await pressN("Backspace", 2, true)(page);
         expect(await getOperatorTierInfo(page)).toEqual([op("-", "medium", true)]);

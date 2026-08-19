@@ -216,14 +216,19 @@ test.describe("calculatePrecedenceTiers: detected unary sign ('-'/'+')", () => {
         expect(calculatePrecedenceTiers(["-"])).toEqual(["medium"] satisfies PrecedenceTier[]);
     });
 
-    test("a mixed unary sign binds tight enough to reach 'high', pulling the binary operator around it looser", () => {
+    test("a mixed unary sign binds tight enough to reach 'high' on the ladder, but always keeps its 'sign-medium' substitution", () => {
         // -x+y: unary "-" now binds as tightly as "~", tighter than binary "+", so "+"
-        // becomes the pivot and "-" is pulled to "high" (needing no substitute -- "high" is
-        // already zero margin on both sides) while "+" lands on the ordinary "medium":
-        expect(calculatePrecedenceTiers(["-", "+"], [true, false])).toEqual(["high", "medium"] satisfies PrecedenceTier[]);
+        // becomes the pivot and "-" would ladder-compute to "high" -- but a detected unary
+        // sign always substitutes to "sign-medium" regardless (see calculatePrecedenceTiers:
+        // "high" looks the same as "sign-medium" visually via CSS, but parser.ts's generated
+        // Python text also keys off this exact tier to decide whether the sign needs
+        // surrounding spaces, so leaving it as unsubstituted "high" saved it as a spaced-out
+        // *binary* minus -- a real round-trip bug, confirmed via cheese.spy in CI) -- while
+        // "+" lands on the ordinary "medium":
+        expect(calculatePrecedenceTiers(["-", "+"], [true, false])).toEqual(["sign-medium", "medium"] satisfies PrecedenceTier[]);
         // -x*y: same story against '*', which is tighter than binary +/- but still looser
         // than a unary sign:
-        expect(calculatePrecedenceTiers(["-", "*"], [true, false])).toEqual(["high", "medium"] satisfies PrecedenceTier[]);
+        expect(calculatePrecedenceTiers(["-", "*"], [true, false])).toEqual(["sign-medium", "medium"] satisfies PrecedenceTier[]);
     });
 
     test("two adjacent unary operators of tied precedence both get the neutral default", () => {
@@ -240,8 +245,10 @@ test.describe("calculatePrecedenceTiers: detected unary sign ('-'/'+')", () => {
     });
 
     test("a unary sign among multiple binary operators still resolves per-operator correctly", () => {
-        // -x+y*z: unary "-" (tight) and "*" (tighter than binary +/-) both end up "high",
-        // while the loosest operator present, binary "+", is pulled to "medium":
-        expect(calculatePrecedenceTiers(["-", "+", "*"], [true, false, false])).toEqual(["high", "medium", "high"] satisfies PrecedenceTier[]);
+        // -x+y*z: unary "-" (tight) would ladder-compute to "high" same as "*" (tighter than
+        // binary +/-), but always substitutes to "sign-medium" since it's a detected unary
+        // sign; "*" is unaffected (stays "high"); the loosest operator present, binary "+",
+        // is pulled to "medium":
+        expect(calculatePrecedenceTiers(["-", "+", "*"], [true, false, false])).toEqual(["sign-medium", "medium", "high"] satisfies PrecedenceTier[]);
     });
 });
