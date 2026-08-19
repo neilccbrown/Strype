@@ -129,7 +129,7 @@ describe("Python round-trip", () => {
         // semantically, so it's now rejected during the tree-walk (an UnsupportedConstructError,
         // which -- unlike a genuine parse error -- carries no line number) rather than during
         // parsing itself. This also means the message no longer echoes back Skulpt-specific
-        // wording like "operator" (see docs/replace-skulpt-parser/PLAN.md §5):
+        // wording like "operator":
         testRoundTripImportAndDownload("tests/cypress/fixtures/python-invalid-hints-extract.py", defaultProjectDocFullLine);
         assertVisibleError(/invalid.*import/si);
     });

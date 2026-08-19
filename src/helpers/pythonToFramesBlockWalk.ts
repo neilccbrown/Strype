@@ -2,11 +2,12 @@ import type Parser from "web-tree-sitter";
 
 type SyntaxNode = Parser.SyntaxNode;
 
-// Recovers blank lines and comments from a parsed tree-sitter block, per
-// docs/replace-skulpt-parser/PLAN.md §2's "derive post-parse" design: unlike Skulpt (which drops
-// comments/blanks entirely, requiring them to be disguised as fake statements before parsing and
-// decoded back out afterwards), tree-sitter's comment nodes appear in the tree at their real
-// source position, and blank lines show up as row gaps between consecutive children.
+// Recovers blank lines and comments from a parsed tree-sitter block, by deriving them from the
+// tree post-parse rather than disguising them as fake statements before parsing the way Skulpt's
+// approach required (Skulpt's grammar dropped comments/blanks entirely, so they had to be
+// smuggled through as fake statements and decoded back out afterwards): tree-sitter's comment
+// nodes appear in the tree at their real source position, and blank lines show up as row gaps
+// between consecutive children.
 //
 // A BlockItem is either a real child node (a statement or a comment) or a synthesized blank-line
 // marker for a gap in row numbers between two children (or between `afterRow` and the first child,

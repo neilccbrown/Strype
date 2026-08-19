@@ -1,7 +1,7 @@
-import { AllFrameTypesIdentifier, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CurrentFrame, EditorFrameObjects, FrameObject, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, LabelSlotsContent, SlotsStructure, StringSlot, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrozenState } from "@/types/types";
+import { AllFrameTypesIdentifier, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CurrentFrame, EditorFrameObjects, FrameObject, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, LabelSlotsContent, SlotsStructure, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrozenState } from "@/types/types";
 import {useStore} from "@/store/store";
 import {checkCodeErrors} from "@/helpers/storeMethods";
-import {CustomEventTypes, getLastCaretPosInsideParent, operators, trimmedKeywordOperators} from "@/helpers/editor";
+import {CustomEventTypes, getLastCaretPosInsideParent} from "@/helpers/editor";
 import i18n from "@/i18n";
 import {cloneDeep, escapeRegExp} from "lodash";
 import {AppName, AppSPYFullPrefix, eventBus, projectDocumentationFrameId} from "@/helpers/appContext";
@@ -24,14 +24,6 @@ const TOP_LEVEL_TEMP_ID = -999;
 const parsedTripleSingleQuotesStrRegex = /^''.*''$/s, parsedTripleDoubleQuotesStrRegex = /^"".*""$/s;
 
 
-// Type for the things we get from the Skulpt parser:
-export interface ParsedConcreteTree {
-    type: number;
-    value: null | string;
-    lineno? : number;
-    //col_offset?: number;  -- Don't use this as it seems to have surprising values
-    children: null | ParsedConcreteTree[];
-}
 // The state passed around while copying from Python code into frames
 interface CopyState {
     nextId: number; // The next ID to use for a new frame
@@ -48,10 +40,7 @@ interface CopyState {
     isSPY: boolean;
 }
 
-// Declare Skulpt:
-declare const Sk: any;
-
-// The different "locations" in Strype 
+// The different "locations" in Strype
 export enum STRYPE_LOCATION {
     UNKNOWN,
     PROJECT_DOC_SECTION,
@@ -66,25 +55,6 @@ export enum STRYPE_LOCATION {
 function updateFrom(dest : CopyState, src : CopyState) {
     dest.nextId = src.nextId;
     dest.lastLineProcessed = src.lastLineProcessed;
-}
-
-// Simplifies a tree (by collapsing all single-child nodes into the child) in order to make
-// it easier to read while debugging error messages
-function debugToString(p : ParsedConcreteTree, curIndent: string) : string {
-    let s = curIndent + (Sk.ParseTables.number2symbol[p.type] || ("#" + p.type));
-    if (p.value) {
-        s += " {{" + p.value + "}}";
-    }
-    if (p.children != null && p.children.length > 0) {
-        s += ":\n";
-        for (const child of p.children) {
-            s += debugToString(child, curIndent + "  ");
-        }
-        return s;
-    }
-    else {
-        return s + "\n";
-    }
 }
 
 // Given a frame, assigns it a new ID and adds it to the list specified in the CopyState
@@ -167,14 +137,13 @@ function makeFrame(type: string, slots: { [index: number]: LabelSlotsContent}, i
     };
 }
 
-// Same joint-frame gluing trick that the old, now-deleted Skulpt-based parseWithSkulpt() used, ported to build a plain codeLines
-// array (rather than mutating one in place with embedded "\n"s, which parseWithSkulpt's version
-// does -- that's harmless for Skulpt's Sk.parse(codeLines.join("\n")) call, since it just produces
-// harmless extra blank lines, but tree-sitter is far more literal about row positions, so this
-// version is careful to add exactly 2 (elif) or 4 (else/except/finally) real lines, matching the
-// "2 lines per fake-parent unit" assumption used by the line-offset math in parseWithTreeSitter()
-// below): parser-agnostic in principle, kept as a separate copy rather than shared code because
-// parseWithSkulpt() is deleted once this migration's cutover is complete.
+// Same joint-frame gluing trick that the old, now-deleted Skulpt-based parseWithSkulpt() used,
+// ported to build a plain codeLines array (rather than mutating one in place with embedded
+// "\n"s, which parseWithSkulpt's version did -- that was harmless for Skulpt's
+// Sk.parse(codeLines.join("\n")) call, since it just produced harmless extra blank lines, but
+// tree-sitter is far more literal about row positions, so this version is careful to add
+// exactly 2 (elif) or 4 (else/except/finally) real lines, matching the "2 lines per fake-parent
+// unit" assumption used by the line-offset math in parseWithTreeSitter() below):
 function glueJointFrameHeader(codeLines: string[]) : { codeLines: string[], addedFakeJoinParent: number } {
     let addedFakeJoinParent = 0;
     const firstNonBlank = codeLines.find((l) => l.trim() != "");
@@ -199,9 +168,10 @@ function glueJointFrameHeader(codeLines: string[]) : { codeLines: string[], adde
 
 // Depth-first search for the first ERROR or MISSING node in a parsed tree -- tree-sitter never
 // throws on invalid input (unlike Sk.parse()), it always returns a complete tree with these
-// error-marker nodes standing in for the unparseable part. See PLAN.md §5 for why the resulting
-// user-facing message is deliberately generic ("Invalid Python code at line N") rather than trying
-// to synthesise a specific reason from the error node's grammar context.
+// error-marker nodes standing in for the unparseable part. The resulting user-facing message is
+// deliberately generic ("Invalid Python code at line N") rather than trying to synthesise a
+// specific reason from the error node's grammar context, which would need per-grammar-rule
+// knowledge to phrase well and would still often be wrong for cascading/recovered errors.
 function findFirstErrorNode(node: TSSyntaxNode) : TSSyntaxNode | null {
     if (node.type === "ERROR" || node.isMissing) {
         return node;
@@ -218,8 +188,8 @@ function findFirstErrorNode(node: TSSyntaxNode) : TSSyntaxNode | null {
     return null;
 }
 
-// The tree-sitter-based replacement for parseWithSkulpt() above. `mapErrorLineno` is expected to
-// operate on plain, un-glued codeLines line numbers (1-based) -- this function itself subtracts
+// The tree-sitter-based replacement for the old, now-deleted parseWithSkulpt(). `mapErrorLineno`
+// is expected to operate on plain, un-glued codeLines line numbers (1-based) -- this function itself subtracts
 // the fake-join-parent glue offset before calling it, so callers don't need to know about gluing.
 function parseWithTreeSitter(codeLines: string[], mapErrorLineno : (lineno : number) => number) : string | { tree: Parser.Tree, disabledLines: number[], addedFakeJoinParent: number } {
     const glued = glueJointFrameHeader(codeLines);
@@ -256,11 +226,7 @@ function getIndent(codeLine: string) {
     return (codeLine.match(/^\s*/) as RegExpMatchArray)[0];
 }
 
-const STRYPE_COMMENT_PREFIX = "___strype_comment_";
-const STRYPE_LIBRARY_PREFIX = "___strype_library_";
-
 const STRYPE_DOC_NEWLINE = "___strype_doc_newline";
-const STRYPE_WHOLE_LINE_BLANK = "___strype_whole_line_blank";
 
 // Defined in pythonSlotsShared.ts (a dependency-free leaf module, along with concatSlots(),
 // replaceMediaLiteralsAndInvalidOps() and fromUnicodeEscapes() below) and re-exported here so
@@ -275,14 +241,10 @@ export interface SavedFrameState {
 }
 
 // findStringEnd() and transformCommentsAndBlanks() (the old Skulpt-era preprocessing pass,
-// replaced by preprocessBeforeParse() in pythonToFramesPreprocess.ts -- see PLAN.md §2 for the
-// design rationale) used to live here. Deleted outright rather than left as dead code: both had
-// zero remaining references once copyFramesFromParsedPython() was rewired to the new tree-sitter
-// pipeline, and `npm run lint:check`'s no-unused-vars rule doesn't allow genuinely unreferenced
-// functions to linger -- unlike the rest of the old Skulpt-based cluster below
-// (copyFramesFromPython() and its own helpers), which is still self-referentially "used" (they
-// call each other) and so stays for now, to be deleted together once the new pipeline is proven
-// via the e2e suite (PLAN.md §3 step 6).
+// replaced by preprocessBeforeParse() in pythonToFramesPreprocess.ts) used to live here, along
+// with the rest of the Skulpt-based parseWithSkulpt()/copyFramesFromPython() cluster this
+// module used before switching to tree-sitter -- all deleted once the new pipeline was proven
+// via the e2e suite.
 
 // Information about a set of "copied" frames.  This is the result of parsing
 // Python into a set of frame objects.
@@ -330,16 +292,11 @@ export function offsetAllIds(frames: CopiedFrames, offset: number) : CopiedFrame
     return frames;
 }
 
-// The main entry point to this module.  Given a string of Python code that the user
-// has pasted in, return the string after turning it into frames.
-// If unsuccessful, throws CopyFailure with a string with some info about where the Python parse failed.
 // The main entry point to this module. Given a string of Python code that the user has pasted in
 // (already split into lines), return the frames after parsing with tree-sitter. If unsuccessful,
-// throws CopyFailure with a string with some info about where the Python parse failed.
-// This now calls the new tree-sitter-based parse/walk pipeline (parseWithTreeSitter() +
-// processBlockItems()) instead of the Skulpt-based parseWithSkulpt() + copyFramesFromPython() it
-// used before -- those (and transformCommentsAndBlanks()) are now unreachable dead code, left in
-// place for one more commit to keep this diff reviewable, and deleted next (PLAN.md §3 step 6).
+// throws CopyFailure with a string with some info about where the Python parse failed. Calls the
+// tree-sitter-based parse/walk pipeline (parseWithTreeSitter() + processBlockItems()); this used
+// to call a Skulpt-based parseWithSkulpt() + copyFramesFromPython() pipeline instead, since deleted.
 function copyFramesFromParsedPython(codeLines: string[], currentStrypeLocation: STRYPE_LOCATION, format: "py" | "spy", linenoMapping?: Record<number, number>) : CopiedFrames {
     const indents = new Map<number, string>();
 
@@ -442,618 +399,14 @@ function isSimpleAugAssignOperand(slots: SlotsStructure) : boolean {
     return slots.operators.every((op) => op.code === "" || op.code === ".");
 }
 
-// Dig down the tree and find the actual value.  Skips down through
-// all parents with a single child.  If there is no value or no children,
-// an error will be thrown.  This shouldn't happen for the items we are
-// calling it on (operators, numeric literals).
-function digValue(p : ParsedConcreteTree) : string {
-    if (p.value) {
-        return p.value;
-    }
-    else if (p.children == null) {
-        throw new Error("Node with no value and no children");
-    }
-    else if (p.children.length == 1) {
-        return digValue(p.children[0]);
-    }
-    else if (p.type == Sk.ParseTables.sym.comp_op && p.children.length == 2) {
-        // "is not" and "not in" show up as this type, with two children:
-        return digValue(p.children[0]) + " " + digValue(p.children[1]);
-    }
-    else {
-        throw new Error("Can't find single value in:\n" + debugToString(p, "  "));
-    }
-}
-
-// The state while parsing a long expression with multiple operands and operators:
-interface ParseState {
-    seq: ParsedConcreteTree[];
-    nextIndex: number;
-}
-
-// The index of ParseState will be modified in the given item:
-function parseNextTerm(ps : ParseState) : SlotsStructure {
-    // Check for unary operator:
-    const nextVal = ps.seq[ps.nextIndex].value;
-    if (nextVal === "-" || nextVal === "+") {
-        // Unary numbers just go in their own field:
-        try {
-            const valAfterThat = digValue(ps.seq[ps.nextIndex + 1]);
-            if (/^\d+(\.\d+)?([eE][+-]?\d+)?$/.test(valAfterThat)) {
-                ps.nextIndex += 2;
-                return {fields: [{code: nextVal + valAfterThat}], operators: []};
-            }
-        }
-        catch {
-            // Not an integer then...
-        }
-        
-        ps.nextIndex += 1;
-        return concatSlots({fields: [{code: ""}], operators: []}, nextVal, parseNextTerm(ps));
-    }
-    if (nextVal === "not" || nextVal === ":" || nextVal === "*" || nextVal === "~" || nextVal === "lambda") {
-        ps.nextIndex += 1;
-        return concatSlots({fields: [{code: ""}], operators: []}, nextVal, parseNextTerm(ps));
-    }
-    const term = ps.seq[ps.nextIndex];
-    ps.nextIndex += 1;
-    return toSlots(term);
-}
-
-
-function toSlots(p: ParsedConcreteTree) : SlotsStructure {
-    // Handle terminal nodes by just plonking them into a single-field slot:
-    if (p.children == null || p.children.length == 0) {
-        let val = p.value ?? "";
-        // Strings can be prefixed by combinations of rbf (case insensitive):
-        // The regex doesn't enforce that the quotes match,
-        // but the parser will have already made sure that is the case:
-        // ([\s\S] matches any char, including newlines, which might be present if it's triple quoted):
-        const strMatch = /^([rbfRBF]*)(["'])([\s\S]+)$/.exec(val);
-        if (strMatch) {
-            const str : StringSlot = {code: strMatch[3].slice(0, strMatch[3].length - strMatch[2].length), quote: strMatch[2]};
-            return {fields: [{code: strMatch[1]}, str, {code: ""}], operators: [{code: ""}, {code: ""}]};
-        }
-        else {
-            if (val == STRYPE_EXPRESSION_BLANK) {
-                val = "";
-            }
-            else if (val.startsWith(STRYPE_INVALID_SLOT)) {
-                val = fromUnicodeEscapes(val.slice(STRYPE_INVALID_SLOT.length));
-            }
-            return {fields: [{code: val}], operators: []};
-        }
-    }
-    
-    // Skulpt's parser seems to output a huge amount of dummy nodes with one child,
-    // e.g. an OR inside an AND.  We have a catch-all that just descends if there's only one child:
-    if (p.children.length == 1) {
-        return toSlots(p.children[0]);
-    }
-
-    // Check for brackets:
-    if (p.children[0].value === "(" || p.children[0].value === "[" || p.children[0].value === "{") {
-        const bracketed =  toSlots({...p, children: p.children.slice(1, p.children.length - 1)});
-        // For parameters, we drop the brackets and keep the content:
-        if (p.type == Sk.ParseTables.sym.parameters) {
-            return bracketed;
-        }
-        // Bracketed items must be surrounded by empty slot and empty operator each side:
-        return {fields: [{code: ""},{...bracketed, openingBracketValue: p.children[0].value}, {code: ""}], operators: [{code: ""}, {code: ""}]};
-    }
-
-    const ps = {seq: p.children, nextIndex: 0};
-    let latest = parseNextTerm(ps);
-    while (ps.nextIndex < p.children.length) {
-        const child = p.children[ps.nextIndex];
-        if (child.type === Sk.ParseTables.sym.trailer) {
-            // A suffix, like an array index lookup.  Join it and move forward only by one:
-            const grandchildren = child.children;
-            if (grandchildren != null && grandchildren[0].value === ".") {
-                latest = concatSlots(latest, ".", toSlots(grandchildren[1]));
-            }
-            else {
-                // Something bracketed:
-                latest = concatSlots(latest, "", toSlots(child));
-            }
-            ps.nextIndex += 1;
-            continue;
-        }
-
-        if (child.type === Sk.ParseTables.sym.sliceop && child.children && child.children?.length >= 1) {
-            // The a:b:c syntax has a slice_op child for the :c part which includes the operator and operand:
-            const op = digValue(child.children[0]);
-            if (op == ":" && child.children?.length == 1) {
-                // Can be blank on RHS of colon
-                latest = concatSlots(latest, op, {fields: [{code: ""}], operators: []});
-                ps.nextIndex += 1;
-                continue;
-            }
-            else if (child.children?.length == 2) {
-                latest = concatSlots(latest, op, toSlots(child.children[1]));
-                ps.nextIndex += 1;
-                continue;
-            }
-        }
-        
-        if (child.type === Sk.ParseTables.sym.comp_for && child.children && child.children?.length >= 4) {
-            // A list comprehension; this will be:
-            //   for
-            //   <expression>
-            //   in
-            //   <expression>
-            // Optionally followed by:
-            //   comp_iter:
-            //     comp_if:
-            //       if
-            //       <expression>
-            latest = concatSlots(latest, "for", concatSlots(toSlots(child.children[1]), "in", toSlots(child.children[3])));
-            if (child.children.length >= 5 
-                && child.children[4].type === Sk.ParseTables.sym.comp_iter
-                && (child.children[4].children?.length ?? 0) >= 1
-                && child.children[4].children?.[0]?.type === Sk.ParseTables.sym.comp_if) {
-                const ifNode = child.children[4]?.children?.[0];
-                if (ifNode && ifNode.children && ifNode.children.length >= 2) {
-                    // First child is if keyword, second child is the expression:
-                    latest = concatSlots(latest, "if", toSlots(ifNode.children[1]));
-                }
-            }
-            ps.nextIndex += 1;
-            continue;
-        }
-        
-        // Now we expect a binary operator:        
-        let op;
-        try {
-            op = digValue(child);
-            ps.nextIndex += 1;
-        }
-        catch (err) {
-            throw new Error("Cannot find operator " + ps.nextIndex + " in:\n" + debugToString(p, ""), {cause: err});
-        }
-        if (op != null && (operators.includes(op) || trimmedKeywordOperators.includes(op))) {
-            if ((op == ":" || op == ",") && ps.nextIndex == ps.seq.length) {
-                // Can be blank on RHS of colon or comma
-                latest = concatSlots(latest, op, {fields: [{code: ""}], operators: []});
-            }
-            else {
-                latest = concatSlots(latest, op, parseNextTerm(ps));
-            }
-        }
-        else {
-            throw new Sk.builtin.SyntaxError("Unknown operator: " + child.type + " \"" + op + "\"", null, p.lineno);
-        }
-    }
-    return replaceMediaLiteralsAndInvalidOps(latest);
-}
-
-// Get the children of the node, and throw an error if they are null.  This
-// should never happen, but if we use p.children then Typescript complains everywhere
-// that it could be null, whereas children(p) satisfies Typescript and gives a useful
-// error if it does turn out to be null.
-function children(p : ParsedConcreteTree) : ParsedConcreteTree[] {
-    if (p.children == null) {
-        throw new Error("Null children on node " + JSON.stringify(p));
-    }
-    return p.children;
-}
-
-// Given an index into the children (or a sequence of indexes), apply that and get the appropriate child.
-function applyIndex(p : ParsedConcreteTree, index: number | number[]) : ParsedConcreteTree {
-    if (typeof(index) === "number") {
-        return children(p)[index];
-    }
-    else {
-        const initial = index[0];
-        const rest = index.slice(1);
-        return applyIndex(children(p)[initial], rest.length == 1 ? rest[0] : rest);
-    }
-}
-
-// Make a frame using the given frame type, the given index/indices of p's children for the slots,
-function getRealLineNo(p: ParsedConcreteTree) : number | undefined {
-    if (p.type == Sk.ParseTables.sym.suite) {
-        // I don't really understand what this item is (it seems to have the raw content as extra children),
-        // but it seems if we ignore these extra children we can proceed and it will all work:
-        for (const child of children(p)) {
-            if (child.type > 250) { // Only count the non-expression nodes
-                return child.lineno;
-            }
-        }
-    }
-    return p.lineno;
-}
-
-// the given index for the body, and call addFrame on it.
-function makeAndAddFrameWithBody(p: ParsedConcreteTree, frameType: string, keywordIndexForLineno: number, childrenIndicesForSlots: (number | number[])[] | { [index: number]: LabelSlotsContent}, childIndexForBody: number, s : CopyState, transformTopComment?: (content: SlotsStructure, frame: FrameObject) => void) : {s: CopyState, frame: FrameObject} {
-    let slots : { [index: number]: LabelSlotsContent} = {};
-    if (Array.isArray(childrenIndicesForSlots)) {
-        for (let slotIndex = 0; slotIndex < childrenIndicesForSlots.length; slotIndex++) {
-            slots[slotIndex] = {slotStructures : toSlots(applyIndex(p, childrenIndicesForSlots[slotIndex]))};
-        }
-    }
-    else {
-        slots = childrenIndicesForSlots;
-    }
-    
-    // When we parse an "if" guarded case pattern, we don't want 2 slots structures, we have only 1 and the operator between them is "if"
-    if(frameType == AllFrameTypesIdentifier.case && Array.isArray(childrenIndicesForSlots) && childrenIndicesForSlots.length > 1){
-        slots[0].slotStructures.fields.push(...slots[1].slotStructures.fields);
-        slots[0].slotStructures.operators.push({code: "if"}, ...slots[1].slotStructures.operators);
-    }
-
-    const frame = makeFrame(frameType, slots, s.isSPY);    
-    s = addFrame(frame, applyIndex(p, keywordIndexForLineno).lineno, s);
-    const frameChildren = children(p);
-    const afterChild = copyFramesFromPython(frameChildren[childIndexForBody], {...s, addToNonJoint: frame.childrenIds, addToJoint: undefined, parent: frame, transformTopComment: transformTopComment ? ((s) => transformTopComment(s, frame)) : undefined});
-    s = {...s, nextId: afterChild.nextId, lastLineProcessed: afterChild.lastLineProcessed};
-    return {s: s, frame: frame};
-}
-
-// Process the given node in the tree at the current point designed by CopyState
-function removeFirstFuncParam(params: LabelSlotsContent) {
-    if (params && params.slotStructures.fields.length == 1) {
-        // We need to keep a field, but we blank the content:
-        (params.slotStructures.fields[0] as BaseSlot).code = "";
-    }
-    else if (params && params.slotStructures.fields.length > 1) {
-        // We can just delete the first item and first operator, and rest can stay:
-        params.slotStructures.fields.splice(0, 1);
-        params.slotStructures.operators.splice(0, 1);
-    }
-}
-
-// Returns a copy state, including the frame ID of the next insertion point for any following statements
-function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState {
-    switch (p.type) {
-    case Sk.ParseTables.sym.file_input:
-        // The outer wrapper for the whole file, just dig in:
-        for (const child of children(p)) {
-            s = copyFramesFromPython(child, s);
-        }
-        break;
-    case Sk.ParseTables.sym.stmt:
-    case Sk.ParseTables.sym.simple_stmt:
-    case Sk.ParseTables.sym.small_stmt:
-    case Sk.ParseTables.sym.flow_stmt:
-    case Sk.ParseTables.sym.compound_stmt:
-    case Sk.ParseTables.sym.import_stmt:
-    case Sk.ParseTables.sym.case_stmt:        
-        // Wrappers where we just skip to the children:
-        for (const child of children(p)) {
-            s = copyFramesFromPython(child, s);
-            // After the first, it's no longer the top comment:
-            s.transformTopComment = undefined;
-        }
-        break;
-    case Sk.ParseTables.sym.expr_stmt:
-        if (p.children) {
-            const index = p.children.findIndex((x) => x.value === "=");
-            const augIndex = p.children.findIndex((x) => x.type === Sk.ParseTables.sym.augassign);
-            if (index >= 0) {
-                checkValidMatchContent(s.parent?.frameType.type, p.lineno);
-                // An assignment
-                const lhs = toSlots({...p, children: p.children.slice(0, index)});
-                const rhs = toSlots({...p, children: p.children.slice(index + 1)});
-                s = addFrame(makeFrame(AllFrameTypesIdentifier.varassign, {0: {slotStructures: lhs}, 1: {slotStructures: rhs}}, s.isSPY), p.lineno, s);
-            }
-            else if (augIndex >= 0) {
-                checkValidMatchContent(s.parent?.frameType.type, p.lineno);
-                // Strype has no dedicated frame for augmented assignment (e.g. "a += b"), so we
-                // expand it into the equivalent "a = a + b" instead. This isn't behaviour-compliant
-                // for targets with side effects (e.g. "a().x += b" would evaluate "a()" twice) but
-                // that's an accepted, unlikely-to-occur limitation.
-                const lhs = toSlots({...p, children: p.children.slice(0, augIndex)});
-                const rhsOperand = toSlots({...p, children: p.children.slice(augIndex + 1)});
-                // Strip the trailing "=" from e.g. "+=" to get the underlying operator "+":
-                const op = digValue(p.children[augIndex]).slice(0, -1);
-                const bracketedRhsOperand = isSimpleAugAssignOperand(rhsOperand) ? rhsOperand :
-                    {fields: [{code: ""}, {...rhsOperand, openingBracketValue: "("}, {code: ""}], operators: [{code: ""}, {code: ""}]};
-                const rhs = concatSlots(cloneDeep(lhs), op, bracketedRhsOperand);
-                s = addFrame(makeFrame(AllFrameTypesIdentifier.varassign, {0: {slotStructures: lhs}, 1: {slotStructures: rhs}}, s.isSPY), p.lineno, s);
-            }
-            else {
-                const slots = toSlots(p);
-                if (slots.fields.length == 1 && (slots.fields[0] as BaseSlot)?.code && (slots.fields[0] as BaseSlot).code.startsWith(STRYPE_COMMENT_PREFIX)) {
-                    // A single line comment: we retrieve and decode the comment part following the STRYPE_COMMENT_PREFIX placeholder.
-                    const comment = fromUnicodeEscapes((slots.fields[0] as BaseSlot).code.slice(STRYPE_COMMENT_PREFIX.length));
-                    s = addFrame(makeFrame(AllFrameTypesIdentifier.comment, {0: {slotStructures: {fields: [{code: comment}], operators: []}}}, s.isSPY), p.lineno, s);    
-                }
-                else if (slots.fields.length == 1 && (slots.fields[0] as BaseSlot)?.code && (slots.fields[0] as BaseSlot).code.startsWith(STRYPE_LIBRARY_PREFIX)) {
-                    checkValidMatchContent(s.parent?.frameType.type, p.lineno);
-                    const library = fromUnicodeEscapes((slots.fields[0] as BaseSlot).code.slice(STRYPE_LIBRARY_PREFIX.length));
-                    s = addFrame(makeFrame(AllFrameTypesIdentifier.library, {0: {slotStructures: {fields: [{code: library}], operators: []}}}, s.isSPY), p.lineno, s);
-                }
-                else if (slots.fields.length == 1 && (slots.fields[0] as BaseSlot)?.code && (slots.fields[0] as BaseSlot).code === STRYPE_WHOLE_LINE_BLANK) {
-                    // Blanks are not allowed directly inside class defs:
-                    if (s.parent?.frameType.type != AllFrameTypesIdentifier.classdef) {
-                        s = addFrame(makeFrame(AllFrameTypesIdentifier.blank, {}, s.isSPY), p.lineno, s);
-                    }
-                }
-                else {
-                    // Everything else goes in method call:
-                    checkValidMatchContent(s.parent?.frameType.type, p.lineno);
-                    const misc = makeFrame(AllFrameTypesIdentifier.funccall, {0: {slotStructures: slots}}, s.isSPY);
-                    if (misc.frameType.type == AllFrameTypesIdentifier.comment && s.transformTopComment) {
-                        s.transformTopComment(misc.labelSlotsDict[0].slotStructures);
-                        s = {...s, transformTopComment: undefined};
-                    }
-                    else {
-                        s = addFrame(misc, p.lineno, s);
-                    }
-                }
-            }
-        }
-        break;
-    case Sk.ParseTables.sym.pass_stmt:
-        // We do not insert pass frames.  But we do record the line number
-        // because it may matter for processing following comments:
-        s = {...s, lastLineProcessed: p.lineno};
-        break;
-    case Sk.ParseTables.sym.break_stmt:
-        s = addFrame(makeFrame(AllFrameTypesIdentifier.break, {}, s.isSPY), p.lineno, s);
-        break;
-    case Sk.ParseTables.sym.continue_stmt:
-        s = addFrame(makeFrame(AllFrameTypesIdentifier.continue, {}, s.isSPY), p.lineno, s);
-        break;
-    case Sk.ParseTables.sym.global_stmt:
-        // Global construct can include several comma-separated variables
-        // (first child at index 0 is "global" itself)
-        const globalVarsStruct = toSlots({...p, children: p.children?.slice(1)??null});
-        s = addFrame(makeFrame(AllFrameTypesIdentifier.global, {0: {slotStructures: globalVarsStruct}}, s.isSPY), p.lineno, s);
-        break;
-    case Sk.ParseTables.sym.import_name:
-        s = addFrame(makeFrame(AllFrameTypesIdentifier.import, {0: {slotStructures: toSlots(children(p)[1])}}, s.isSPY), p.lineno, s);
-        break;
-    case Sk.ParseTables.sym.import_from:
-        s = addFrame(makeFrame(AllFrameTypesIdentifier.fromimport, {0: {slotStructures: toSlots(children(p)[1])}, 1: {slotStructures: toSlots(children(p)[3])}}, s.isSPY), p.lineno, s);
-        break;
-    case Sk.ParseTables.sym.raise_stmt:
-        // Raise may or may not have an expression child after it:
-        if (children(p).length >= 2) {
-            s = addFrame(makeFrame(AllFrameTypesIdentifier.raise, {0: {slotStructures: toSlots(children(p)[1])}}, s.isSPY), p.lineno, s);
-        }
-        else {
-            s = addFrame(makeFrame(AllFrameTypesIdentifier.raise, {0: {slotStructures: {fields: [{code: ""}], operators: []}}}, s.isSPY), p.lineno, s);
-        }
-        break;
-    case Sk.ParseTables.sym.return_stmt:
-        // Return may or may not have an expression child after it:
-        if (children(p).length >= 2) {
-            s = addFrame(makeFrame(AllFrameTypesIdentifier.return, {0: {slotStructures: toSlots(children(p)[1])}}, s.isSPY), p.lineno, s);
-        }
-        else {
-            s = addFrame(makeFrame(AllFrameTypesIdentifier.return, {0: {slotStructures: {fields: [{code: ""}], operators: []}}}, s.isSPY), p.lineno, s);
-        }
-        break;
-    case Sk.ParseTables.sym.if_stmt: {
-        // First child is keyword, second is the condition, third is colon, fourth is body
-        const r = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.if, 0,[1], 3, s);
-        s = r.s;
-        const ifFrame = r.frame;
-        
-        // If can have elif, else, so keep going to check for that:
-        for (let i = 4; i < children(p).length; i++) {
-            if (children(p)[i].value === "else") {
-                // Skip the else and the colon, which are separate tokens:
-                i += 2;
-                updateFrom(s, makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.else, i - 2,[], i, {...s, addToJoint: ifFrame.jointFrameIds, jointParent: ifFrame}).s);
-            }
-            else if (children(p)[i].value === "elif") {
-                // Skip the elif:
-                i += 1;
-                updateFrom(s, makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.elif, i - 1,[i], i + 2, {...s, addToJoint: ifFrame.jointFrameIds, jointParent: ifFrame}).s);
-                // Skip the condition and the colon:
-                i += 2;
-            }
-        }
-        break;
-    }
-    case Sk.ParseTables.sym.while_stmt: {
-        // First child is keyword, second is the condition, third is colon, fourth is body
-        const r = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.while, 0, [1], 3, s);
-        s = r.s;
-        let i = 3;
-        if (children(p).length >= 5 && children(p)[4].value === "else") {
-            // Skip the else and the colon, which are separate tokens:
-            i += 3;
-            updateFrom(s, makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.else, 4,[], i, {
-                ...s,
-                addToJoint: r.frame.jointFrameIds,
-                jointParent: r.frame,
-            }).s);
-        }
-        break;
-    }
-    case Sk.ParseTables.sym.for_stmt: {
-        // First child is keyword, second is the loop var, third is keyword, fourth is collection, fifth is colon, sixth is body
-        const r = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.for, 0, [1, 3], 5, s);
-        s = r.s;
-        let i = 5;
-        if (children(p).length >= 7 && children(p)[6].value === "else") {
-            // Skip the else and the colon, which are separate tokens:
-            i += 3;
-            updateFrom(s, makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.else, 6,[], i, {
-                ...s,
-                addToJoint: r.frame.jointFrameIds,
-                jointParent: r.frame,
-            }).s);
-        }
-        break;
-    }
-    case Sk.ParseTables.sym.try_stmt: {
-        // First is keyword, second is colon, third is body
-        const r = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.try, 0, [], 2, s);
-        const tryFrame = r.frame;
-        s = r.s;
-        
-        // The except clauses are descendants of the try block, so we must iterate through later children:
-        for (let i = 3; i < children(p).length; i++) {
-            const child = children(p)[i];
-            if (child.type === Sk.ParseTables.sym.except_clause) {
-                // The first child is except keyword.  Everything else is optional, so we have three options:
-                // - Blank except
-                // - Except with single argument
-                // - Except with "x as y" (which we shove into one slot)
-                const grandchildren = children(child);
-                let exceptFrame;
-                if (grandchildren.length == 4 && grandchildren[2].value === "as") {
-                    // except ErrorType as varName:
-                    exceptFrame = makeFrame(AllFrameTypesIdentifier.except, {0: {slotStructures:
-                                concatSlots(toSlots(grandchildren[1]), "as", toSlots(grandchildren[3])),
-                    }}, s.isSPY);
-                }
-                else if (grandchildren.length == 2) {
-                    // except varName:
-                    const asSlots = toSlots(grandchildren[1]);
-                    if (asSlots.fields.length == 1 && (asSlots.fields[0] as BaseSlot)?.code == STRYPE_DUMMY_FIELD) {
-                        exceptFrame = null;
-                    }
-                    else {
-                        exceptFrame = makeFrame(AllFrameTypesIdentifier.except, {0: {slotStructures: asSlots}}, s.isSPY);
-                    }
-                }
-                else if (grandchildren.length == 1) {
-                    // Just the except keyword, i.e. blank except:
-                    exceptFrame = makeFrame(AllFrameTypesIdentifier.except, {0: {slotStructures: {fields: [{code: ""}], operators: []}}}, s.isSPY);
-                }
-                else {
-                    // Shouldn't happen, but skip if so:
-                    continue;
-                }
-                if (exceptFrame) {
-                    updateFrom(s, addFrame(exceptFrame, getRealLineNo(child), {...s, addToJoint: tryFrame.jointFrameIds, jointParent: tryFrame}));
-                    // The children of the except actually follow as a sibling of the clause, after the colon (hence i + 2):
-                    if (s.lastLineProcessed != undefined) {
-                        updateFrom(s, copyFramesFromPython(children(p)[i + 2], {...s, addToNonJoint: exceptFrame.childrenIds, parent: exceptFrame}));
-                    }
-                }
-                else if (s.lastLineProcessed) {
-                    // We know it's dummy header + pass body, so just add two:
-                    s.lastLineProcessed += 2;
-                }
-            }
-            else if (child.value === "finally") {
-                // Weirdly, finally doesn't seem to have a proper node type, it's just a normal child
-                // followed by a colon followed by a body
-                updateFrom(s, makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.finally, i, [], i + 2, {...s, addToJoint: tryFrame.jointFrameIds, jointParent: tryFrame}).s);
-            }
-            else if (child.value === "else") {
-                // else is the same as finally, a normal child then colon then body:
-                updateFrom(s, makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.else, i, [], i + 2, {...s, addToJoint: tryFrame.jointFrameIds, jointParent: tryFrame}).s);
-            }
-        }
-        break;
-    }
-    case Sk.ParseTables.sym.with_stmt:
-        // First child is keyword, second is with_item that has [LHS, "as", RHS] as children, third is colon, fourth is body
-        s = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.with, 0, [[1, 0], [1, 2]], 3, s).s;
-        break;
-    case Sk.ParseTables.sym.suite:
-        // I don't really understand what this item is (it seems to have the raw content as extra children),
-        // but it seems if we ignore these extra children we can proceed and it will all work:
-        for (const child of children(p)) {
-            if (child.type > 250) { // Only count the non-expression nodes
-                s = copyFramesFromPython(child, s);
-            }
-        }
-        break;
-    case Sk.ParseTables.sym.funcdef: {
-        // First child is keyword, second is the name, third is params, fourth is colon, fifth is body
-        const r = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.funcdef, 0, [1, 2], 4, s, (comment : SlotsStructure, frame : FrameObject) => {
-            frame.labelSlotsDict[3] = {slotStructures: comment};
-        });
-        s = r.s;
-        // If we didn't find a top comment, add blank:
-        if (!(3 in r.frame.labelSlotsDict)) {
-            r.frame.labelSlotsDict[3] = {slotStructures: {operators: [], fields: [{code: ""}]}};
-        }
-        if (s.parent?.frameType.type == AllFrameTypesIdentifier.classdef) {
-            // We remove the first param from the start of function params,
-            // assuming it is the self parameter that we add automatically.
-            const params = r.frame.labelSlotsDict[1];
-
-            removeFirstFuncParam(params);
-        }
-        break;
-    }
-    case Sk.ParseTables.sym.classdef: {
-        // First child is keyword, second is the name, penultimate is colon, last is body.
-        // If there are parent classes, third is open-bracket, fourth is content, fifth is close bracket
-        // However, this doesn't work with makeAndAddFrameWithBody because the way we deal with parent classes
-        // is to add them as a bracketed item inside the single name slot.  So we need to do some custom work:
-        const numChildren = children(p).length;
-        const slots : { [index: number]: LabelSlotsContent} = {};
-        if (numChildren == 4) {
-            // No parent, just the name:
-            slots[0] = {slotStructures: toSlots(applyIndex(p, 1))};
-        }
-        else {
-            // There are brackets with parent names:
-            const name = toSlots(applyIndex(p, 1));
-            const parent = toSlots(applyIndex(p, 3));
-            parent.openingBracketValue = "(";
-            // Now we need to combine them:
-            name.fields.push(parent, {code: ""});
-            name.operators.push({code: ""}, {code: ""});
-            slots[0] = {slotStructures: name};
-        }
-        const r = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.classdef, 0, slots, numChildren - 1, s, (comment : SlotsStructure, frame : FrameObject) => {
-            frame.labelSlotsDict[2] = {slotStructures: comment};
-        });
-        s = r.s;
-        // If we didn't find a top comment, add blank:
-        if (!(2 in r.frame.labelSlotsDict)) {
-            r.frame.labelSlotsDict[2] = {slotStructures: {operators: [], fields: [{code: ""}]}};
-        }
-        break;
-    }
-    case Sk.ParseTables.sym.match_stmt: {
-        // First child is keyword, second is the expression to evaluate, third is colon, forth is body.
-        // This case not supported by original Skulpt version - so to limit the changes in Skulpt, the Skulpt parser
-        // is permissive and allows cases (normal) + pass (for us) + simple statements (for us).
-        // The simple statements are therefore limiting the accepted content to things like "a", "a()", "a=b", but not if or while etc.
-        // So we make a check in checkValidMatchContent() when parsing the children of a match statement to cover the permissive Skupt version.
-        const r = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.match, 0, [1], 3, s);
-        s = r.s;
-        break;
-    }
-    case Sk.ParseTables.sym.case_block: {
-        // (case not supported by upstream Skulpt version)
-        // First child is keyword, second is the pattern expression, then the remaining parts depends whether we have an "if" guard:
-        let r;
-        if((p.children?.length??0) > 5){
-            // There is an "if" guard:
-            // third is the "if" keyword, 
-            // forth the guard expression,
-            // fifth is the colon
-            // sixth is the body (of "case")
-            r = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.case, 0, [1, 3], 5, s);
-        }
-        else{
-            // There is not an "if" guard:
-            // third is the colon, 
-            // forth is the body
-            r = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.case, 0, [1], 3, s);
-        }
-        s = r.s;
-        break;
-    }
-    }
-    return s;
-}
-
 // ---------------------------------------------------------------------------------------------
-// New tree-sitter-based statement walker (replaces copyFramesFromPython() above once complete
-// and validated -- see docs/replace-skulpt-parser/PLAN.md §3 step 4). Not wired into
-// copyFramesFromParsedPython() yet: that still calls the Skulpt-based version above. Driven by
-// tree-sitter's field API instead of positional child indices, and by nodeToSlots()/
-// flattenChildren() (pythonToFramesExpr.ts) for expression content and getBlockItems()
-// (pythonToFramesBlockWalk.ts) for blank-line/comment recovery -- see those modules' own doc
-// comments for the design rationale. Can't be unit-tested standalone the way those two modules
-// are (it needs makeFrame()/addFrame(), which need real FrameObject/i18n machinery), so -- like
-// the Skulpt-based version it replaces -- its correctness is validated via the existing e2e
-// paste/load suites once wired in, not via Playwright-as-unit-test specs.
+// The tree-sitter-based statement walker: driven by tree-sitter's field API instead of
+// positional child indices, and by nodeToSlots()/flattenChildren() (pythonToFramesExpr.ts) for
+// expression content and getBlockItems() (pythonToFramesBlockWalk.ts) for blank-line/comment
+// recovery -- see those modules' own doc comments for the design rationale. Can't be
+// unit-tested standalone the way those two modules are (it needs makeFrame()/addFrame(), which
+// need real FrameObject/i18n machinery), so its correctness is validated via the existing e2e
+// paste/load suites instead, not via Playwright-as-unit-test specs.
 // ---------------------------------------------------------------------------------------------
 
 const spyDirectiveRegex = new RegExp("^" + escapeRegExp(AppSPYFullPrefix) + "([^:]+):(.*)$");
@@ -1494,6 +847,19 @@ function copyWithStatement(node: TSSyntaxNode, s: CopyState) : CopyState {
     return s;
 }
 
+// Blanks/removes a method's leading "self" parameter (Strype adds it automatically for methods,
+// so it shouldn't be shown as an explicit param): keeps a single field but blanks its content if
+// it's the only param, otherwise drops it (and its following operator) entirely.
+function removeFirstFuncParam(params: LabelSlotsContent) {
+    if (params && params.slotStructures.fields.length == 1) {
+        (params.slotStructures.fields[0] as BaseSlot).code = "";
+    }
+    else if (params && params.slotStructures.fields.length > 1) {
+        params.slotStructures.fields.splice(0, 1);
+        params.slotStructures.operators.splice(0, 1);
+    }
+}
+
 function copyFunctionDefinition(node: TSSyntaxNode, s: CopyState) : CopyState {
     const name = node.childForFieldName("name");
     const parameters = node.childForFieldName("parameters");
@@ -1584,10 +950,10 @@ function copyMatchStatement(node: TSSyntaxNode, s: CopyState) : CopyState {
         throw new Error("Malformed match_statement: " + node.text);
     }
     // Unlike the old code's customised, permissive Skulpt grammar (which allowed bare simple
-    // statements directly under a match block, requiring checkValidMatchContent() to reject them
-    // after the fact), standard tree-sitter-python's match_statement.body structurally only
-    // accepts case_clauses -- anything else comes back as an ERROR node, which the (not yet
-    // written) error-reporting step will surface, so no equivalent check is needed here.
+    // statements directly under a match block, requiring a dedicated post-hoc check to reject
+    // them), standard tree-sitter-python's match_statement.body structurally only accepts
+    // case_clauses -- anything else comes back as an ERROR node, which findFirstErrorNode()
+    // surfaces via the generic "Invalid Python code" error, so no equivalent check is needed here.
     const matchFrame = makeFrame(AllFrameTypesIdentifier.match, {0: {slotStructures: nodeToSlots(subject)}}, s.isSPY);
     s = addFrame(matchFrame, tsLineno(node), s);
     updateFrom(s, copyBlockBody(body, node, {...s, addToNonJoint: matchFrame.childrenIds, addToJoint: undefined, parent: matchFrame, transformTopComment: undefined}));
@@ -1675,7 +1041,7 @@ function copyFramesFromTreeSitterNode(node: TSSyntaxNode, s: CopyState) : CopySt
     case "case_clause":
         return copyCaseClause(node, s);
     case "decorated_definition":
-        // Decorators are confirmed unsupported -- see PLAN.md §1:
+        // Decorators are confirmed unsupported -- Strype's frame model has no representation for them:
         throw new UnsupportedConstructError("Decorators are not supported");
     default:
         // Anything else (del, assert, nonlocal, a module-level yield/await, etc.) is grammatically
@@ -2161,13 +1527,3 @@ const transformTripleQuotesStrings = (slots: {[index: number]: LabelSlotsContent
     Object.values(slots).forEach((slotsStruct) => doTransformTripleQuotesStringsOnSlotStructs(slotsStruct.slotStructures));
 };
 
-const checkValidMatchContent = (parentType?: string, lineno?: number): void => {
-    // See copyFramesToPyton() - case Sk.ParseTables.sym.match_stmt - for why we need this.
-    // This method is only to be called on ambigious cases allowed by Skulpt permissibilty :
-    // normal cases or handled Strype comments or handled Strype blank lines are parsed anyway.
-    // If we are in a match statement (parentType is set and is for "match"), we return an error.
-    if(parentType == AllFrameTypesIdentifier.match){
-        // Error format to match what's expected in copyFramesFromParsedPython        
-        throw {$msg: {$mangled: i18n.global.t("messageBannerMessage.invalidMatchStmtContent")}, traceback: [{lineno: lineno}]};
-    }
-};

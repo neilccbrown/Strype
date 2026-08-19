@@ -5,8 +5,8 @@ import { concatSlots, replaceMediaLiteralsAndInvalidOps, fromUnicodeEscapes, STR
 
 type SyntaxNode = Parser.SyntaxNode;
 
-// The tree-sitter-based replacement for pythonToFrames.ts's toSlots()/parseNextTerm()/digValue().
-// See docs/replace-skulpt-parser/PLAN.md §3 step 4.
+// The tree-sitter-based replacement for pythonToFrames.ts's old, now-deleted
+// toSlots()/parseNextTerm()/digValue().
 //
 // Key structural difference from the old Skulpt-based version: Skulpt's grammar produced a flat
 // token sequence per precedence level (so the old code had to manually walk operators/operands
@@ -181,8 +181,8 @@ export function nodeToSlots(node : SyntaxNode) : SlotsStructure {
         return stringNodeToSlots(node);
     }
     if (node.type === "named_expression") {
-        // Walrus operator (:=) -- deliberately kept unsupported, per the migration's decision to
-        // keep the parser swap scope-neutral (see PLAN.md §5):
+        // Walrus operator (:=) -- deliberately kept unsupported, to keep the Skulpt->tree-sitter
+        // parser swap itself scope-neutral (no new frame types/behaviour, just a different parser):
         throw new UnsupportedConstructError("The walrus operator (:=) is not supported");
     }
     if (node.type === "yield") {

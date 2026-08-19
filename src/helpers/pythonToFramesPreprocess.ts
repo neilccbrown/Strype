@@ -1,15 +1,15 @@
 import { escapeRegExp } from "lodash";
 import { AppSPYFullPrefix } from "@/helpers/spyPrefix";
 
-// The much thinner preprocessing pass for the web-tree-sitter based parser (see
-// docs/replace-skulpt-parser/PLAN.md §2). Unlike the old Skulpt-era transformCommentsAndBlanks(),
-// this only handles the one genuinely non-Python, Strype-specific syntax that must be stripped
-// from the source text *before* parsing: the "#(=> Disabled:" prefix, which is not a standalone
-// comment but a prefix in front of a real code line. Everything else that transformCommentsAndBlanks()
-// used to handle by disguising as fake identifier statements -- comments (including the
-// Library:/LibraryDisabled:/FrameState: directive comments), blank lines, and triple-quoted strings
-// -- are real, correctly-positioned nodes in tree-sitter's output, so they're recovered by walking
-// the parsed tree afterwards instead (in copyFramesFromPython), not here.
+// The much thinner preprocessing pass for the web-tree-sitter based parser. Unlike the old
+// Skulpt-era transformCommentsAndBlanks(), this only handles the one genuinely non-Python,
+// Strype-specific syntax that must be stripped from the source text *before* parsing: the
+// "#(=> Disabled:" prefix, which is not a standalone comment but a prefix in front of a real
+// code line. Everything else that transformCommentsAndBlanks() used to handle by disguising as
+// fake identifier statements -- comments (including the Library:/LibraryDisabled:/FrameState:
+// directive comments), blank lines, and triple-quoted strings -- are real, correctly-positioned
+// nodes in tree-sitter's output, so they're recovered by walking the parsed tree afterwards
+// instead (getBlockItems()/processBlockItems() in pythonToFrames.ts), not here.
 export interface PreprocessResult {
     source: string; // The source text, ready to feed to the tree-sitter parser
     disabledLines: number[]; // One-based line numbers (into `source`) that had a Disabled: prefix
