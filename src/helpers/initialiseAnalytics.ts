@@ -1,5 +1,5 @@
 import { settingsStore } from "@/store/store";
-import { onAnalyticsPageUnload, startSessionTracking } from "@/helpers/sessionTracker";
+import { onAnalyticsPageHidden, onAnalyticsPageUnload, startSessionTracking } from "@/helpers/sessionTracker";
 import { Analytics_batch_flush_ms } from "@/helpers/analyticsConstants";
 import {
     analyticsState,
@@ -35,7 +35,7 @@ export function initialiseAnalytics(): void {
     window.addEventListener("pagehide", onAnalyticsPageUnload);
     document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "hidden") {
-            onAnalyticsPageUnload();
+            onAnalyticsPageHidden();
         }
     });
 }
