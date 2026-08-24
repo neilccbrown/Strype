@@ -680,6 +680,7 @@ export default defineComponent({
                                         // Change the type of frame to varassign and adapt the content
                                         // (when we change the state in this next line, we need to COPY the FrameType object otherwise undo/redo makes weird changes in the commands)
                                         this.appStore.frameObjects[this.frameId].frameType = cloneDeep(getFrameDefType(AllFrameTypesIdentifier.varassign));
+                                        this.appStore.trackFrameConvert(AllFrameTypesIdentifier.varassign);
                                         const newContent: { [index: number]: LabelSlotsContent} = {
                                             // LHS
                                             0: {
@@ -995,6 +996,7 @@ export default defineComponent({
             // Change the type of frame (when we change the state in this next line, we need to COPY
             // the FrameType object otherwise undo/redo makes weird changes in the commands)
             this.appStore.frameObjects[this.frameId].frameType = cloneDeep(getFrameDefType(def.targetType));
+            this.appStore.trackFrameConvert(def.targetType);
 
             const rawRemainder = uiLiteralCode.slice(keywordLen + separatorLength);
 

@@ -25,6 +25,8 @@ import {
     initAnalyticsSession,
     initAnalyticsUserId,
     trackAnalyticsLocaleChange,
+    trackFrameConvert,
+    trackFrameInsert,
     trackInputCall,
     trackMenuAction,
     trackOutputChars,
@@ -722,6 +724,14 @@ export const useStore = defineStore("app", {
 
         trackStorageLocation(target: StrypeSyncTarget) {
             trackStorageLocation(target);
+        },
+
+        trackFrameInsert(frameType: string, method: "shortcut" | "typed") {
+            trackFrameInsert(frameType, method);
+        },
+
+        trackFrameConvert(toType: string) {
+            trackFrameConvert(toType);
         },
 
         updateKeyModifiers(e: KeyboardEvent | MouseEvent) {

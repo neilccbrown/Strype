@@ -57,6 +57,7 @@ export default defineComponent({
                 const addFrameCommandType = findAddCommandFrameType(this.shortcut, this.index);
                 if(addFrameCommandType != null){
                     this.appStore.addFrameWithCommand(addFrameCommandType);
+                    this.appStore.trackFrameInsert(addFrameCommandType.type, "shortcut");
                 }
             }
         },
