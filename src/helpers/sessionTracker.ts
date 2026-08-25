@@ -48,10 +48,11 @@ function sendSessionEndSnapshot(): void {
     flushAnalyticsQueue("unload");
 }
 
-/** Runs once per genuine page unload (beforeunload/pagehide): final tick, session_end event, then
- * flush the queue. Guarded against double-firing since both events can fire for the same navigation,
- * and against firing again after a "hidden" checkpoint (below) -- once the page is genuinely gone,
- * nothing will observe a further event anyway. */
+/** Runs once per genuine page unload (beforeunload, or pagehide with event.persisted false --
+ * see initialiseAnalytics.ts's pagehide listener): final tick, session_end event, then flush the
+ * queue. Guarded against double-firing since beforeunload and a non-persisted pagehide can both fire
+ * for the same navigation, and against firing again after a "hidden"/persisted-pagehide checkpoint
+ * (below) -- once the page is genuinely gone, nothing will observe a further event anyway. */
 export function onAnalyticsPageUnload(): void {
     if (finalUnloadHandled) {
         return;
@@ -60,15 +61,18 @@ export function onAnalyticsPageUnload(): void {
     sendSessionEndSnapshot();
 }
 
-/** Tab merely hidden (switched away from, minimized, backgrounded) -- NOT necessarily final: unlike
- * beforeunload/pagehide, this fires on an ordinary tab switch and the page can easily still be
- * revisited hours or days later if the user just leaves it open in the background (confirmed via a
- * DB query: ~17% of sessions had real activity events timestamped after their own session_end, with
- * gaps averaging ~4 hours and reaching over two weeks -- consistent with long-lived backgrounded tabs,
- * not genuinely-ended sessions). So this sends a checkpoint session_end (the server upserts sessions
- * to the latest values it receives, so a later, more accurate one still wins) without setting
+/** The page is merely hidden/suspended for now, NOT genuinely gone -- covers both an ordinary tab
+ * switch (visibilitychange -> "hidden") and a pagehide with event.persisted true (the page is being
+ * frozen into the browser's back/forward cache, not destroyed, and can be fully restored later --
+ * e.g. via the Back button -- with this same JS state, including finalUnloadHandled, intact). Either
+ * way the page can easily still be revisited (in the tab-switch case, potentially hours or days
+ * later if the user just leaves it open in the background: confirmed via a DB query, ~17% of
+ * sessions had real activity events timestamped after their own session_end, with gaps averaging
+ * ~4 hours and reaching over two weeks -- consistent with long-lived backgrounded tabs, not
+ * genuinely-ended sessions). So this sends a checkpoint session_end (the server upserts sessions to
+ * the latest values it receives, so a later, more accurate one still wins) without setting
  * finalUnloadHandled -- unlike onAnalyticsPageUnload, it deliberately doesn't self-guard against
- * repeat calls, so it can keep checkpointing every time the tab goes back into the background. */
+ * repeat calls, so it can keep checkpointing every time the page goes back into the background. */
 export function onAnalyticsPageHidden(): void {
     if (finalUnloadHandled) {
         return;
