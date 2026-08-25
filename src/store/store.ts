@@ -726,7 +726,7 @@ export const useStore = defineStore("app", {
             trackStorageLocation(target);
         },
 
-        trackFrameInsert(frameType: string, method: "shortcut" | "typed") {
+        trackFrameInsert(frameType: string, method: "shortcut_key" | "shortcut_mouse" | "typed") {
             trackFrameInsert(frameType, method);
         },
 

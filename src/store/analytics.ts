@@ -197,11 +197,15 @@ export function trackUsedBookProject(projectName: string, chapter: string): void
     enqueueAnalyticsEvent("book_project_used", {projectName: cleanName, chapter});
 }
 
-// How a frame was inserted: an explicit shortcut/command choice (keyboard shortcut key, frame
-// commands pane, or a click on an AddFrameCommand button) vs. organic typing at the bare frame caret
-// (which creates an empty func-call frame -- frameType is always "funccall" for this method; its
-// eventual real type, if any, shows up separately via trackFrameConvert).
-export function trackFrameInsert(frameType: string, method: "shortcut" | "typed"): void {
+// How a frame was inserted: an explicit shortcut/command choice -- either "shortcut_key" (a direct
+// keyboard shortcut at the bare frame caret, or a letter shortcut typed while the frame commands pane
+// is focused -- see insertFrameForShortcutKey, Commands.vue) or "shortcut_mouse" (a genuine mouse
+// click on an AddFrameCommand button -- see its own onClick for how Enter-confirm and the "Insert
+// frame" context-menu item, which both also end up clicking that same button programmatically, are
+// folded into "shortcut_key" instead) -- vs. "typed", organic typing at the bare frame caret (which
+// creates an empty func-call frame -- frameType is always "funccall" for this method; its eventual
+// real type, if any, shows up separately via trackFrameConvert).
+export function trackFrameInsert(frameType: string, method: "shortcut_key" | "shortcut_mouse" | "typed"): void {
     enqueueAnalyticsEvent("frame_insert", {frameType, method});
 }
 

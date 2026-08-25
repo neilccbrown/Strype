@@ -866,7 +866,7 @@ export default defineComponent({
                                 this.appStore.addFrameWithCommand(getFrameDefType(AllFrameTypesIdentifier.funccall)).then(() => {
                                     document.activeElement?.dispatchEvent(new KeyboardEvent("keydown",{key: " ", ctrlKey: true}));
                                 });
-                                this.appStore.trackFrameInsert(AllFrameTypesIdentifier.funccall, "shortcut");
+                                this.appStore.trackFrameInsert(AllFrameTypesIdentifier.funccall, "shortcut_key");
                             }
                         }
                     }
@@ -989,7 +989,7 @@ export default defineComponent({
                 // Adding a shorthand frame required to 1) add the frame itself
                 const shorthandDef = hiddenShorthandFrames[eventKeyLowCase];
                 this.appStore.addFrameWithCommand(shorthandDef.type, shorthandDef);
-                this.appStore.trackFrameInsert(shorthandDef.type.type, "shortcut");
+                this.appStore.trackFrameInsert(shorthandDef.type.type, "shortcut_key");
             }
             else{
                 // We can add the frame by its original shortcut or legacy one
@@ -998,7 +998,7 @@ export default defineComponent({
                     ? this.addFrameCommands[eventKeyLowCase][0].type
                     : (Object.values(this.addFrameCommands).find((addFrameCmdDef) => getLegacyShortcut(addFrameCmdDef[0]) == eventKeyLowCase) as AddFrameCommandDef[])[0].type;
                 this.appStore.addFrameWithCommand(resolvedType);
-                this.appStore.trackFrameInsert(resolvedType.type, "shortcut");
+                this.appStore.trackFrameInsert(resolvedType.type, "shortcut_key");
             }
             return true;
         },
