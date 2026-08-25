@@ -44,7 +44,6 @@
         "@types/object-hash": "^3.0.6",
         "@types/path-browserify": "^1.0.3",
         "@types/sortablejs": "^1.10.6",
-        "@types/splitpanes": "^2.2.6",
         "@vitejs/plugin-vue": "6.0.7",
         "@wsfe/vue-tree": "^4.1.1",
         "audiobuffer-to-wav": "^1.0.0",
