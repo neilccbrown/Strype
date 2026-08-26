@@ -197,6 +197,26 @@ export function trackUsedBookProject(projectName: string, chapter: string): void
     enqueueAnalyticsEvent("book_project_used", {projectName: cleanName, chapter});
 }
 
+// How a frame was inserted: an explicit shortcut/command choice -- either "shortcut_key" (a direct
+// keyboard shortcut at the bare frame caret, or a letter shortcut typed while the frame commands pane
+// is focused -- see insertFrameForShortcutKey, Commands.vue) or "shortcut_mouse" (a genuine mouse
+// click on an AddFrameCommand button -- see its own onClick for how Enter-confirm and the "Insert
+// frame" context-menu item, which both also end up clicking that same button programmatically, are
+// folded into "shortcut_key" instead) -- vs. "typed", organic typing at the bare frame caret (which
+// creates an empty func-call frame -- frameType is always "funccall" for this method; its eventual
+// real type, if any, shows up separately via trackFrameConvert).
+export function trackFrameInsert(frameType: string, method: "shortcut_key" | "shortcut_mouse" | "typed"): void {
+    enqueueAnalyticsEvent("frame_insert", {frameType, method});
+}
+
+// A func-call frame silently converted to another frame type because its typed content matched a
+// recognised keyword (keywordFrameConversions, LabelSlotsStructure.vue) or a variable assignment.
+// Virtually always follows a "typed" frame_insert -- a func-call created via its own explicit
+// shortcut and then retyped into another keyword is possible but rare enough not to distinguish here.
+export function trackFrameConvert(toType: string): void {
+    enqueueAnalyticsEvent("frame_convert", {toType});
+}
+
 export function trackStorageLocation(target: StrypeSyncTarget): void {
     let storageLocation: "local" | "cloud" | null = null;
     if (target == StrypeSyncTarget.fs) {

@@ -866,6 +866,7 @@ export default defineComponent({
                                 this.appStore.addFrameWithCommand(getFrameDefType(AllFrameTypesIdentifier.funccall)).then(() => {
                                     document.activeElement?.dispatchEvent(new KeyboardEvent("keydown",{key: " ", ctrlKey: true}));
                                 });
+                                this.appStore.trackFrameInsert(AllFrameTypesIdentifier.funccall, "shortcut_key");
                             }
                         }
                     }
@@ -986,16 +987,18 @@ export default defineComponent({
 
             if(isHiddenShorthandFrameCommand) {
                 // Adding a shorthand frame required to 1) add the frame itself
-                this.appStore.addFrameWithCommand(hiddenShorthandFrames[eventKeyLowCase].type, hiddenShorthandFrames[eventKeyLowCase]);
+                const shorthandDef = hiddenShorthandFrames[eventKeyLowCase];
+                this.appStore.addFrameWithCommand(shorthandDef.type, shorthandDef);
+                this.appStore.trackFrameInsert(shorthandDef.type.type, "shortcut_key");
             }
             else{
                 // We can add the frame by its original shortcut or legacy one
                 const isOriginalShortcut = (this.addFrameCommands[eventKeyLowCase] != undefined);
-                this.appStore.addFrameWithCommand(
-                    (isOriginalShortcut)
-                        ? this.addFrameCommands[eventKeyLowCase][0].type
-                        : (Object.values(this.addFrameCommands).find((addFrameCmdDef) => getLegacyShortcut(addFrameCmdDef[0]) == eventKeyLowCase) as AddFrameCommandDef[])[0].type
-                );
+                const resolvedType = (isOriginalShortcut)
+                    ? this.addFrameCommands[eventKeyLowCase][0].type
+                    : (Object.values(this.addFrameCommands).find((addFrameCmdDef) => getLegacyShortcut(addFrameCmdDef[0]) == eventKeyLowCase) as AddFrameCommandDef[])[0].type;
+                this.appStore.addFrameWithCommand(resolvedType);
+                this.appStore.trackFrameInsert(resolvedType.type, "shortcut_key");
             }
             return true;
         },
@@ -1018,6 +1021,7 @@ export default defineComponent({
             // the user is just typing (e.g. the start of "if"/"while"/"return"), and the frame may well
             // get converted away from func-call entirely once LabelSlotsStructure.vue's funccall->
             // keyword-frame/varassign conversion kicks in -- see skipFuncCallBrackets's own comment.
+            this.appStore.trackFrameInsert(AllFrameTypesIdentifier.funccall, "typed");
             this.appStore.addFrameWithCommand(getFrameDefType(AllFrameTypesIdentifier.funccall), undefined, true).then((newFrameId: number) => {
                 // Target the new frame's name slot explicitly (rather than document.activeElement):
                 // its own name slot isn't necessarily what ends up focused by the time this promise
