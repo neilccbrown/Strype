@@ -179,6 +179,7 @@ export default defineComponent({
     line-height: 1.5rem;
     text-align: right;
     font-size: 0.75em;
+    font-family: "Atkinson Hyperlegible Mono", monospace;
     opacity: 0.6;
     user-select: none;
 }
