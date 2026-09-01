@@ -2994,8 +2994,8 @@ export const settingsStore = defineStore("settings", {
             // on the project's locale.
             // The default state is undefined so we can detect real undefined locale to the default English...
             locale: undefined as undefined | string,
-            // How frame numbers should be displayed next to frame headers.
-            frameNumbersDisplay: "none" as "none" | "lhs" | "lhs-floating" | "topright",
+            // Whether frame numbers should be displayed next to frame headers.
+            frameNumbersEnabled: false,
             // Handler for saving the settings in LocalStorage (from Vue 3, we cannot directly access the App instance via vm.$children)
             // so we use a callback function App MUST supply instead
             saveSettingInLocalStorageHandler: null as null | ((r: SaveRequestReason) => void),
@@ -3003,8 +3003,8 @@ export const settingsStore = defineStore("settings", {
     },
 
     actions:{
-        setFrameNumbersDisplay(mode: "none" | "lhs" | "lhs-floating" | "topright") {
-            this.frameNumbersDisplay = mode;
+        setFrameNumbersEnabled(enabled: boolean) {
+            this.frameNumbersEnabled = enabled;
 
             // Save the settings
             if(this.saveSettingInLocalStorageHandler){

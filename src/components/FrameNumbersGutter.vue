@@ -22,13 +22,12 @@ import scssVars from "@/assets/style/_export.module.scss";
 //////////////////////
 //     Component    //
 //////////////////////
-// Renders frame numbers ("LHS" and "LHS floating" display modes) in a single vertical column
-// pinned to the left edge of the editor pane, regardless of how deeply each numbered frame is
-// nested. Since the numbers must stay visually aligned with their frame's header row despite
-// that row being nested arbitrarily deep (and thus not sharing a common left edge with the
-// gutter), we can't achieve this with pure CSS margins: instead we measure each header's actual
-// position and position each number to match, re-measuring whenever the editor's layout could
-// have changed.
+// Renders frame numbers in a single vertical column pinned to the left edge of the editor pane,
+// regardless of how deeply each numbered frame is nested. Since the numbers must stay visually
+// aligned with their frame's header row despite that row being nested arbitrarily deep (and thus
+// not sharing a common left edge with the gutter), we can't achieve this with pure CSS margins:
+// instead we measure each header's actual position and position each number to match,
+// re-measuring whenever the editor's layout could have changed.
 export default defineComponent({
     name: "FrameNumbersGutter",
 
@@ -45,13 +44,7 @@ export default defineComponent({
         ...mapStores(useStore, settingsStore),
 
         isGutterMode(): boolean {
-            return this.settingsStore.frameNumbersDisplay === "lhs" || this.settingsStore.frameNumbersDisplay === "lhs-floating";
-        },
-
-        // In "floating" mode, the numbers are corrected so that they don't shift as the frame
-        // cursor moves up/down the file (see recomputeOffsets() for how).
-        isFloatingMode(): boolean {
-            return this.settingsStore.frameNumbersDisplay === "lhs-floating";
+            return this.settingsStore.frameNumbersEnabled;
         },
 
         numberedFrameIds(): number[] {
@@ -151,7 +144,7 @@ export default defineComponent({
                 return;
             }
             const editorRect = editorDiv.getBoundingClientRect();
-            const activeCaret = this.isFloatingMode ? this.getActiveCaretTopAndHeight() : null;
+            const activeCaret = this.getActiveCaretTopAndHeight();
             const newOffsets: Record<number, number> = {};
             this.numberedFrameIds.forEach((frameId) => {
                 const headerEl = document.getElementById(getFrameHeaderUID(frameId));

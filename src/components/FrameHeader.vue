@@ -28,7 +28,6 @@
                 <!-- ^^ Note: append to frame label is same as prepend to slot -->
             </div>
             <div class="frame-controls-container">
-                <span :class="{'frame-number-topright': true, 'frame-number-selected': isFrameSelected}" v-if="showFrameNumberTopRight && groupIndex == 0 && frameNumber !== undefined">{{ frameNumber }}</span>
                 <div ref="frozenControl" :class="{'frozen-control': true, 'frozen': isFrozen}" v-if="groupIndex == 0">
                     <img class="frozen-frozen" src="@/assets/images/snowflake.svg" v-if="isFrozen">
                 </div>
@@ -59,7 +58,7 @@
 //////////////////////
 import { defineComponent, PropType } from "vue";
 import LabelSlotsStructure from "@/components/LabelSlotsStructure.vue";
-import {settingsStore, useStore} from "@/store/store";
+import {useStore} from "@/store/store";
 import {AllFrameTypesIdentifier, CollapsedState, FrameLabel, FrameObject, FrozenState} from "@/types/types";
 import {mapStores} from "pinia";
 import scssVars from "@/assets/style/_export.module.scss";
@@ -160,24 +159,12 @@ export default defineComponent({
     },
 
     computed:{
-        ...mapStores(useStore, settingsStore),
+        ...mapStores(useStore),
 
         isCommentFrame(): boolean{
             return this.frameType===AllFrameTypesIdentifier.comment;
         },
 
-        frameNumber(): number | undefined {
-            return this.appStore.getFrameVisualNumbers[this.frameId];
-        },
-
-        showFrameNumberTopRight(): boolean {
-            return this.settingsStore.frameNumbersDisplay === "topright";
-        },
-
-        isFrameSelected(): boolean {
-            return this.appStore.isFrameSelected(this.frameId);
-        },
-   
         scssVars() {
             // just to be able to use in template
             return scssVars;
@@ -325,17 +312,6 @@ export default defineComponent({
 .frame-header-label-projectDocumentation > img, .frame-header-label-funcdef > img, .frame-header-label-classdef > img {
     height: 0.9em;
     margin-top: 0.3em;
-}
-
-.frame-number-topright {
-    font-size: 0.75em;
-    opacity: 0.6;
-    user-select: none;
-}
-
-.frame-number-topright.frame-number-selected {
-    font-weight: 700;
-    opacity: 1;
 }
 
 .frame-controls-container {

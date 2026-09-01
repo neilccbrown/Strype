@@ -172,13 +172,8 @@
                     </select>
                 </div>
                 <div>
-                    <label :for="frameNumbersSelectId">{{$t("appMenu.frameNumbers")}}</label>&nbsp;
-                    <select name="frameNumbers" :id="frameNumbersSelectId" v-model="frameNumbersDisplay" @change="showMenu=false;" :class="scssVars.strypeMenuItemClassName" @click="setCurrentTabIndexFromEltId(frameNumbersSelectId)">
-                        <option value="none">{{$t("appMenu.frameNumbersNone")}}</option>
-                        <option value="lhs">{{$t("appMenu.frameNumbersLHS")}}</option>
-                        <option value="lhs-floating">{{$t("appMenu.frameNumbersLHSFloating")}}</option>
-                        <option value="topright">{{$t("appMenu.frameNumbersTopRight")}}</option>
-                    </select>
+                    <label :for="frameNumbersCheckboxId">{{$t("appMenu.frameNumbers")}}</label>&nbsp;
+                    <input type="checkbox" :id="frameNumbersCheckboxId" v-model="frameNumbersEnabled" @change="showMenu=false;" @click="setCurrentTabIndexFromEltId(frameNumbersCheckboxId)">
                 </div>
             </div>
             <!-- new section -->
@@ -493,8 +488,8 @@ export default defineComponent({
             return getAppLangSelectId();
         },
 
-        frameNumbersSelectId(): string {
-            return "frameNumbersSelectId";
+        frameNumbersCheckboxId(): string {
+            return "frameNumbersCheckboxId";
         },
 
         locales(): Locale[] {
@@ -720,12 +715,12 @@ export default defineComponent({
             },
         },
 
-        frameNumbersDisplay: {
-            get(): string {
-                return this.settingsStore.frameNumbersDisplay??"none";
+        frameNumbersEnabled: {
+            get(): boolean {
+                return this.settingsStore.frameNumbersEnabled;
             },
-            set(mode: "none" | "lhs" | "lhs-floating" | "topright") {
-                this.settingsStore.setFrameNumbersDisplay(mode);
+            set(enabled: boolean) {
+                this.settingsStore.setFrameNumbersEnabled(enabled);
             },
         },
 

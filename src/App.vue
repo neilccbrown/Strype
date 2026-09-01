@@ -53,7 +53,7 @@
                                     <div class="col">
                                         <div
                                             :id="editorUID"
-                                            :class="{'editor-code-div noselect print-full-height':true, 'has-frame-numbers-gutter': settingsStore.frameNumbersDisplay === 'lhs' || settingsStore.frameNumbersDisplay === 'lhs-floating', ...layoutClassesForStandardVersion}"
+                                            :class="{'editor-code-div noselect print-full-height':true, 'has-frame-numbers-gutter': settingsStore.frameNumbersEnabled, ...layoutClassesForStandardVersion}"
                                             @mousedown="handleWholeEditorMouseDown"
                                         >
                                             <FrameNumbersGutter />
@@ -1060,8 +1060,8 @@ export default defineComponent({
                 if(savedSettingsState.locale) {
                     strypeSessionLocale = savedSettingsState.locale;
                 }
-                if(savedSettingsState.frameNumbersDisplay) {
-                    this.settingsStore.setFrameNumbersDisplay(savedSettingsState.frameNumbersDisplay);
+                if(savedSettingsState.frameNumbersEnabled) {
+                    this.settingsStore.setFrameNumbersEnabled(savedSettingsState.frameNumbersEnabled);
                 }
                 if(!savedSettingsState.locale) {
                     // There is no locale saved. Maybe the user wants to use the default English, but maybe
