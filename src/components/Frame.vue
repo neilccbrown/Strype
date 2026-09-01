@@ -229,8 +229,7 @@ export default defineComponent({
                 const parentChildrenIds = this.appStore.frameObjects[parentFrameId].childrenIds;
                 const positionIndex = parentChildrenIds.indexOf(this.frameId);
                 const isBlockFrameStacked = positionIndex > 0 && // there is something above
-                        this.appStore.frameObjects[parentChildrenIds[positionIndex - 1]].frameType.allowChildren && // above is another block
-                        !(this.appStore.currentFrame.id == parentChildrenIds[positionIndex - 1] && this.appStore.currentFrame.caretPosition == CaretPosition.below); // and there is no caret in between
+                        this.appStore.frameObjects[parentChildrenIds[positionIndex - 1]].frameType.allowChildren; // above is another block
                 if(isBlockFrameStacked){
                     return {"margin-top": "-1px", ...baseStylePart};
                 }

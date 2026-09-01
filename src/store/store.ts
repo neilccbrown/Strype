@@ -317,6 +317,24 @@ export const useStore = defineStore("app", {
             return Object.values(state.frameObjects).filter((frame: FrameObject) => frame.frameType.type === DefsContainerDefinition.type)[0].id;
         },
 
+        // Maps every (non-container) frame id to its 1-based position in document/visual order
+        // (depth-first, top to bottom, regardless of nesting), spanning the imports, definitions
+        // and main code sections in that order. Used to display frame numbers.
+        getFrameVisualNumbers(): {[frameId: number]: number} {
+            const numbers: {[frameId: number]: number} = {};
+            let counter = 0;
+            const visit = (frameId: number) => {
+                numbers[frameId] = ++counter;
+                const frame = this.frameObjects[frameId];
+                frame.childrenIds.forEach(visit);
+                frame.jointFrameIds.forEach(visit);
+            };
+            [this.getImportsFrameContainerId, this.getDefsFrameContainerId, this.getMainCodeFrameContainerId].forEach((containerId) => {
+                this.frameObjects[containerId].childrenIds.forEach(visit);
+            });
+            return numbers;
+        },
+
         isCurrentFrameCollapsedClassOrFunction: (state) => {
             return (state.frameObjects[state.currentFrame.id].collapsedState??CollapsedState.FULLY_VISIBLE) != CollapsedState.FULLY_VISIBLE
                     && (state.frameObjects[state.currentFrame.id].frameType.type == AllFrameTypesIdentifier.classdef || state.frameObjects[state.currentFrame.id].frameType.type == AllFrameTypesIdentifier.funcdef);
@@ -2976,6 +2994,8 @@ export const settingsStore = defineStore("settings", {
             // on the project's locale.
             // The default state is undefined so we can detect real undefined locale to the default English...
             locale: undefined as undefined | string,
+            // Whether frame numbers should be displayed next to frame headers.
+            frameNumbersEnabled: false,
             // Handler for saving the settings in LocalStorage (from Vue 3, we cannot directly access the App instance via vm.$children)
             // so we use a callback function App MUST supply instead
             saveSettingInLocalStorageHandler: null as null | ((r: SaveRequestReason) => void),
@@ -2983,6 +3003,15 @@ export const settingsStore = defineStore("settings", {
     },
 
     actions:{
+        setFrameNumbersEnabled(enabled: boolean) {
+            this.frameNumbersEnabled = enabled;
+
+            // Save the settings
+            if(this.saveSettingInLocalStorageHandler){
+                this.saveSettingInLocalStorageHandler(SaveRequestReason.saveSettings);
+            }
+        },
+
         setAppLang(lang: string) {
             // Set the language in the store first
             this.locale = lang;

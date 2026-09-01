@@ -164,14 +164,22 @@
             <div class="flex-padding" />
             <!-- category: preferences / settings -->
             <!-- Localisation -->
-            <div class="appMenu-prefs-div">
-                <div>
-                    <label :for="appLangSelectId">{{$t("appMenu.lang")}}</label>&nbsp;
-                    <select name="lang" :id="appLangSelectId" v-model="appLang" @change="showMenu=false;" :class="scssVars.strypeMenuItemClassName" @click="setCurrentTabIndexFromEltId(appLangSelectId)">
-                        <option v-for="locale in locales" :value="locale.code" :key="locale.code">{{locale.name}}</option>
-                    </select>
-                </div> 
-            </div>
+            <table class="appMenu-prefs-div">
+                <tbody>
+                    <tr>
+                        <td><label :for="frameNumbersCheckboxId">{{$t("appMenu.frameNumbers")}}</label></td>
+                        <td><input type="checkbox" :id="frameNumbersCheckboxId" v-model="frameNumbersEnabled" @change="showMenu=false;" @click="setCurrentTabIndexFromEltId(frameNumbersCheckboxId)"></td>
+                    </tr>
+                    <tr>
+                        <td><label :for="appLangSelectId">{{$t("appMenu.lang")}}</label></td>
+                        <td>
+                            <select name="lang" :id="appLangSelectId" v-model="appLang" @change="showMenu=false;" :class="scssVars.strypeMenuItemClassName" @click="setCurrentTabIndexFromEltId(appLangSelectId)">
+                                <option v-for="locale in locales" :value="locale.code" :key="locale.code">{{locale.name}}</option>
+                            </select>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
             <!-- new section -->
             <div class="menu-separator-div"></div>
             <div></div>
@@ -484,6 +492,10 @@ export default defineComponent({
             return getAppLangSelectId();
         },
 
+        frameNumbersCheckboxId(): string {
+            return "frameNumbersCheckboxId";
+        },
+
         locales(): Locale[] {
             // The locale codes are already parts of the i18n messages at this stage, so they are easy to retrieve.
             // We retrieve the corresponding locale's friendly name from i18n directly.
@@ -702,9 +714,18 @@ export default defineComponent({
             get(): string {
                 return this.settingsStore.locale??"en";
             },
-            set(lang: string) {                                
+            set(lang: string) {
                 this.settingsStore.setAppLang(lang);
-            }, 
+            },
+        },
+
+        frameNumbersEnabled: {
+            get(): boolean {
+                return this.settingsStore.frameNumbersEnabled;
+            },
+            set(enabled: boolean) {
+                this.settingsStore.setFrameNumbersEnabled(enabled);
+            },
         },
 
         getAppVersion(): string {
@@ -1782,8 +1803,21 @@ export default defineComponent({
 }
 
 .appMenu-prefs-div {
+    // Override .bm-item-list > * (from vue3-burger-menu's own CSS, and the "flex" rule just
+    // below this) forcing every direct child of the menu to display:flex -- that breaks a
+    // <table>'s row/cell layout, so this needs to explicitly win it back.
+    display: table !important;
     margin-left: 5%;
     color: black;
+    border-collapse: collapse;
+}
+
+.appMenu-prefs-div td {
+    padding: 2px 0;
+}
+
+.appMenu-prefs-div td:first-child {
+    padding-right: 8px;
 }
 
 .menu-icons-div {
@@ -2027,7 +2061,7 @@ div:has(> a.open-menu-embedded-proj-link) {
     height: 100%;
 }
 
-.bm-item-list > :not(.menu-separator-div) {
+.bm-item-list > :not(.menu-separator-div):not(.appMenu-prefs-div) {
       display: flex !important;
       text-decoration: none !important;
       padding: 2px !important;
