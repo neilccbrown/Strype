@@ -531,4 +531,45 @@ describe("Asset files", () => {
             checkNoItems(acIDSel, "cat-test");
         }, false);
     });
+
+    it("Offers file path auto-complete for a token matching after any punctuation separator", () => {
+        focusEditorAC();
+        // Make a print and open a string:
+        cy.get("body").type("p\"pr");
+        cy.wait(500);
+        // Trigger auto-complete:
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel, frameId) => {
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
+            // "pr" should match both "/books/pride-and-prejudice.txt" (after "/") and
+            // "/books/three-men-in-a-boat.txt" doesn't contain "pr" but exercises that only
+            // matching files are offered:
+            checkExactlyOneItem(acIDSel, null, "/books/pride-and-prejudice.txt");
+            checkNoItems(acIDSel, "/books/three-men-in-a-boat.txt");
+        }, false);
+    });
+
+    it("Offers file path auto-complete for a token matching after a hyphen or dot separator", () => {
+        focusEditorAC();
+        // Make a print and open a string, and type "and" which only occurs after a hyphen in
+        // "pride-and-prejudice.txt", and "txt" which only occurs after a dot:
+        cy.get("body").type("p\"and");
+        cy.wait(500);
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel, frameId) => {
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
+            checkExactlyOneItem(acIDSel, null, "/books/pride-and-prejudice.txt");
+        }, false);
+
+        cy.get("body").type("{esc}{backspace}{backspace}{backspace}txt");
+        cy.wait(500);
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel, frameId) => {
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
+            // "txt" occurs after a "." in every book file, so all of them should match:
+            checkExactlyOneItem(acIDSel, null, "/books/pride-and-prejudice.txt");
+            checkExactlyOneItem(acIDSel, null, "/books/three-men-in-a-boat.txt");
+            checkExactlyOneItem(acIDSel, null, "/books/winnie-the-pooh.txt");
+        }, false);
+    });
 });
