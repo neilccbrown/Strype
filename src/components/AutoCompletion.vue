@@ -107,6 +107,12 @@ const assetFileCompletions : AcResultType[] = assetFileList.map((path) => {
     return {acResult: path, documentation: "A file built in to Strype.", type: [], version: 0};
 });
 
+// Hand-curated set of punctuation characters after which a token can match mid-name
+// (e.g. so "pr" matches "tree_prune" or "/books/pride-and-prejudice.txt").
+// We don't attempt to cover all Unicode word-break rules, just the common separators
+// that show up in Python identifiers and file paths.
+const AC_WORD_BREAK_CHARS = "/_-.";
+
 //////////////////////
 export default defineComponent({
     name: "AutoCompletion",
@@ -494,9 +500,16 @@ export default defineComponent({
             // index the results, in order to be able to browse through it with the keys and show the selected.
             let lastIndex=0;
             for (const module in this.acResults) {
-                // Filter the list based on the token (starting with the token or having "_<token>" in the name, all case insensitve)
-                const filteredResults: AcResultType[] = this.acResults[module].filter((element: AcResultType) => 
-                    element.acResult.toLowerCase().startsWith(token.toLowerCase()) || element.acResult.toLowerCase().includes("_"+token.toLowerCase()));
+                // Filter the list based on the token: it must either start the name, or start
+                // straight after one of a hand-curated set of "word break" punctuation characters
+                // (so "pr" matches "print", "tree_prune" and "/books/pride-and-prejudice.txt"),
+                // all case insensitive.
+                const lowerToken = token.toLowerCase();
+                const filteredResults: AcResultType[] = this.acResults[module].filter((element: AcResultType) => {
+                    const lowerResult = element.acResult.toLowerCase();
+                    return lowerResult.startsWith(lowerToken) ||
+                        Array.from(AC_WORD_BREAK_CHARS).some((sep) => lowerResult.includes(sep + lowerToken));
+                });
 
                 // Don't put empty lists in resultsToShow
                 if (filteredResults.length == 0) {
