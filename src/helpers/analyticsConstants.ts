@@ -5,7 +5,7 @@ export const Analytics_session_tick_ms = 30_000;
 export const Analytics_session_idle_threshold_ms = 5 * 60_000;
 
 /** Periodic flush interval for the analytics event queue. */
-export const Analytics_batch_flush_ms = 60_000;
+export const Analytics_batch_flush_ms = 20_000;
 
 /** Size cap that triggers an immediate flush when the queue grows past it. */
 export const Analytics_batch_max_events = 100;

@@ -40,7 +40,7 @@
                                                     <span class="frame-cmd-prefix-btn frame-cmd-btn-large frame-cmd-prefix-btn-wide">{{ $t('autoCompletion.spaceKey') }}</span>
                                                     <span>{{ $t('commandsPane.pressSpaceThenSuffix') }}</span>
                                                 </div>
-                                                <p>
+                                                <p class="frame-cmd-row">
                                                     <AddFrameCommand
                                                         v-for="addFrameCommand in addFrameCommands"
                                                         :id="addFrameCommandUID(addFrameCommand[0].type.type)"
@@ -62,7 +62,7 @@
                                                         :greyedOut="!isFrameCommandsPaneActive"
                                                     />
                                                 </p>
-                                                <p v-if="codeCompletionCommand">
+                                                <div v-if="codeCompletionCommand" class="frame-cmd-row">
                                                     <div class="frame-cmd-container text-editing-command">
                                                         <span class="text-editing-command-keys">
                                                             <button class="frame-cmd-btn frame-cmd-btn-large">{{ codeCompletionCommand.ctrlSymbol }}</button>
@@ -71,8 +71,8 @@
                                                         </span>
                                                         <span>{{ codeCompletionCommand.description }}</span>
                                                     </div>
-                                                </p>
-                                                <p v-if="wrapSelectionCommands.length">
+                                                </div>
+                                                <div v-if="wrapSelectionCommands.length" class="frame-cmd-row">
                                                     <div
                                                         v-for="wrapSelectionCommand in wrapSelectionCommands"
                                                         :key="wrapSelectionCommand.symbol"
@@ -81,12 +81,13 @@
                                                         <button class="frame-cmd-btn">{{ wrapSelectionCommand.symbol }}</button>
                                                         <span>{{ wrapSelectionCommand.description }}</span>
                                                     </div>
-                                                </p>
-                                                <p v-if="mediaRecordingCommands.length">
+                                                </div>
+                                                <div v-if="mediaRecordingCommands.length" class="frame-cmd-row">
                                                     <div
                                                         v-for="mediaRecordingCommand in mediaRecordingCommands"
                                                         :key="mediaRecordingCommand.description"
-                                                        class="frame-cmd-container text-editing-command"
+                                                        class="frame-cmd-container text-editing-command clickable-command"
+                                                        @click="triggerMediaRecordingFromHint(mediaRecordingCommand.kind)"
                                                     >
                                                         <span class="text-editing-command-keys">
                                                             <template v-for="(key, keyIndex) in mediaRecordingCommand.keys" :key="key.label">
@@ -96,7 +97,23 @@
                                                         </span>
                                                         <span>{{ mediaRecordingCommand.description }}</span>
                                                     </div>
-                                                </p>
+                                                </div>
+                                                <div v-if="colourPickerCommand.length" class="frame-cmd-row">
+                                                    <div
+                                                        v-for="colourPickerCmd in colourPickerCommand"
+                                                        :key="colourPickerCmd.description"
+                                                        class="frame-cmd-container text-editing-command clickable-command"
+                                                        @click="triggerColourPickerFromHint"
+                                                    >
+                                                        <span class="text-editing-command-keys">
+                                                            <template v-for="(key, keyIndex) in colourPickerCmd.keys" :key="key.label">
+                                                                <span v-if="keyIndex > 0" class="text-editing-command-keys-plus">+</span>
+                                                                <button class="frame-cmd-btn frame-cmd-btn-large" :title="key.title">{{ key.label }}</button>
+                                                            </template>
+                                                        </span>
+                                                        <span>{{ colourPickerCmd.description }}</span>
+                                                    </div>
+                                                </div>
                                             <!-- this conditional rendering is only used for our code editor to see the closing <div> right -->
                                             <!-- #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE -->
                                             </div>
@@ -385,7 +402,7 @@ export default defineComponent({
         // Ctrl-Shift-I/U opens a dialog to record a new image/sound literal from the webcam/
         // microphone. We show those shortcuts here as a hint, mirroring the same gating
         // LabelSlot.vue's onKeyDown uses for the shortcut itself.
-        mediaRecordingCommands(): {keys: ({label: string, title?: string})[]; description: string}[] {
+        mediaRecordingCommands(): {keys: ({label: string, title?: string})[]; description: string; kind: "image" | "sound"}[] {
             const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
             if(!this.appStore.isEditing || !focusSlotCursorInfos){
                 return [];
@@ -400,8 +417,30 @@ export default defineComponent({
             const ctrl = {label: this.$t("contextMenu.ctrl")};
             const shift = {label: "⇧", title: this.$t("autoCompletion.shiftKey")};
             return [
-                {keys: [ctrl, shift, {label: "i"}], description: this.$t("autoCompletion.recordImageShortcut")},
-                {keys: [ctrl, shift, {label: "u"}], description: this.$t("autoCompletion.recordSoundShortcut")},
+                {keys: [ctrl, shift, {label: "i"}], description: this.$t("autoCompletion.recordImageShortcut"), kind: "image"},
+                {keys: [ctrl, shift, {label: "u"}], description: this.$t("autoCompletion.recordSoundShortcut"), kind: "sound"},
+            ];
+        },
+
+        // Ctrl-Shift-Y opens the colour-picker dialog. Unlike mediaRecordingCommands above, this is
+        // shown for string slots too, since that's exactly where it's most useful (editing colour
+        // string literals in place); only comments are excluded.
+        colourPickerCommand(): {keys: ({label: string, title?: string})[]; description: string}[] {
+            const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
+            if(!this.appStore.isEditing || !focusSlotCursorInfos){
+                return [];
+            }
+
+            const slotInfos = focusSlotCursorInfos.slotInfos;
+            const frameType = this.appStore.frameObjects[slotInfos.frameId]?.frameType.type;
+            if(slotInfos.slotType == SlotType.comment || frameType == AllFrameTypesIdentifier.comment){
+                return [];
+            }
+
+            const ctrl = {label: this.$t("contextMenu.ctrl")};
+            const shift = {label: "⇧", title: this.$t("autoCompletion.shiftKey")};
+            return [
+                {keys: [ctrl, shift, {label: "y"}], description: this.$t("autoCompletion.colourPickerShortcut")},
             ];
         },
 
@@ -827,6 +866,7 @@ export default defineComponent({
                                 this.appStore.addFrameWithCommand(getFrameDefType(AllFrameTypesIdentifier.funccall)).then(() => {
                                     document.activeElement?.dispatchEvent(new KeyboardEvent("keydown",{key: " ", ctrlKey: true}));
                                 });
+                                this.appStore.trackFrameInsert(AllFrameTypesIdentifier.funccall, "shortcut_key");
                             }
                         }
                     }
@@ -903,6 +943,31 @@ export default defineComponent({
             return getAddFrameCmdElementUID(commandType);
         },
 
+        // Clicking these hints should do the same thing as pressing the shortcut they describe,
+        // for users who don't know/remember the shortcut. The tricky part is that they live in a
+        // totally different component to the focused slot -- the wrapping @mousedown.prevent.stop
+        // above stops the click from blurring the focused slot (so appStore.focusSlotCursorInfos
+        // is still valid by the time this runs), and we then dispatch to that specific LabelSlot
+        // instance's own triggerMediaRecording/triggerColourPicker via the shared component API
+        // registry, exactly as if its own keydown handler had fired.
+        triggerMediaRecordingFromHint(kind: "image" | "sound") {
+            const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
+            if(!focusSlotCursorInfos){
+                return;
+            }
+            const uid = getLabelSlotUID(focusSlotCursorInfos.slotInfos);
+            vueComponentsAPIHandler.labelSlotComponentAPI?.forInstance[uid]?.triggerMediaRecording(kind);
+        },
+
+        triggerColourPickerFromHint() {
+            const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
+            if(!focusSlotCursorInfos){
+                return;
+            }
+            const uid = getLabelSlotUID(focusSlotCursorInfos.slotInfos);
+            vueComponentsAPIHandler.labelSlotComponentAPI?.forInstance[uid]?.triggerColourPicker();
+        },
+
         // Inserts the frame matching this (lowercased) shortcut key -- by its original shortcut, its
         // legacy shortcut (see getLegacyShortcut, editor.ts), or a hidden shorthand -- exactly as the
         // direct top-level dispatch always has. Returns whether a match was found and dispatched, so
@@ -922,16 +987,18 @@ export default defineComponent({
 
             if(isHiddenShorthandFrameCommand) {
                 // Adding a shorthand frame required to 1) add the frame itself
-                this.appStore.addFrameWithCommand(hiddenShorthandFrames[eventKeyLowCase].type, hiddenShorthandFrames[eventKeyLowCase]);
+                const shorthandDef = hiddenShorthandFrames[eventKeyLowCase];
+                this.appStore.addFrameWithCommand(shorthandDef.type, shorthandDef);
+                this.appStore.trackFrameInsert(shorthandDef.type.type, "shortcut_key");
             }
             else{
                 // We can add the frame by its original shortcut or legacy one
                 const isOriginalShortcut = (this.addFrameCommands[eventKeyLowCase] != undefined);
-                this.appStore.addFrameWithCommand(
-                    (isOriginalShortcut)
-                        ? this.addFrameCommands[eventKeyLowCase][0].type
-                        : (Object.values(this.addFrameCommands).find((addFrameCmdDef) => getLegacyShortcut(addFrameCmdDef[0]) == eventKeyLowCase) as AddFrameCommandDef[])[0].type
-                );
+                const resolvedType = (isOriginalShortcut)
+                    ? this.addFrameCommands[eventKeyLowCase][0].type
+                    : (Object.values(this.addFrameCommands).find((addFrameCmdDef) => getLegacyShortcut(addFrameCmdDef[0]) == eventKeyLowCase) as AddFrameCommandDef[])[0].type;
+                this.appStore.addFrameWithCommand(resolvedType);
+                this.appStore.trackFrameInsert(resolvedType.type, "shortcut_key");
             }
             return true;
         },
@@ -954,6 +1021,7 @@ export default defineComponent({
             // the user is just typing (e.g. the start of "if"/"while"/"return"), and the frame may well
             // get converted away from func-call entirely once LabelSlotsStructure.vue's funccall->
             // keyword-frame/varassign conversion kicks in -- see skipFuncCallBrackets's own comment.
+            this.appStore.trackFrameInsert(AllFrameTypesIdentifier.funccall, "typed");
             this.appStore.addFrameWithCommand(getFrameDefType(AllFrameTypesIdentifier.funccall), undefined, true).then((newFrameId: number) => {
                 // Target the new frame's name slot explicitly (rather than document.activeElement):
                 // its own name slot isn't necessarily what ends up focused by the time this promise
@@ -1211,7 +1279,7 @@ export default defineComponent({
             return waitForPanesSettled();
         },
 
-        onCommandsSplitterResize(event: any) {
+        onCommandsSplitterResize(event: any, isProgrammaticRestore?: boolean) {
             // When the splitter is resized, we need to resize the frame commands container (wrap/unwrap)
             // and the PEA (will take the full space in its pane, breaking the initial 4:3 ratio)
             document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
@@ -1228,13 +1296,15 @@ export default defineComponent({
                 this.appStore.peaCommandsSplitterPane2Size = {...defaultEmptyStrypeLayoutDividerSettings, [this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed]: event.panes[1].size};
             }
 
-            // A change of divider position triggers a modification notification only when the user actively moves the divider,
-            // we can distinguish between a sitation when the divider is position is loaded and user event by the content of the event
-            if(event.panes.length > 1){
+            // A change of divider position triggers a modification notification only when the user actively moves the divider.
+            // We can't infer this from the event's shape (a real Splitpanes "resize" event and the synthetic event used to
+            // restore a saved layout both carry a 2-element "panes" array), so callers doing a programmatic restore must
+            // say so explicitly via isProgrammaticRestore.
+            if(!isProgrammaticRestore){
                 this.appStore.isEditorContentModified = true;
                 this.appStore.editorLastModificationAt = Date.now();
             }
-        }, 
+        },
 
         setPEACommandsSplitterPanesMinSize(onlyResizePEA?: boolean) {
             // Called to get the right min sizes of the pea/Commands splitter.
@@ -1282,6 +1352,21 @@ export default defineComponent({
 
 .modifed-label-span {
      margin-left: 15px;
+}
+
+// Unlike other .text-editing-command hints (informational only, cursor: default -- see
+// AddFrameCommand.vue), the media-recording/colour-picker hints can also be clicked directly to
+// trigger the same action as their keyboard shortcut, so they get the pointer cursor back plus a
+// hover highlight for affordance.
+.frame-cmd-container.clickable-command,
+.frame-cmd-container.clickable-command .frame-cmd-btn {
+    cursor: pointer;
+}
+.frame-cmd-container.clickable-command {
+    border-radius: 4px;
+}
+.frame-cmd-container.clickable-command:hover {
+    background-color: rgba(0, 0, 0, 0.06);
 }
 
 .project-name {
@@ -1394,10 +1479,12 @@ export default defineComponent({
     color:#666666;
 }
 
-.#{$strype-classname-add-frame-commands-container} p {
+.#{$strype-classname-add-frame-commands-container} .frame-cmd-row {
     display: flex;
     flex-direction: column;
     flex-wrap: wrap;
+    // Matches the margin a <p> would have had (these rows were previously <p> elements).
+    margin: 0 0 1rem 0;
 }
 
 .frame-commands-pane-intro {
@@ -1431,7 +1518,7 @@ export default defineComponent({
     padding-right: 10px;
 }
 
-.#{$strype-classname-add-frame-commands-container}.with-expanded-PEA p {
+.#{$strype-classname-add-frame-commands-container}.with-expanded-PEA .frame-cmd-row {
    // So that the frame commands in expanded view expands over the commands/PEA splitter,
    // the width is set programmatically
    position: absolute;

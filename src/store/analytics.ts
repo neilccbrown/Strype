@@ -1,4 +1,5 @@
 import { fetchUserCountry, type UserCountry } from "@/helpers/analyticsCountry";
+import { detectOsAndBrowser } from "@/helpers/analyticsUserAgent";
 import { Analytics_batch_max_events, Analytics_queue_overflow_cap } from "@/helpers/analyticsConstants";
 import { StrypeSyncTarget } from "@/types/types";
 
@@ -15,6 +16,9 @@ export type AnalyticsFlushReason = "interval" | "size_cap" | "critical" | "unloa
 export const analyticsState = {
     countryCode: null as string | null,
     countryName: null as string | null,
+    os: "" as string,
+    browserName: "" as string,
+    browserVersion: null as string | null,
     userId: "" as string,
     sessionStartTime: 0 as number,
     activeSessionTime: 0 as number,
@@ -50,6 +54,13 @@ export function initAnalyticsPlatform(): void {
     const path = (typeof window !== "undefined") ? window.location.pathname.toLowerCase() : "";
     analyticsState.platform = path.includes("microbit") ? "microbit" : "editor";
     // #v-endif
+}
+
+export function initAnalyticsUserAgent(): void {
+    const {os, browserName, browserVersion} = detectOsAndBrowser();
+    analyticsState.os = os;
+    analyticsState.browserName = browserName;
+    analyticsState.browserVersion = browserVersion;
 }
 
 export function setAnalyticsCountry(country: UserCountry): void {
@@ -106,6 +117,9 @@ export function flushAnalyticsQueue(reason: AnalyticsFlushReason): void {
         platform: analyticsState.platform,
         countryCode: analyticsState.countryCode,
         countryName: analyticsState.countryName,
+        os: analyticsState.os,
+        browserName: analyticsState.browserName,
+        browserVersion: analyticsState.browserVersion,
         flushReason: reason,
         events: batch,
     });
@@ -181,6 +195,26 @@ export function trackUsedBookProject(projectName: string, chapter: string): void
         return;
     }
     enqueueAnalyticsEvent("book_project_used", {projectName: cleanName, chapter});
+}
+
+// How a frame was inserted: an explicit shortcut/command choice -- either "shortcut_key" (a direct
+// keyboard shortcut at the bare frame caret, or a letter shortcut typed while the frame commands pane
+// is focused -- see insertFrameForShortcutKey, Commands.vue) or "shortcut_mouse" (a genuine mouse
+// click on an AddFrameCommand button -- see its own onClick for how Enter-confirm and the "Insert
+// frame" context-menu item, which both also end up clicking that same button programmatically, are
+// folded into "shortcut_key" instead) -- vs. "typed", organic typing at the bare frame caret (which
+// creates an empty func-call frame -- frameType is always "funccall" for this method; its eventual
+// real type, if any, shows up separately via trackFrameConvert).
+export function trackFrameInsert(frameType: string, method: "shortcut_key" | "shortcut_mouse" | "typed"): void {
+    enqueueAnalyticsEvent("frame_insert", {frameType, method});
+}
+
+// A func-call frame silently converted to another frame type because its typed content matched a
+// recognised keyword (keywordFrameConversions, LabelSlotsStructure.vue) or a variable assignment.
+// Virtually always follows a "typed" frame_insert -- a func-call created via its own explicit
+// shortcut and then retyped into another keyword is possible but rare enough not to distinguish here.
+export function trackFrameConvert(toType: string): void {
+    enqueueAnalyticsEvent("frame_convert", {toType});
 }
 
 export function trackStorageLocation(target: StrypeSyncTarget): void {

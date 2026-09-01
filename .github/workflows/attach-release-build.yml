@@ -1,0 +1,52 @@
+name: Attach build zips to Release
+
+# Fires when a release is published (either from the GitHub UI or `gh release create`).
+# Builds standalone packaged versions of Strype (Python and micro:bit) and uploads them
+# as zip assets on that same release, so they can be downloaded directly from the release page.
+on:
+    release:
+        types: [published]
+
+permissions:
+    contents: write
+
+jobs:
+    build-and-attach:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout release tag
+              uses: actions/checkout@v6
+              with:
+                  ref: ${{ github.event.release.tag_name }}
+            - name: Install Node.js and NPM
+              uses: volta-cli/action@v4
+            - name: NPM Install
+              run: npm ci
+            - name: Cache Pyodide
+              id: cache-pyodide
+              uses: actions/cache@v4
+              with:
+                  path: public/pyodide
+                  key: ${{ runner.os }}-pyodide-${{ hashFiles('package-lock.json', 'scripts/download-pyodide-libs.cjs') }}
+            - name: Install Pyodide
+              if: steps.cache-pyodide.outputs.cache-hit != 'true'
+              run: npm run build:download-pyodide-libs
+            - name: Build Python platform
+              run: npm run build:python
+            - name: Zip Python build output
+              run: |
+                  cd dist
+                  zip -r "../strype-python-${{ github.event.release.tag_name }}.zip" .
+            - name: Build micro:bit platform
+              run: npm run build:microbit
+            - name: Zip micro:bit build output
+              run: |
+                  cd dist
+                  zip -r "../strype-microbit-${{ github.event.release.tag_name }}.zip" .
+            - name: Upload assets to release
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  gh release upload "${{ github.event.release.tag_name }}" \
+                      "strype-python-${{ github.event.release.tag_name }}.zip" \
+                      "strype-microbit-${{ github.event.release.tag_name }}.zip"
