@@ -153,7 +153,9 @@ export default defineComponent({
                     const halfCaretHeight = (activeCaret?.height ?? 0) / 2;
                     const correctedTop = !activeCaret ? rect.top :
                         (rect.top > activeCaret.top) ? rect.top - halfCaretHeight : rect.top + halfCaretHeight;
-                    newOffsets[frameId] = Math.round(correctedTop - editorRect.top + editorDiv.scrollTop);
+                    // The extra -1 nudges the number up slightly so it looks better balanced
+                    // against the line it's numbering, rather than sitting low against it.
+                    newOffsets[frameId] = Math.round(correctedTop - editorRect.top + editorDiv.scrollTop) - 1;
                 }
             });
             this.offsets = newOffsets;
