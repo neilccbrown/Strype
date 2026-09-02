@@ -338,11 +338,13 @@
     "familyPink": "Pink",
     "familyBrown": "Brown",
     "familyGrey": "Greyscale",
-    "allColours": "All colours",
+    "allColours": "Main colours",
     "hue": "Hue",
     "shade": "Shade",
-    "fineGrainedSelector": "Fine-grained selector…",
-    "tiles": "Tiles"
+    "fineGrainedSelector": "Spectrum",
+    "tiles": "Tiles",
+    "previous": "Previous:",
+    "alpha": "Alpha"
   },
   "book": {
     "dialogTitle": "Strype textbook"
