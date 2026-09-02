@@ -51,7 +51,7 @@ function visibleOKButton(page: Page) {
 // ColourPickerDlg.vue's own hexText seeding (onShownModalDlg) runs on bootstrap-vue's async
 // "shown" modal event, which fires strictly after the dialog is already visible/interactable --
 // there's no DOM signal available to poll for it directly. Filling the hex input immediately after
-// opening (skipping the "Fine-grained selector" button click, which happens when editing an
+// opening (skipping the "Spectrum" button click, which happens when editing an
 // existing colour jumps straight there) races that handler: it can fire *after* the fill and
 // silently overwrite it back to the seeded value. A toHaveValue() check right after opening isn't
 // a reliable guard either -- the input can still be showing a stale leftover value from before the
@@ -171,6 +171,7 @@ test.describe("Alpha slider", () => {
         await openIfFrame(page);
         await page.keyboard.press("ControlOrMeta+Shift+Y");
         await page.locator("button", {hasText: "Spectrum"}).click();
+        await waitForColourPickerSeeded(page);
         await page.locator("#ColourPickerDlg-hex-input").fill("#00ff00");
 
         const slider = page.locator(".ColourPickerDlg-alpha-slider");
@@ -199,6 +200,7 @@ test.describe("Alpha slider", () => {
         await openIfFrame(page);
         await page.keyboard.press("ControlOrMeta+Shift+Y");
         await page.locator("button", {hasText: "Spectrum"}).click();
+        await waitForColourPickerSeeded(page);
 
         await page.locator("#ColourPickerDlg-hex-input").fill("#3366ccff");
         await visibleOKButton(page).click();
@@ -375,7 +377,7 @@ test.describe("Cursor placement after picker-driven insertion/conversion", () =>
         await waitForEditorSettled(page);
         await page.keyboard.press("ControlOrMeta+Shift+Y");
         if (!(await page.locator("#ColourPickerDlg-hex-input").isVisible())) {
-            await page.locator("button", {hasText: "Fine-grained selector"}).click();
+            await page.locator("button", {hasText: "Spectrum"}).click();
         }
         await waitForColourPickerSeeded(page);
         await page.locator("#ColourPickerDlg-hex-input").fill("#112233");
@@ -416,7 +418,7 @@ test.describe("Hover preview popup and edit round-trip", () => {
     test("Edit from the hover popup reopens the picker seeded with the current hex and updates the swatch on OK", async ({page}) => {
         await openIfFrame(page);
         await page.keyboard.press("ControlOrMeta+Shift+Y");
-        await page.locator("button", {hasText: "Fine-grained selector"}).click();
+        await page.locator("button", {hasText: "Spectrum"}).click();
         await waitForColourPickerSeeded(page);
         await page.locator("#ColourPickerDlg-hex-input").fill("#445566");
         await visibleOKButton(page).click();

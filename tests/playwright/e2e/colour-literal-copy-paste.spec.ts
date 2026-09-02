@@ -45,7 +45,7 @@ function colourSwatch(page: import("@playwright/test").Page) {
 // field right after the swatch, which this test needs a live selection anchor to select from.
 async function insertColourSwatch(page: import("@playwright/test").Page, hex: string) {
     await page.keyboard.press("ControlOrMeta+Shift+Y");
-    await page.locator("button", {hasText: "Fine-grained selector"}).click();
+    await page.locator("button", {hasText: "Spectrum"}).click();
     // ColourPickerDlg.vue's own hexText seeding (onShownModalDlg) runs on bootstrap-vue's async
     // "shown" modal event, which can fire after the dialog is already interactable -- filling
     // immediately can race it and get silently overwritten. See colour-picker.spec.ts's

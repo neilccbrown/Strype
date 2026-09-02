@@ -93,6 +93,7 @@ import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { eventBus, projectDocumentationFrameId } from "@/helpers/appContext";
 import { detectBrowser } from "@/helpers/browser";
 import { PrecedenceTier, UNARY_PREFIX_OPERATORS } from "@/helpers/operatorPrecedence";
+import { drawCheckerboard } from "@/helpers/colour";
 
 // Default time to keep in cache: 5 minutes.
 const soundPreviewImages = new Cache<LoadedMedia>({ defaultTtl: 5 * 60 * 1000 });
@@ -2134,6 +2135,9 @@ export default defineComponent({
                 canvas.height = 32;
                 const ctx = canvas.getContext("2d");
                 if (ctx) {
+                    // Draw a checkerboard first so a non-opaque (8-digit hex) colour shows what's
+                    // "underneath" it, same as the colour picker dialog's own swatches:
+                    drawCheckerboard(ctx, canvas.width, canvas.height, 4);
                     ctx.fillStyle = hex;
                     ctx.fillRect(0, 0, canvas.width, canvas.height);
                 }

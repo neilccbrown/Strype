@@ -78,6 +78,18 @@ export function hexToRgb(hex: string): { r: number, g: number, b: number } {
     };
 }
 
+// Draws a checkerboard pattern onto a canvas, so a non-opaque colour drawn on top of it shows what's
+// "underneath" -- the same pattern the colour picker dialog's swatches use (see
+// ColourPickerDlg.vue's CHECKERBOARD_CSS), used here for e.g. the frame-header colour-literal preview.
+export function drawCheckerboard(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D, width: number, height: number, tile = 8): void {
+    for (let y = 0; y < height; y += tile) {
+        for (let x = 0; x < width; x += tile) {
+            ctx.fillStyle = ((x / tile) + (y / tile)) % 2 === 0 ? "#ffffff" : "#cccccc";
+            ctx.fillRect(x, y, tile, tile);
+        }
+    }
+}
+
 export function hexToHsv(hex: string): { h: number, s: number, v: number } {
     const r = parseInt(hex.substring(1, 3), 16) / 255;
     const g = parseInt(hex.substring(3, 5), 16) / 255;
