@@ -343,7 +343,8 @@
     "shade": "Shade",
     "fineGrainedSelector": "Spectrum",
     "tiles": "Tiles",
-    "previous": "Previous:"
+    "previous": "Previous:",
+    "alpha": "Alpha"
   },
   "book": {
     "dialogTitle": "Strype textbook"
