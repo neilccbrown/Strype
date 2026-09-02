@@ -342,7 +342,8 @@
     "hue": "Hue",
     "shade": "Shade",
     "fineGrainedSelector": "Fine-grained selector…",
-    "tiles": "Tiles"
+    "tiles": "Tiles",
+    "previous": "Previous:"
   },
   "book": {
     "dialogTitle": "Strype textbook"

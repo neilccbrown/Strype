@@ -65,6 +65,10 @@
             </div>
 
             <div class="ColourPickerDlg-hex-row">
+                <div v-if="previousHex" class="ColourPickerDlg-previous-box">
+                    <span class="ColourPickerDlg-previous-label">{{ $t("colourPicker.previous") }}</span>
+                    <span class="ColourPickerDlg-swatch" :style="{background: previousHex}"></span>
+                </div>
                 <span class="ColourPickerDlg-swatch" :style="{background: currentHex}"></span>
                 <input
                     id="ColourPickerDlg-hex-input"
@@ -174,6 +178,10 @@ export default defineComponent({
             classicSat: 100,
             classicVal: 100,
             hexText: DEFAULT_HEX,
+            // The colour the string held before this edit, for the "Previous:" swatch next to the
+            // prospective-colour swatch -- null when there's nothing to show it against, i.e. when
+            // inserting a fresh colour rather than editing an existing valid one (see onShownModalDlg).
+            previousHex: null as string | null,
             // Whether the dialog is currently visible; gates the graphics-area colour preview so we
             // don't try to touch it while the dialog (and hence this component's reactive state) is
             // just sitting there unshown.
@@ -514,6 +522,9 @@ export default defineComponent({
             if (this.initialColour !== null) {
                 const parsedInitial = parseColourToHex(this.initialColour);
                 const seededHex = parsedInitial ?? DEFAULT_HEX;
+                // Only a genuinely valid existing colour counts as a "previous" colour to show --
+                // there's nothing sensible to revert to if the string wasn't a valid colour at all.
+                this.previousHex = parsedInitial;
                 // If it lands exactly on a swatch, start there with it selected; otherwise (including
                 // when the existing content wasn't a valid colour at all) there's no sensible swatch
                 // to preselect, so go straight to the fine-grained selector with the colour in place.
@@ -540,6 +551,7 @@ export default defineComponent({
             // picks something (see the currentHex watcher, and hasSelectedColour being set to true
             // in selectFamily/selectHueChip/selectShadeCell/updateHexFromClassic below).
             this.hasSelectedColour = false;
+            this.previousHex = null;
             this.currentFamilyKey = null;
             const {h, s, l} = hexToHsl(DEFAULT_HEX);
             this.hue = h;
@@ -817,6 +829,19 @@ export default defineComponent({
     border-radius: 5px;
     box-shadow: inset 0 0 0 1px var(--bs-border-color);
     flex-shrink: 0;
+}
+
+.ColourPickerDlg-previous-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 10px;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 5px;
+}
+.ColourPickerDlg-previous-label {
+    font-size: 95%;
+    color: var(--bs-secondary-color);
 }
 
 .ColourPickerDlg-bottom-row {
