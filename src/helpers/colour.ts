@@ -36,10 +36,10 @@ export function parseColourToHex(input: string): string | null {
 }
 
 // Strict predicate used for auto-detection (typing-blur and python-load) of a colour literal:
-// exactly 6 hex digits after "#", unlike parseColourToHex's lenient CSS-colour parsing (which is
-// only used to seed the picker from arbitrary content).
+// exactly 6 (RGB) or 8 (RGBA) hex digits after "#", unlike parseColourToHex's lenient CSS-colour
+// parsing (which is only used to seed the picker from arbitrary content).
 export function isHexColourLiteral(s: string): boolean {
-    return /^#[0-9a-fA-F]{6}$/.test(s);
+    return /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(s);
 }
 
 // Parses a colour that may carry an alpha channel: an exact "#rrggbb" or "#rrggbbaa" hex string is

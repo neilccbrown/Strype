@@ -85,6 +85,19 @@ test.describe("Auto-conversion of typed hex strings to colour literals", () => {
         await expect(colourSwatch(page)).toHaveCount(0);
     });
 
+    test("An 8-digit hex colour (with alpha) also converts", async ({page}) => {
+        await openIfFrame(page);
+        await typeStringThenLeaveIt(page, "#aabbcc80");
+        await expect(colourSwatch(page)).toHaveAttribute("data-code", "\"#aabbcc80\"");
+        await checkFrameErrorCount(page, 0);
+    });
+
+    test("A 7-digit hex string (neither 6 nor 8 digits) is left as a plain string", async ({page}) => {
+        await openIfFrame(page);
+        await typeStringThenLeaveIt(page, "#aabbcc8");
+        await expect(colourSwatch(page)).toHaveCount(0);
+    });
+
     test("Undo after auto-conversion restores the original plain string", async ({page}) => {
         await openIfFrame(page);
         await typeStringThenLeaveIt(page, "#aabbcc");
@@ -155,6 +168,23 @@ test.describe("Loading and saving colour literals", () => {
 
     test("Loading then saving a single-quoted colour literal preserves the quote character", async ({page}) => {
         await testLoadSaveMainLines(page, "myColour  = '#3366cc' ");
+    });
+
+    test("Loading an 8-digit (with alpha) bare hex string renders it as a colour literal", async ({page}) => {
+        await loadContent(page, [
+            "#(=> Strype:1:std",
+            "#(=> Section:Imports",
+            "#(=> Section:Definitions",
+            "#(=> Section:Main",
+            "myColour  = \"#aabbcc80\" ",
+            "#(=> Section:End",
+            "",
+        ].join("\n"));
+        await expect(colourSwatch(page)).toHaveAttribute("data-code", "\"#aabbcc80\"");
+    });
+
+    test("Loading then saving an 8-digit colour literal reproduces the exact original text", async ({page}) => {
+        await testLoadSaveMainLines(page, "myColour  = \"#3366cc80\" ");
     });
 
     test("A prefixed string that happens to look like a colour is loaded as a plain string, not converted", async ({page}) => {
