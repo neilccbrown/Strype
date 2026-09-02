@@ -64,7 +64,7 @@
                     </div>
                 </div>
 
-                <div class="ColourPickerDlg-alpha-col">
+                <div v-if="view !== 'grid'" class="ColourPickerDlg-alpha-col">
                     <p class="ColourPickerDlg-section-label">{{ $t("colourPicker.alpha") }}</p>
                     <div
                         ref="alphaSlider"
@@ -799,7 +799,7 @@ export default defineComponent({
 .ColourPickerDlg-main-row {
     display: flex;
     align-items: flex-start;
-    gap: 14px;
+    gap: 34px;
 }
 .ColourPickerDlg-main-row .ColourPickerDlg-view-area {
     flex: 1;
@@ -864,7 +864,7 @@ export default defineComponent({
 .ColourPickerDlg-alpha-slider {
     position: relative;
     width: 100%;
-    min-height: 350px;
+    min-height: 280px;
     border-radius: 5px;
     box-shadow: inset 0 0 0 1px var(--bs-border-color);
     touch-action: none;

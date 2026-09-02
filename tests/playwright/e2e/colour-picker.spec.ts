@@ -105,6 +105,120 @@ test.describe("Family grid / tinker view / fine-grained selector navigation", ()
     });
 });
 
+test.describe("Alpha slider", () => {
+    test("Hidden on the family grid, shown on the tile and spectrum views", async ({page}) => {
+        await openIfFrame(page);
+        await page.keyboard.press("ControlOrMeta+Shift+Y");
+        await expect(page.locator(".ColourPickerDlg-alpha-col")).not.toBeVisible();
+
+        await page.locator(".ColourPickerDlg-family-btn", {hasText: "Green"}).click();
+        await expect(page.locator(".ColourPickerDlg-alpha-col")).toBeVisible();
+
+        await page.locator("button", {hasText: "Spectrum"}).click();
+        await expect(page.locator(".ColourPickerDlg-alpha-col")).toBeVisible();
+
+        // "Tiles" from the spectrum view returns to the tinker view here (a family -- Green -- was
+        // already picked above), not the family grid -- see toggleFineGrained in ColourPickerDlg.vue
+        // -- so the alpha slider is still expected to be visible:
+        await page.locator("button", {hasText: "Tiles"}).click();
+        await expect(page.locator(".ColourPickerDlg-alpha-col")).toBeVisible();
+
+        // The "‹ Main colours" button is the one that actually goes back to the family grid:
+        await page.locator("button", {hasText: "Main colours"}).click();
+        await expect(page.locator(".ColourPickerDlg-alpha-col")).not.toBeVisible();
+
+        await visibleCancelButton(page).click();
+    });
+
+    test("Typing an 8-digit hex value positions the slider and previews a tinted (not flat opaque) colour", async ({page}) => {
+        await openIfFrame(page);
+        await page.keyboard.press("ControlOrMeta+Shift+Y");
+        await page.locator("button", {hasText: "Spectrum"}).click();
+        await page.locator("#ColourPickerDlg-hex-input").fill("#3366cc80");
+        // The preview is now a checkerboard tinted by the colour at its alpha (see
+        // showGraphicsColourPreview in ColourPickerDlg.vue), not a flat opaque fill -- so at 0x80
+        // alpha the composited centre pixel should read noticeably different from the raw opaque hex:
+        await expect.poll(async () => {
+            const px = await getGraphicsCenterPixel(page);
+            const opaque = [0x33, 0x66, 0xcc, 255];
+            return px.some((v, i) => Math.abs(v - opaque[i]) > 15);
+        }).toBe(true);
+
+        const cursorTop = await page.locator(".ColourPickerDlg-alpha-cursor").evaluate((el) => el.style.top);
+        // 0x80/0xff is just over half way down from the fully-opaque top:
+        expect(parseFloat(cursorTop)).toBeGreaterThan(45);
+        expect(parseFloat(cursorTop)).toBeLessThan(55);
+
+        await visibleCancelButton(page).click();
+    });
+
+    test("Dragging the alpha slider updates the hex field, and OK records 8 digits only when not fully opaque", async ({page}) => {
+        await openIfFrame(page);
+        await page.keyboard.press("ControlOrMeta+Shift+Y");
+        await page.locator("button", {hasText: "Spectrum"}).click();
+        await page.locator("#ColourPickerDlg-hex-input").fill("#00ff00");
+
+        const slider = page.locator(".ColourPickerDlg-alpha-slider");
+        const box = await slider.boundingBox();
+        if (!box) {
+            throw new Error("Alpha slider has no bounding box");
+        }
+        // Drag to roughly the bottom of the slider (near-transparent, but not exactly 0 -- avoids
+        // relying on an exact pixel landing on alpha 0):
+        await page.mouse.move(box.x + box.width / 2, box.y + 5);
+        await page.mouse.down();
+        await page.mouse.move(box.x + box.width / 2, box.y + box.height - 5);
+        await page.mouse.up();
+
+        const hexValue = await page.locator("#ColourPickerDlg-hex-input").inputValue();
+        expect(hexValue).toMatch(/^#00ff00[0-9a-f]{2}$/i);
+        expect(hexValue.toLowerCase()).not.toBe("#00ff00ff");
+
+        await visibleOKButton(page).click();
+        await waitForEditorSettled(page);
+        const text = await getRawFrameHeaderText(page);
+        expect(text).toContain(hexValue);
+    });
+
+    test("A fully-opaque (ff) alpha is dropped from the recorded string, an explicit non-ff alpha is kept", async ({page}) => {
+        await openIfFrame(page);
+        await page.keyboard.press("ControlOrMeta+Shift+Y");
+        await page.locator("button", {hasText: "Spectrum"}).click();
+
+        await page.locator("#ColourPickerDlg-hex-input").fill("#3366ccff");
+        await visibleOKButton(page).click();
+        await waitForEditorSettled(page);
+        // "ff" alpha must be dropped -- assert on the hex code itself (rather than toContain, which
+        // would also pass if a stray "#3366ccff" were present) since the quote character that
+        // follows it in the DOM isn't a plain ASCII quote:
+        const opaqueMatch = /#3366cc([0-9a-f]*)/i.exec(await getRawFrameHeaderText(page));
+        expect(opaqueMatch?.[1]).toBe("");
+
+        // Re-open on the string just inserted and give it a genuine alpha this time:
+        await page.keyboard.press("ControlOrMeta+Shift+Y");
+        await expect(page.locator("#colourPickerDlg")).toBeVisible();
+        await page.locator("#ColourPickerDlg-hex-input").fill("#3366cc80");
+        await visibleOKButton(page).click();
+        await waitForEditorSettled(page);
+        expect(await getRawFrameHeaderText(page)).toContain("#3366cc80");
+    });
+
+    test("The Previous swatch restores both the colour and the alpha it was opened with", async ({page}) => {
+        await openIfFrame(page);
+        await page.keyboard.type("\"#3366cc80");
+        await waitForEditorSettled(page);
+        await page.keyboard.press("ControlOrMeta+Shift+Y");
+        await expect(page.locator("#colourPickerDlg")).toBeVisible();
+
+        // Change to a different colour/alpha first, then click Previous to restore the original:
+        await page.locator("#ColourPickerDlg-hex-input").fill("#00ff0040");
+        await page.locator(".ColourPickerDlg-swatch-btn").click();
+
+        const hexValue = await page.locator("#ColourPickerDlg-hex-input").inputValue();
+        expect(hexValue.toLowerCase()).toBe("#3366cc80");
+    });
+});
+
 test.describe("Graphics preview", () => {
     test("Does not flood-fill until a colour is actually picked, then reflects the choice", async ({page}) => {
         await openIfFrame(page);
