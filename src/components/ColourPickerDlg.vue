@@ -1,5 +1,5 @@
 <template>
-    <ModalDlg dlgId="colourPickerDlg" :dlgTitle="$t('media.colourPickerTitle')" :okDisabled="okDisabled">
+    <ModalDlg dlgId="colourPickerDlg" :dlgTitle="$t(headingKey)" :okDisabled="okDisabled">
         <div class="ColourPickerDlg-content">
             <div class="ColourPickerDlg-view-area">
                 <div v-if="view === 'grid'" class="ColourPickerDlg-family-grid">
@@ -49,7 +49,6 @@
                 </div>
 
                 <div v-else-if="view === 'classic'" class="ColourPickerDlg-classic">
-                    <p class="ColourPickerDlg-section-label">{{ $t("colourPicker.fineGrainedSelector") }}</p>
                     <input
                         type="range"
                         class="ColourPickerDlg-hue-slider"
@@ -216,6 +215,13 @@ export default defineComponent({
 
         currentFamily(): ColourFamily | null {
             return this.families.find((f) => f.key == this.currentFamilyKey) ?? null;
+        },
+
+        // The dialog's own heading (above the view area), reflecting which of the three views is showing.
+        headingKey(): string {
+            return this.view === "tinker" ? "colourPicker.tiles"
+                : this.view === "classic" ? "colourPicker.fineGrainedSelector"
+                    : "colourPicker.allColours";
         },
 
         hasHue(): boolean {

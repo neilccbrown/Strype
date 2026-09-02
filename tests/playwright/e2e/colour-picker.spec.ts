@@ -89,10 +89,10 @@ test.describe("Family grid / tinker view / fine-grained selector navigation", ()
         await visibleCancelButton(page).click();
     });
 
-    test("Fine-grained selector shows the hue slider, SV square and hex input, and Tiles returns to the grid", async ({page}) => {
+    test("Spectrum shows the hue slider, SV square and hex input, and Tiles returns to the grid", async ({page}) => {
         await openIfFrame(page);
         await page.keyboard.press("ControlOrMeta+Shift+Y");
-        await page.locator("button", {hasText: "Fine-grained selector"}).click();
+        await page.locator("button", {hasText: "Spectrum"}).click();
         await expect(page.locator(".ColourPickerDlg-hue-slider")).toBeVisible();
         await expect(page.locator(".ColourPickerDlg-sv-square")).toBeVisible();
         await expect(page.locator("#ColourPickerDlg-hex-input")).toBeVisible();
@@ -127,7 +127,7 @@ test.describe("Graphics preview", () => {
     test("Typing an exact hex value in the fine-grained selector previews that exact colour", async ({page}) => {
         await openIfFrame(page);
         await page.keyboard.press("ControlOrMeta+Shift+Y");
-        await page.locator("button", {hasText: "Fine-grained selector"}).click();
+        await page.locator("button", {hasText: "Spectrum"}).click();
         await page.locator("#ColourPickerDlg-hex-input").fill("#3366cc");
         await expect.poll(() => getGraphicsCenterPixel(page)).toEqual([0x33, 0x66, 0xcc, 255]);
         await visibleCancelButton(page).click();
@@ -138,7 +138,7 @@ test.describe("Inserting and editing colour string literals", () => {
     test("Typing a hex value and confirming inserts that literal string into an empty expression slot", async ({page}) => {
         await openIfFrame(page);
         await page.keyboard.press("ControlOrMeta+Shift+Y");
-        await page.locator("button", {hasText: "Fine-grained selector"}).click();
+        await page.locator("button", {hasText: "Spectrum"}).click();
         await page.locator("#ColourPickerDlg-hex-input").fill("#3366cc");
         await visibleOKButton(page).click();
         await waitForEditorSettled(page);
@@ -157,10 +157,10 @@ test.describe("Inserting and editing colour string literals", () => {
         await page.keyboard.press("ControlOrMeta+Shift+Y");
         await expect(page.locator("#colourPickerDlg")).toBeVisible();
         // Editing existing (invalid) string content jumps straight into the fine-grained selector
-        // (see onShownModalDlg in ColourPickerDlg.vue), so the "Fine-grained selector..." toggle
+        // (see onShownModalDlg in ColourPickerDlg.vue), so the "Spectrum" toggle
         // button isn't shown here -- only click it if we're not already there:
         if (!(await page.locator("#ColourPickerDlg-hex-input").isVisible())) {
-            await page.locator("button", {hasText: "Fine-grained selector"}).click();
+            await page.locator("button", {hasText: "Spectrum"}).click();
         }
         await page.locator("#ColourPickerDlg-hex-input").fill("#996633");
         await visibleOKButton(page).click();

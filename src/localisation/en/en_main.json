@@ -338,10 +338,10 @@
     "familyPink": "Pink",
     "familyBrown": "Brown",
     "familyGrey": "Greyscale",
-    "allColours": "All colours",
+    "allColours": "Main colours",
     "hue": "Hue",
     "shade": "Shade",
-    "fineGrainedSelector": "Fine-grained selector…",
+    "fineGrainedSelector": "Spectrum",
     "tiles": "Tiles",
     "previous": "Previous:"
   },
