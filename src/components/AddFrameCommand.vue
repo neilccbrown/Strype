@@ -51,12 +51,27 @@ export default defineComponent({
     },
 
     methods: {
-        onClick(): void {
+        onClick(event: MouseEvent): void {
             //add the frame in the editor if the panel is not disabled
             if(!this.isPythonExecuting) {
                 const addFrameCommandType = findAddCommandFrameType(this.shortcut, this.index);
                 if(addFrameCommandType != null){
                     this.appStore.addFrameWithCommand(addFrameCommandType);
+                    // This same button is reached three different ways: a genuine mouse click, Enter
+                    // confirming whichever button the frame commands pane currently has focused
+                    // (Commands.vue's keyup handler deliberately blocks the native keydown auto-click --
+                    // see its own comment -- and instead calls activeElement.click() itself once the
+                    // key's lifecycle is otherwise finished), and the "Insert frame" context-menu item
+                    // (CaretContainer.vue), which also ultimately calls .click() on this element
+                    // programmatically. Only the first is a real user-generated click -- the other two
+                    // are JS-invoked, so the browser marks them event.isTrusted === false -- which is a
+                    // reliable, native way to tell them apart without needing to plumb an explicit
+                    // origin through two otherwise-unrelated call sites. Both indirect triggers are
+                    // reported as "shortcut_key" rather than getting a third category of their own: the
+                    // context-menu item is arguably mouse-driven too, but it's a rare path and lumping
+                    // it in keeps the split to the two categories that actually matter (deliberately
+                    // choosing a frame type vs. organically typing one -- see trackFrameInsert's comment).
+                    this.appStore.trackFrameInsert(addFrameCommandType.type, event.isTrusted ? "shortcut_mouse" : "shortcut_key");
                 }
             }
         },

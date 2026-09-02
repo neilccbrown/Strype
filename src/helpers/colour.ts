@@ -42,6 +42,42 @@ export function isHexColourLiteral(s: string): boolean {
     return /^#[0-9a-fA-F]{6}$/.test(s);
 }
 
+// Parses a colour that may carry an alpha channel: an exact "#rrggbb" or "#rrggbbaa" hex string is
+// read directly (so an explicit 8-digit value round-trips exactly), and anything else falls back to
+// parseColourToHex above (names, rgb()/hsl() functions, 3-digit hex, ...), which is always opaque.
+export function parseColourAndAlpha(input: string): { hex: string, alpha: number } | null {
+    if (!input || !input.trim()) {
+        return null;
+    }
+    const hexAlphaMatch = /^#([0-9a-fA-F]{6})([0-9a-fA-F]{2})?$/.exec(input.trim());
+    if (hexAlphaMatch) {
+        return {
+            hex: "#" + hexAlphaMatch[1].toLowerCase(),
+            alpha: hexAlphaMatch[2] ? parseInt(hexAlphaMatch[2], 16) : 255,
+        };
+    }
+    const hex = parseColourToHex(input);
+    return hex ? { hex, alpha: 255 } : null;
+}
+
+// Combines an opaque "#rrggbb" hex with an alpha byte (0-255) into "#rrggbb" (alpha fully opaque,
+// i.e. 255/0xff) or "#rrggbbaa" (anything else) -- the two forms the colour string literal supports.
+export function combineHexAlpha(hex: string, alpha: number): string {
+    return alpha >= 255 ? hex : hex + Math.round(clamp(alpha, 0, 255)).toString(16).padStart(2, "0");
+}
+
+function clamp(x: number, lo: number, hi: number): number {
+    return Math.min(hi, Math.max(lo, x));
+}
+
+export function hexToRgb(hex: string): { r: number, g: number, b: number } {
+    return {
+        r: parseInt(hex.substring(1, 3), 16),
+        g: parseInt(hex.substring(3, 5), 16),
+        b: parseInt(hex.substring(5, 7), 16),
+    };
+}
+
 export function hexToHsv(hex: string): { h: number, s: number, v: number } {
     const r = parseInt(hex.substring(1, 3), 16) / 255;
     const g = parseInt(hex.substring(3, 5), 16) / 255;

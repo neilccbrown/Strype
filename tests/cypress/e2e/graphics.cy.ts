@@ -1,9 +1,9 @@
 require("cypress-terminal-report/src/installLogsCollector")();
-import {PNG} from "pngjs";
 import { standardBeforeEach } from "../support/standard-setup";
 import pixelmatch from "pixelmatch";
 import failOnConsoleError from "cypress-fail-on-console-error";
 import { focusEditorAndClear } from "../support/test-support";
+import { decodePngBase64, encodePngBase64, DecodedImage } from "../support/png-codec";
 failOnConsoleError();
 
 // Must clear all local storage between tests to reset the state, and set the 'paste' command:
@@ -19,7 +19,7 @@ enum ImageComparison {
 }
 
 // This code uses an image capture of the graphics canvas to check that the Python code
-// produces the same output as before, to check for us breaking something. 
+// produces the same output as before, to check for us breaking something.
 //
 // There are some cypress plugins which do roughly the same thing.  The problem is that they
 // use generic browser screenshotting to capture the content.  It turns out that, at least on Mac,
@@ -31,31 +31,33 @@ enum ImageComparison {
 //
 // So we write our own which reads the pixel data direct from the graphics canvas, avoiding any
 // transformation.  Unfortunately this means we also have to write our own code to save the images etc
-function checkImageMatch(expectedImageFileName: string, actual : PNG, comparison: ImageComparison) {
+function checkImageMatch(expectedImageFileName: string, actual : DecodedImage, actualImageBase64: string, comparison: ImageComparison) {
     if (comparison == ImageComparison.COMPARE_TO_EXISTING) {
         cy.readFile(`tests/cypress/expected-screenshots/baseline/${expectedImageFileName}.png`, "base64").then((expectedData) => {
             // load both pictures
-            const expected = PNG.sync.read(Buffer.from(expectedData, "base64"));
-            cy.writeFile(`tests/cypress/expected-screenshots/comparison/${expectedImageFileName}.png`, PNG.sync.write(actual));
+            cy.wrap(decodePngBase64(expectedData), {timeout: 20000}).then((expectedUnknown) => {
+                const expected = expectedUnknown as DecodedImage;
+                cy.writeFile(`tests/cypress/expected-screenshots/comparison/${expectedImageFileName}.png`, actualImageBase64, "base64");
 
-            const {width, height} = expected;
-            const diff = new PNG({width, height});
+                const {width, height} = expected;
+                const diffData = new Uint8ClampedArray(4 * width * height);
 
-            // calling pixelmatch return how many pixels are different
-            const numDiffPixels = pixelmatch(expected.data, actual.data, diff.data, width, height, {threshold: 0.1, includeAA: false});
+                // calling pixelmatch return how many pixels are different
+                const numDiffPixels = pixelmatch(expected.data, actual.data, diffData, width, height, {threshold: 0.1, includeAA: false});
 
-            cy.writeFile(`tests/cypress/expected-screenshots/diff/${expectedImageFileName}.png`, PNG.sync.write(diff));
+                cy.writeFile(`tests/cypress/expected-screenshots/diff/${expectedImageFileName}.png`, encodePngBase64(width, height, diffData), "base64");
 
-            // calculating a percent diff
-            const diffPercent = (numDiffPixels / (width * height) * 100);
+                // calculating a percent diff
+                const diffPercent = (numDiffPixels / (width * height) * 100);
 
-            // We need to use cy.then because otherwise if the test fails, it can cancel the pending cy.writeFile calls from earlier:
-            cy.then(() => expect(diffPercent).to.be.below(6));
+                // We need to use cy.then because otherwise if the test fails, it can cancel the pending cy.writeFile calls from earlier:
+                cy.then(() => expect(diffPercent).to.be.below(6));
+            });
         });
     }
     else {
         // Just save to expected:
-        cy.writeFile(`tests/cypress/expected-screenshots/baseline/${expectedImageFileName}.png`, PNG.sync.write(actual));
+        cy.writeFile(`tests/cypress/expected-screenshots/baseline/${expectedImageFileName}.png`, actualImageBase64, "base64");
     }
 }
 
@@ -65,8 +67,9 @@ function checkGraphicsCanvasContent(expectedImageFileName : string, comparison =
     cy.get("#pythonGraphicsCanvas").then((canvas) => {
         return (canvas[0] as HTMLCanvasElement).toDataURL("image/png").replace(/^data:image\/png;base64,/, "");
     }).then((actualImageBase64) => {
-        const actual = PNG.sync.read(Buffer.from(actualImageBase64, "base64"));
-        checkImageMatch(expectedImageFileName, actual, comparison);
+        cy.wrap(decodePngBase64(actualImageBase64), {timeout: 20000}).then((actualUnknown) => {
+            checkImageMatch(expectedImageFileName, actualUnknown as DecodedImage, actualImageBase64, comparison);
+        });
     });
 }
 
@@ -114,8 +117,9 @@ function checkImageViaDownload(functions: string, main: string, downloadStem: st
         // Read the downloaded file and compare as image with the expected file:
         cy.readFile("tests/cypress/downloads/" + downloadFilename, "base64")
             .then((actualImageBase64) => {
-                const actual = PNG.sync.read(Buffer.from(actualImageBase64, "base64"));
-                checkImageMatch(imageFileStem, actual, comparison);
+                cy.wrap(decodePngBase64(actualImageBase64), {timeout: 20000}).then((actualUnknown) => {
+                    checkImageMatch(imageFileStem, actualUnknown as DecodedImage, actualImageBase64, comparison);
+                });
             });
     });
 }

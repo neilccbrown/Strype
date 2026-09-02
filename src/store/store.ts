@@ -25,6 +25,8 @@ import {
     initAnalyticsSession,
     initAnalyticsUserId,
     trackAnalyticsLocaleChange,
+    trackFrameConvert,
+    trackFrameInsert,
     trackInputCall,
     trackMenuAction,
     trackOutputChars,
@@ -313,6 +315,24 @@ export const useStore = defineStore("app", {
 
         getDefsFrameContainerId:(state): number => {
             return Object.values(state.frameObjects).filter((frame: FrameObject) => frame.frameType.type === DefsContainerDefinition.type)[0].id;
+        },
+
+        // Maps every (non-container) frame id to its 1-based position in document/visual order
+        // (depth-first, top to bottom, regardless of nesting), spanning the imports, definitions
+        // and main code sections in that order. Used to display frame numbers.
+        getFrameVisualNumbers(): {[frameId: number]: number} {
+            const numbers: {[frameId: number]: number} = {};
+            let counter = 0;
+            const visit = (frameId: number) => {
+                numbers[frameId] = ++counter;
+                const frame = this.frameObjects[frameId];
+                frame.childrenIds.forEach(visit);
+                frame.jointFrameIds.forEach(visit);
+            };
+            [this.getImportsFrameContainerId, this.getDefsFrameContainerId, this.getMainCodeFrameContainerId].forEach((containerId) => {
+                this.frameObjects[containerId].childrenIds.forEach(visit);
+            });
+            return numbers;
         },
 
         isCurrentFrameCollapsedClassOrFunction: (state) => {
@@ -722,6 +742,14 @@ export const useStore = defineStore("app", {
 
         trackStorageLocation(target: StrypeSyncTarget) {
             trackStorageLocation(target);
+        },
+
+        trackFrameInsert(frameType: string, method: "shortcut_key" | "shortcut_mouse" | "typed") {
+            trackFrameInsert(frameType, method);
+        },
+
+        trackFrameConvert(toType: string) {
+            trackFrameConvert(toType);
         },
 
         updateKeyModifiers(e: KeyboardEvent | MouseEvent) {
@@ -1359,20 +1387,53 @@ export const useStore = defineStore("app", {
             }); 
         },
 
+        // Clones state for later use with saveStateChanges(), to compute the undo/redo diff against.
+        // Cloning (and later diffing) the entire state on every single keystroke is expensive on large files,
+        // since it's proportional to the whole document's frame/slot count rather than to the size of the edit.
+        // When a caller can be sure the edit it's about to make will only ever touch specific frames (e.g. typing
+        // inside one frame's slot), it can pass those frame ids here so only those frames' subtrees are cloned/diffed,
+        // instead of the whole frameObjects tree. Leave touchedFrameIds undefined (the safe default) whenever the
+        // edit might reach beyond a known, fixed set of frames (e.g. drag and drop, keyword-frame conversion which
+        // can reparent/attach joint frames, or a rename that can touch arbitrarily many frames) -- an incomplete
+        // touchedFrameIds list would silently drop those other frames' changes from the undo/redo history.
+        cloneStateForUndo(touchedFrameIds?: number[]): (typeof this.$state) {
+            if(touchedFrameIds === undefined) {
+                return cloneDeep(this.$state);
+            }
+            const {frameObjects, ...restState} = this.$state;
+            const clonedState = cloneDeep(restState) as (typeof this.$state);
+            clonedState.frameObjects = {} as (typeof this.$state)["frameObjects"];
+            for(const frameId of touchedFrameIds) {
+                if(frameObjects[frameId] !== undefined) {
+                    clonedState.frameObjects[frameId] = cloneDeep(frameObjects[frameId]);
+                }
+            }
+            // Tag the clone with the scope it was taken at, so saveStateChanges() can scope its own clone/diff
+            // to match -- deleted again before the object is actually used as part of the state comparison.
+            (clonedState as any).__touchedFrameIds = touchedFrameIds;
+            return clonedState;
+        },
+
         saveStateChanges(previousState: (typeof this.$state)) {
             // If have an explicit request to igore the undo/redo save state preps, we don't do anything
             if(this.ignoreStateSavingActionsForUndoRedo){
                 return;
             }
-            
+
             this.isEditorContentModified = true;
             this.editorLastModificationAt = Date.now();
+            // If previousState was captured via cloneStateForUndo(touchedFrameIds), scope our own clone of the
+            // current state to the same frames, so the diff below only has to walk those frames' subtrees rather
+            // than the whole document -- see cloneStateForUndo()'s comment for why this must only be done when
+            // we're sure no other frame could have changed.
+            const touchedFrameIds: number[] | undefined = (previousState as any).__touchedFrameIds;
+            delete (previousState as any).__touchedFrameIds;
             // Saves the state changes in diffPreviousState.
-            // We do not simply save the differences between the state and the previous state, because when undo/redo will be invoked, we cannot know what will be 
+            // We do not simply save the differences between the state and the previous state, because when undo/redo will be invoked, we cannot know what will be
             // the navigation status in the editor (i.e. are we editing? what blue caret or text cursor is currenty displayed), and there might not be any difference right now.
             // So to make sure that we will ALWAYS see a difference of positioning no matter the situation, we simlate a mock change with dummy positioning,
             // in order to get the previous state saved correctly regarding navigation.
-            const stateCopy = cloneDeep(this.$state);
+            const stateCopy = this.cloneStateForUndo(touchedFrameIds);
             stateCopy.currentFrame = {id: 0, caretPosition: CaretPosition.none};
             previousState.lastCriticalActionPositioning = {lastCriticalCaretPosition: previousState.currentFrame, lastCriticalSlotCursorInfos: previousState.focusSlotCursorInfos};
             this.lastCriticalActionPositioning = {
@@ -2949,6 +3010,8 @@ export const settingsStore = defineStore("settings", {
             // on the project's locale.
             // The default state is undefined so we can detect real undefined locale to the default English...
             locale: undefined as undefined | string,
+            // Whether frame numbers should be displayed next to frame headers.
+            frameNumbersEnabled: false,
             // Handler for saving the settings in LocalStorage (from Vue 3, we cannot directly access the App instance via vm.$children)
             // so we use a callback function App MUST supply instead
             saveSettingInLocalStorageHandler: null as null | ((r: SaveRequestReason) => void),
@@ -2956,6 +3019,15 @@ export const settingsStore = defineStore("settings", {
     },
 
     actions:{
+        setFrameNumbersEnabled(enabled: boolean) {
+            this.frameNumbersEnabled = enabled;
+
+            // Save the settings
+            if(this.saveSettingInLocalStorageHandler){
+                this.saveSettingInLocalStorageHandler(SaveRequestReason.saveSettings);
+            }
+        },
+
         setAppLang(lang: string) {
             // Set the language in the store first
             this.locale = lang;

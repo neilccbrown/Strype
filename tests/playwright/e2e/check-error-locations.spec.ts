@@ -79,6 +79,26 @@ except Exception:
         await expectHasVisibleErrorIcon(page.locator("span", {hasText: "This will cause an error:"}));
     });
 
+    test("Check error shows on except frame, not try frame, for invalid except clause", async ({page}) => {
+        // Regression test for https://github.com/k-pet-group/Strype/issues/341 :
+        // "except e:" (old Python 2 syntax) is invalid in Python 3, it raises a NameError
+        // for the undefined name "e" while evaluating the except clause itself. The error
+        // used to be (wrongly) shown on the frame inside the try body instead of on the
+        // except frame, and an uncaught "errorElement is undefined" JS exception could occur.
+        const pageErrors: string[] = [];
+        page.on("pageerror", (err) => pageErrors.push(err.message));
+        await enterCode(page, ["", "", `
+try:
+    raise ValueError
+except e:
+    print("Error!")
+`.trimStart()]);
+        await runToFinish(page);
+        expect(pageErrors).toEqual([]);
+        await checkConsoleContent(page, /.*NameError: name 'e' is not defined.*/);
+        await expectHasVisibleErrorIcon(page.locator("div.frame-header-label", {hasText: "except"}));
+    });
+
     test("Check error shows correctly when a funcdef with documentation follows a multiline comment", async ({page}) => {
         // astroids.spy is ~400KB, by far the largest fixture used in any Playwright test (most are a
         // few KB) -- parsing/rendering that much state is genuinely slower, not just contended, so this

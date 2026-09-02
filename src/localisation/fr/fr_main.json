@@ -339,7 +339,9 @@
     "hue": "Teinte",
     "shade": "Nuance",
     "fineGrainedSelector": "Sélecteur précis…",
-    "tiles": "Tuiles"
+    "tiles": "Tuiles",
+    "previous": "Précédente :",
+    "alpha": "Alpha"
   },
   "book": {
     "dialogTitle": "Manuel Strype"

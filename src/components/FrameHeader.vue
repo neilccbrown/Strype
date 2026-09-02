@@ -160,11 +160,11 @@ export default defineComponent({
 
     computed:{
         ...mapStores(useStore),
-        
+
         isCommentFrame(): boolean{
             return this.frameType===AllFrameTypesIdentifier.comment;
         },
-   
+
         scssVars() {
             // just to be able to use in template
             return scssVars;

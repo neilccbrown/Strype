@@ -1,71 +1,93 @@
 <template>
-    <ModalDlg dlgId="colourPickerDlg" :dlgTitle="$t('media.colourPickerTitle')" :okDisabled="okDisabled">
+    <ModalDlg dlgId="colourPickerDlg" :dlgTitle="$t(headingKey)" :okDisabled="okDisabled" cssClass="ColourPickerDlg-modal">
         <div class="ColourPickerDlg-content">
-            <div class="ColourPickerDlg-view-area">
-                <div v-if="view === 'grid'" class="ColourPickerDlg-family-grid">
-                    <button
-                        v-for="family in families"
-                        :key="family.key"
-                        type="button"
-                        class="ColourPickerDlg-family-btn"
-                        @click="selectFamily(family)"
+            <div class="ColourPickerDlg-main-row">
+                <div class="ColourPickerDlg-view-area">
+                    <div v-if="view === 'grid'" class="ColourPickerDlg-family-grid">
+                        <button
+                            v-for="family in families"
+                            :key="family.key"
+                            type="button"
+                            class="ColourPickerDlg-family-btn"
+                            @click="selectFamily(family)"
+                        >
+                            <span class="ColourPickerDlg-family-swatch" :style="{background: familySwatchHex(family)}"></span>
+                            <span class="ColourPickerDlg-family-name">{{ $t(family.nameKey) }}</span>
+                        </button>
+                    </div>
+
+                    <div v-else-if="view === 'tinker' && currentFamily">
+                        <div v-if="hasHue">
+                            <p class="ColourPickerDlg-section-label">{{ $t("colourPicker.hue") }}</p>
+                            <div class="ColourPickerDlg-hue-strip">
+                                <button
+                                    v-for="chip in hueChips"
+                                    :key="chip.hue"
+                                    type="button"
+                                    class="ColourPickerDlg-chip"
+                                    :class="{'ColourPickerDlg-chip-selected': chip.selected}"
+                                    :style="{background: chip.hex}"
+                                    @click="selectHueChip(chip.hue)"
+                                ></button>
+                            </div>
+                        </div>
+
+                        <p class="ColourPickerDlg-section-label">{{ $t("colourPicker.shade") }}</p>
+                        <div class="ColourPickerDlg-shade-grid">
+                            <div v-for="(row, rowIndex) in shadeRows" :key="rowIndex" class="ColourPickerDlg-shade-row">
+                                <button
+                                    v-for="cell in row"
+                                    :key="cell.sat + '-' + cell.light"
+                                    type="button"
+                                    class="ColourPickerDlg-shade-cell"
+                                    :class="{'ColourPickerDlg-shade-cell-selected': cell.selected}"
+                                    :style="{background: cell.hex}"
+                                    @click="selectShadeCell(cell.sat, cell.light)"
+                                    @dblclick="selectShadeCellAndConfirm(cell.sat, cell.light)"
+                                ></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-else-if="view === 'classic'" class="ColourPickerDlg-classic">
+                        <input
+                            type="range"
+                            class="ColourPickerDlg-hue-slider"
+                            min="0"
+                            max="359"
+                            v-model.number="classicHue"
+                            @input="updateHexFromClassic"
+                        />
+                        <div ref="svSquare" class="ColourPickerDlg-sv-square" :style="svSquareStyle" @pointerdown="onSvPointerDown">
+                            <div class="ColourPickerDlg-sv-cursor" :style="{left: classicSat + '%', top: (100 - classicVal) + '%'}"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="view !== 'grid'" class="ColourPickerDlg-alpha-col">
+                    <p class="ColourPickerDlg-section-label">{{ $t("colourPicker.alpha") }}</p>
+                    <div
+                        ref="alphaSlider"
+                        class="ColourPickerDlg-alpha-slider"
+                        :style="alphaSliderStyle"
+                        @pointerdown="onAlphaPointerDown"
                     >
-                        <span class="ColourPickerDlg-family-swatch" :style="{background: familySwatchHex(family)}"></span>
-                        <span class="ColourPickerDlg-family-name">{{ $t(family.nameKey) }}</span>
-                    </button>
-                </div>
-
-                <div v-else-if="view === 'tinker' && currentFamily">
-                    <div v-if="hasHue">
-                        <p class="ColourPickerDlg-section-label">{{ $t("colourPicker.hue") }}</p>
-                        <div class="ColourPickerDlg-hue-strip">
-                            <button
-                                v-for="chip in hueChips"
-                                :key="chip.hue"
-                                type="button"
-                                class="ColourPickerDlg-chip"
-                                :class="{'ColourPickerDlg-chip-selected': chip.selected}"
-                                :style="{background: chip.hex}"
-                                @click="selectHueChip(chip.hue)"
-                            ></button>
-                        </div>
-                    </div>
-
-                    <p class="ColourPickerDlg-section-label">{{ $t("colourPicker.shade") }}</p>
-                    <div class="ColourPickerDlg-shade-grid">
-                        <div v-for="(row, rowIndex) in shadeRows" :key="rowIndex" class="ColourPickerDlg-shade-row">
-                            <button
-                                v-for="cell in row"
-                                :key="cell.sat + '-' + cell.light"
-                                type="button"
-                                class="ColourPickerDlg-shade-cell"
-                                :class="{'ColourPickerDlg-shade-cell-selected': cell.selected}"
-                                :style="{background: cell.hex}"
-                                @click="selectShadeCell(cell.sat, cell.light)"
-                                @dblclick="selectShadeCellAndConfirm(cell.sat, cell.light)"
-                            ></button>
-                        </div>
-                    </div>
-                </div>
-
-                <div v-else-if="view === 'classic'" class="ColourPickerDlg-classic">
-                    <p class="ColourPickerDlg-section-label">{{ $t("colourPicker.fineGrainedSelector") }}</p>
-                    <input
-                        type="range"
-                        class="ColourPickerDlg-hue-slider"
-                        min="0"
-                        max="359"
-                        v-model.number="classicHue"
-                        @input="updateHexFromClassic"
-                    />
-                    <div ref="svSquare" class="ColourPickerDlg-sv-square" :style="svSquareStyle" @pointerdown="onSvPointerDown">
-                        <div class="ColourPickerDlg-sv-cursor" :style="{left: classicSat + '%', top: (100 - classicVal) + '%'}"></div>
+                        <div class="ColourPickerDlg-alpha-cursor" :style="{top: (100 - alpha / 255 * 100) + '%'}"></div>
                     </div>
                 </div>
             </div>
 
             <div class="ColourPickerDlg-hex-row">
-                <span class="ColourPickerDlg-swatch" :style="{background: currentHex}"></span>
+                <div v-if="previousHex" class="ColourPickerDlg-previous-box">
+                    <span class="ColourPickerDlg-previous-label">{{ $t("colourPicker.previous") }}</span>
+                    <button
+                        type="button"
+                        class="ColourPickerDlg-swatch ColourPickerDlg-swatch-btn"
+                        :style="checkerboardSwatchStyle(previousHex, previousAlpha ?? 255)"
+                        @click="selectPreviousHex"
+                    ></button>
+                </div>
+                <span class="ColourPickerDlg-swatch" :style="checkerboardSwatchStyle(currentHex, alpha)"></span>
                 <input
                     id="ColourPickerDlg-hex-input"
                     type="text"
@@ -113,7 +135,7 @@ import { getPEAGraphicsContainerDivId } from "@/helpers/editor";
 // #v-endif
 import { BvTriggerableEvent } from "bootstrap-vue-next";
 import {
-    parseColourToHex, hexToHsv, hsvToHex, hexToHsl, hslToHex,
+    parseColourAndAlpha, combineHexAlpha, hexToRgb, hexToHsv, hsvToHex, hexToHsl, hslToHex,
     ColourFamily, COLOUR_FAMILIES, HUE_CHIP_COUNT, GOOD_CHIP_SAT, GOOD_CHIP_LIGHT,
     SHADE_ROW_SAT_COUNTS, GREY_SHADE_BANDS, familyHasHueChoice, midOfRange,
 } from "@/helpers/colour";
@@ -133,6 +155,21 @@ function hexColourDistance(a: string, b: string): number {
     const ar = parseInt(a.substring(1, 3), 16), ag = parseInt(a.substring(3, 5), 16), ab = parseInt(a.substring(5, 7), 16);
     const br = parseInt(b.substring(1, 3), 16), bg = parseInt(b.substring(3, 5), 16), bb = parseInt(b.substring(5, 7), 16);
     return (ar - br) ** 2 + (ag - bg) ** 2 + (ab - bb) ** 2;
+}
+
+// The CSS for a checkerboard background, used everywhere a colour-with-alpha swatch needs to show
+// what's "underneath" a non-opaque colour (see checkerboardSwatchStyle below).
+const CHECKERBOARD_CSS = "repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 0 0 / 10px 10px";
+
+// Draws the same checkerboard pattern onto a canvas, for the graphics-area colour preview (which is
+// a filled canvas rather than a CSS background) -- see showGraphicsColourPreview.
+function drawCheckerboard(ctx: OffscreenCanvasRenderingContext2D, width: number, height: number, tile = 20) {
+    for (let y = 0; y < height; y += tile) {
+        for (let x = 0; x < width; x += tile) {
+            ctx.fillStyle = ((x / tile) + (y / tile)) % 2 === 0 ? "#ffffff" : "#cccccc";
+            ctx.fillRect(x, y, tile, tile);
+        }
+    }
 }
 
 // A single tile in the shade grid. No hue field: the grid always shows shades of whichever hue is
@@ -173,7 +210,15 @@ export default defineComponent({
             classicHue: 0,
             classicSat: 100,
             classicVal: 100,
+            // Alpha (0-255) applies across all three views alike -- it's set from the always-visible
+            // slider on the right of the dialog, independently of whichever view/tile/hue is active.
+            alpha: 255,
             hexText: DEFAULT_HEX,
+            // The colour (and alpha) the string held before this edit, for the "Previous:" swatch next
+            // to the prospective-colour swatch -- null when there's nothing to show it against, i.e.
+            // when inserting a fresh colour rather than editing an existing valid one (see onShownModalDlg).
+            previousHex: null as string | null,
+            previousAlpha: null as number | null,
             // Whether the dialog is currently visible; gates the graphics-area colour preview so we
             // don't try to touch it while the dialog (and hence this component's reactive state) is
             // just sitting there unshown.
@@ -189,7 +234,7 @@ export default defineComponent({
 
     created() {
         vueComponentsAPIHandler.colourPickerDlgComponentAPI = {
-            getHexValue: () => (this.view !== "classic" || this.isClassicHexValid) ? this.currentHex : null,
+            getHexValue: () => (this.view !== "classic" || this.isClassicHexValid) ? this.currentHexWithAlpha : null,
         };
 
         eventBus.on(CustomEventTypes.strypeModalShown, this.onShownModalDlg);
@@ -208,6 +253,13 @@ export default defineComponent({
 
         currentFamily(): ColourFamily | null {
             return this.families.find((f) => f.key == this.currentFamilyKey) ?? null;
+        },
+
+        // The dialog's own heading (above the view area), reflecting which of the three views is showing.
+        headingKey(): string {
+            return this.view === "tinker" ? "colourPicker.tiles"
+                : this.view === "classic" ? "colourPicker.fineGrainedSelector"
+                    : "colourPicker.allColours";
         },
 
         hasHue(): boolean {
@@ -284,8 +336,14 @@ export default defineComponent({
                 : hslToHex(this.hue, this.sat, this.light);
         },
 
+        // currentHex plus the alpha slider's value, in the "#rrggbb" / "#rrggbbaa" form the string
+        // literal is written as (see combineHexAlpha) -- what actually gets recorded on OK.
+        currentHexWithAlpha(): string {
+            return combineHexAlpha(this.currentHex, this.alpha);
+        },
+
         isClassicHexValid(): boolean {
-            return parseColourToHex(this.hexText) !== null;
+            return parseColourAndAlpha(this.hexText) !== null;
         },
 
         okDisabled(): boolean {
@@ -295,12 +353,27 @@ export default defineComponent({
         svSquareStyle(): Record<string, string> {
             return {background: "linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent), hsl(" + this.classicHue + ", 100%, 50%)"};
         },
+
+        // The permanently-visible alpha slider: the current RGB colour faded from fully opaque at
+        // the top to fully transparent at the bottom, over a checkerboard so the transparent end is
+        // visibly transparent rather than just "white".
+        alphaSliderStyle(): Record<string, string> {
+            const {r, g, b} = hexToRgb(this.currentHex);
+            return {
+                background: `linear-gradient(to bottom, rgba(${r}, ${g}, ${b}, 1), rgba(${r}, ${g}, ${b}, 0)), ${CHECKERBOARD_CSS}`,
+            };
+        },
     },
 
     watch: {
         currentHex(newHex: string) {
             if (this.isShown && this.hasSelectedColour) {
-                this.showGraphicsColourPreview(newHex);
+                this.showGraphicsColourPreview(newHex, this.alpha);
+            }
+        },
+        alpha(newAlpha: number) {
+            if (this.isShown && this.hasSelectedColour) {
+                this.showGraphicsColourPreview(this.currentHex, newAlpha);
             }
         },
     },
@@ -308,6 +381,14 @@ export default defineComponent({
     methods: {
         familySwatchHex(family: ColourFamily): string {
             return hslToHex(midOfRange(family.hue), midOfRange(family.sat), midOfRange(family.light));
+        },
+
+        // A colour-with-alpha swatch: the colour tinted by its alpha over a checkerboard, so at full
+        // alpha (255) it reads as a plain solid swatch, and at low alpha the checkerboard shows through.
+        checkerboardSwatchStyle(hex: string, alpha: number): Record<string, string> {
+            const {r, g, b} = hexToRgb(hex);
+            const rgba = `rgba(${r}, ${g}, ${b}, ${alpha / 255})`;
+            return {background: `linear-gradient(${rgba}, ${rgba}), ${CHECKERBOARD_CSS}`};
         },
 
         makeShadeCell(h: number, s: number, l: number): ShadeCell {
@@ -346,7 +427,7 @@ export default defineComponent({
             this.sat = nearest ? nearest.sat : midOfRange(family.sat);
             this.light = nearest ? nearest.light : midOfRange(family.light);
             this.view = "tinker";
-            this.hexText = this.currentHex;
+            this.hexText = this.currentHexWithAlpha;
         },
 
         backToGrid() {
@@ -356,14 +437,14 @@ export default defineComponent({
         selectHueChip(hue: number) {
             this.hasSelectedColour = true;
             this.hue = hue;
-            this.hexText = this.currentHex;
+            this.hexText = this.currentHexWithAlpha;
         },
 
         selectShadeCell(sat: number, light: number) {
             this.hasSelectedColour = true;
             this.sat = sat;
             this.light = light;
-            this.hexText = this.currentHex;
+            this.hexText = this.currentHexWithAlpha;
         },
 
         // Double-clicking a shade tile picks it and immediately confirms the dialog, same as
@@ -393,7 +474,7 @@ export default defineComponent({
                     this.light = l;
                     this.view = "grid";
                 }
-                this.hexText = this.currentHex;
+                this.hexText = this.currentHexWithAlpha;
             }
             else {
                 // Entering the fine-grained selector: seed its HSV state from whatever's currently picked.
@@ -401,14 +482,14 @@ export default defineComponent({
                 this.classicHue = h;
                 this.classicSat = s;
                 this.classicVal = v;
-                this.hexText = this.currentHex;
+                this.hexText = this.currentHexWithAlpha;
                 this.view = "classic";
             }
         },
 
         updateHexFromClassic() {
             this.hasSelectedColour = true;
-            this.hexText = hsvToHex(this.classicHue, this.classicSat, this.classicVal);
+            this.hexText = this.currentHexWithAlpha;
         },
 
         // If the given colour lands exactly on a tile swatch, jump to that tile selected in the
@@ -434,14 +515,56 @@ export default defineComponent({
             }
         },
 
-        // Called on user input into the always-visible hex text field.
-        onHexTextEdited() {
-            const hex = parseColourToHex(this.hexText);
-            if (!hex) {
+        // Clicking the "Previous:" swatch restores that colour as the prospective new colour again --
+        // unlike applyHexColour (used for hex-text edits and opening the dialog), this never switches
+        // view: it just moves the current view's own selection (tile / SV-square position) to match.
+        selectPreviousHex() {
+            if (!this.previousHex) {
                 return;
             }
             this.hasSelectedColour = true;
-            this.applyHexColour(hex);
+            this.alpha = this.previousAlpha ?? 255;
+            this.hexText = combineHexAlpha(this.previousHex, this.alpha);
+            if (this.view === "classic") {
+                const {h, s, v} = hexToHsv(this.previousHex);
+                this.classicHue = h;
+                this.classicSat = s;
+                this.classicVal = v;
+            }
+            else {
+                // Grid and tinker views are both tile-based (grid picks a family, tinker a shade
+                // within one). If the previous colour lands exactly on a swatch, jump to its family/
+                // shade and stay on a tile view (same as applyHexColour's tile-match branch, just
+                // without forcing a switch to "tinker" if we're still on "grid"); otherwise there's
+                // no tile to select, so fall through to the spectrum view, same as applyHexColour.
+                const match = this.findExactSwatchMatch(this.previousHex);
+                if (match) {
+                    this.currentFamilyKey = match.family.key;
+                    this.hue = match.hue;
+                    this.sat = match.sat;
+                    this.light = match.light;
+                }
+                else {
+                    const {h, s, v} = hexToHsv(this.previousHex);
+                    this.classicHue = h;
+                    this.classicSat = s;
+                    this.classicVal = v;
+                    this.currentFamilyKey = null;
+                    this.view = "classic";
+                }
+            }
+        },
+
+        // Called on user input into the always-visible hex text field. Accepts either 6 hex digits
+        // (opaque) or 8 (the trailing two being alpha) -- see parseColourAndAlpha.
+        onHexTextEdited() {
+            const parsed = parseColourAndAlpha(this.hexText);
+            if (!parsed) {
+                return;
+            }
+            this.hasSelectedColour = true;
+            this.alpha = parsed.alpha;
+            this.applyHexColour(parsed.hex);
         },
 
         onSvPointerDown(event: PointerEvent) {
@@ -463,6 +586,28 @@ export default defineComponent({
             };
             square.addEventListener("pointermove", onMove);
             square.addEventListener("pointerup", onUp);
+            moveTo(event);
+        },
+
+        // Dragging the alpha slider: fully opaque (255) at the top, fully transparent (0) at the bottom.
+        onAlphaPointerDown(event: PointerEvent) {
+            const bar = this.$refs.alphaSlider as HTMLDivElement;
+            bar.setPointerCapture(event.pointerId);
+            const moveTo = (e: PointerEvent) => {
+                const rect = bar.getBoundingClientRect();
+                const y = Math.min(Math.max(e.clientY - rect.top, 0), rect.height);
+                this.hasSelectedColour = true;
+                this.alpha = Math.round(255 - (y / rect.height) * 255);
+                this.hexText = this.currentHexWithAlpha;
+            };
+            const onMove = (e: PointerEvent) => moveTo(e);
+            const onUp = (e: PointerEvent) => {
+                bar.releasePointerCapture(e.pointerId);
+                bar.removeEventListener("pointermove", onMove);
+                bar.removeEventListener("pointerup", onUp);
+            };
+            bar.addEventListener("pointermove", onMove);
+            bar.addEventListener("pointerup", onUp);
             moveTo(event);
         },
 
@@ -512,13 +657,19 @@ export default defineComponent({
             // LabelSlot.vue, which always passes the current string text there and only passes null
             // for the "not inside a string" insertion case.
             if (this.initialColour !== null) {
-                const parsedInitial = parseColourToHex(this.initialColour);
-                const seededHex = parsedInitial ?? DEFAULT_HEX;
+                const parsedInitial = parseColourAndAlpha(this.initialColour);
+                const seededHex = parsedInitial?.hex ?? DEFAULT_HEX;
+                const seededAlpha = parsedInitial?.alpha ?? 255;
+                // Only a genuinely valid existing colour counts as a "previous" colour to show --
+                // there's nothing sensible to revert to if the string wasn't a valid colour at all.
+                this.previousHex = parsedInitial?.hex ?? null;
+                this.previousAlpha = parsedInitial?.alpha ?? null;
+                this.alpha = seededAlpha;
                 // If it lands exactly on a swatch, start there with it selected; otherwise (including
                 // when the existing content wasn't a valid colour at all) there's no sensible swatch
                 // to preselect, so go straight to the fine-grained selector with the colour in place.
                 if (parsedInitial) {
-                    this.applyHexColour(parsedInitial);
+                    this.applyHexColour(parsedInitial.hex);
                 }
                 else {
                     const {h, s, v} = hexToHsv(seededHex);
@@ -528,10 +679,10 @@ export default defineComponent({
                     this.currentFamilyKey = null;
                     this.view = "classic";
                 }
-                this.hexText = seededHex;
+                this.hexText = combineHexAlpha(seededHex, seededAlpha);
                 this.isShown = true;
                 this.hasSelectedColour = true;
-                this.showGraphicsColourPreview(seededHex);
+                this.showGraphicsColourPreview(seededHex, seededAlpha);
                 return;
             }
 
@@ -540,6 +691,9 @@ export default defineComponent({
             // picks something (see the currentHex watcher, and hasSelectedColour being set to true
             // in selectFamily/selectHueChip/selectShadeCell/updateHexFromClassic below).
             this.hasSelectedColour = false;
+            this.previousHex = null;
+            this.previousAlpha = null;
+            this.alpha = 255;
             this.currentFamilyKey = null;
             const {h, s, l} = hexToHsl(DEFAULT_HEX);
             this.hue = h;
@@ -563,12 +717,15 @@ export default defineComponent({
         // selected colour -- the same live-preview mechanism the image-literal editor uses (see
         // MediaPreviewPopup.vue's doPreviewImage), just filling the "background" canvas with a solid
         // colour instead of drawing an image into it. Both overrideGraphics() params are required
-        // together to activate the override, so we pass the same filled canvas for both.
-        showGraphicsColourPreview(hex: string) {
+        // together to activate the override, so we pass the same filled canvas for both. A checkerboard
+        // is drawn first so a non-opaque alpha shows as a tint over it, same as the dialog's own swatches.
+        showGraphicsColourPreview(hex: string, alpha: number) {
             document.getElementById("strypeGraphicsPEATab")?.click();
             const canvas = new OffscreenCanvas(800, 600);
             const ctx = canvas.getContext("2d") as OffscreenCanvasRenderingContext2D;
-            ctx.fillStyle = hex;
+            drawCheckerboard(ctx, 800, 600);
+            const {r, g, b} = hexToRgb(hex);
+            ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha / 255})`;
             ctx.fillRect(0, 0, 800, 600);
             vueComponentsAPIHandler.peaComponentAPI?.overrideGraphics(canvas, canvas);
             vueComponentsAPIHandler.peaComponentAPI?.redrawCanvas();
@@ -621,13 +778,32 @@ export default defineComponent({
 </script>
 
 <style lang="scss">
+// The dialog needs to be a bit wider than Bootstrap's default 500px modal to fit the alpha slider
+// beside the view area without it hanging off the right edge (see ColourPickerDlg-modal below).
+// Needs the compound selector (not just .ColourPickerDlg-modal) to out-specificity Bootstrap's own
+// ".modal { --bs-modal-width: 500px; ... }" rule, which this element also matches and which follows
+// ours in source order.
+.modal.ColourPickerDlg-modal {
+    --bs-modal-width: 540px;
+}
+
 .ColourPickerDlg-content {
     display: flex;
     flex-direction: column;
     align-items: stretch;
     gap: 14px;
-    width: 450px;
+    width: 494px;
     margin: 0 auto;
+}
+
+.ColourPickerDlg-main-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 34px;
+}
+.ColourPickerDlg-main-row .ColourPickerDlg-view-area {
+    flex: 1;
+    min-width: 0;
 }
 
 .ColourPickerDlg-family-grid {
@@ -670,6 +846,41 @@ export default defineComponent({
 // switching between the family grid / tinker / fine-grained selector doesn't resize the dialog.
 .ColourPickerDlg-view-area {
     min-height: 350px;
+}
+
+// The alpha slider sits beside the view area rather than inside it, so it stays visible (and its
+// selection stays put) across all three views -- see alphaSliderStyle/onAlphaPointerDown.
+.ColourPickerDlg-alpha-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 30px;
+    flex-shrink: 0;
+}
+.ColourPickerDlg-alpha-col .ColourPickerDlg-section-label {
+    font-size: 90%;
+    text-align: center;
+}
+.ColourPickerDlg-alpha-slider {
+    position: relative;
+    width: 100%;
+    min-height: 280px;
+    border-radius: 5px;
+    box-shadow: inset 0 0 0 1px var(--bs-border-color);
+    touch-action: none;
+    cursor: ns-resize;
+}
+.ColourPickerDlg-alpha-cursor {
+    position: absolute;
+    left: -3px;
+    right: -3px;
+    height: 4px;
+    border-radius: 2px;
+    background: white;
+    border: 1px solid #555;
+    box-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
+    transform: translateY(-50%);
+    pointer-events: none;
 }
 
 .ColourPickerDlg-section-label {
@@ -817,6 +1028,36 @@ export default defineComponent({
     border-radius: 5px;
     box-shadow: inset 0 0 0 1px var(--bs-border-color);
     flex-shrink: 0;
+}
+.ColourPickerDlg-swatch-btn {
+    all: unset;
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    border-radius: 5px;
+    box-shadow: inset 0 0 0 1px var(--bs-border-color);
+    flex-shrink: 0;
+    cursor: pointer;
+}
+.ColourPickerDlg-swatch-btn:hover {
+    box-shadow: inset 0 0 0 1px var(--bs-border-color), 0 0 0 2px var(--bs-primary);
+}
+.ColourPickerDlg-swatch-btn:focus-visible {
+    outline: 2px solid var(--bs-primary);
+    outline-offset: 2px;
+}
+
+.ColourPickerDlg-previous-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 10px;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 5px;
+}
+.ColourPickerDlg-previous-label {
+    font-size: 95%;
+    color: var(--bs-secondary-color);
 }
 
 .ColourPickerDlg-bottom-row {

@@ -27,6 +27,7 @@
                 :slotType="slotItem.type"
                 :isDisabled="isDisabled"
                 :default-text="placeholderText == null ? '' : placeholderText[slotIndex]"
+                :paramPromptPending="paramPromptPending[slotIndex] ?? false"
                 :code="getSlotCode(slotItem)"
                 :frameId="frameId"
                 :isEditableSlot="isEditableSlot(slotItem.type)"
@@ -55,7 +56,7 @@
 
 <script lang="ts">
 import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FieldSlot, FlatSlotBase, FrameObject, getFrameDefType, isSlotBracketType, isSlotQuoteType, LabelSlotsContent, MediaDataAndDim, OptionalSlotType, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType } from "@/types/types";
-import { computed, defineComponent } from "vue";
+import { computed, defineComponent, ref } from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
@@ -63,7 +64,7 @@ import { bumpCaretRequestSeq, CustomEventTypes, getEditableSelectionText, getFra
 import { checkCodeErrors, evaluateSlotType, filterAllowedJointChildrenAfter, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos, getParentId, areSlotStructuresIsomorphic, getAncestorFrameOfTypeId, findSlotsWithIndentifierName, isAncestorGatedFrameTypeAllowed } from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import Parser from "@/parser/parser";
-import { calculateParamPrompt } from "@/autocompletion/acManager";
+import { calculateParamPrompt, invalidateParamPromptCache, prefetchImportedLibraryData } from "@/autocompletion/acManager";
 import scssVars from "@/assets/style/_export.module.scss";
 import { isMacOSPlatform, splitByRegexMatches } from "@/helpers/common";
 import { detectBrowser } from "@/helpers/browser";
@@ -171,6 +172,13 @@ export default defineComponent({
             return false;
         };
 
+        // Tracks, per subSlot index, whether that slot's placeholder (below) is still waiting on an
+        // in-flight calculateParamPrompt() call -- surfaced to LabelSlot via paramPromptPending so it
+        // can show a "still working on it" indicator instead of a misleadingly-blank slot. Written
+        // directly (not derived through useAsyncComputed) since each param prompt promise resolves
+        // independently of the others and of the overall placeholderText computation below.
+        const paramPromptPending = ref<boolean[]>([]);
+
         // Migrating to Vue 3, we don't use the Vue 2 package vue-async-computed anymore.
         // Instead we can natively use a helper (see vue3composables.ts).
         const placeholderText = useAsyncComputed(async () => {
@@ -178,6 +186,7 @@ export default defineComponent({
             // Special rules apply for the "function name" part of a function call frame cf getFunctionCallDefaultText() in editor.ts.
             const isFuncCallFrame = useStore().frameObjects[componentInstance.frameId].frameType.type == AllFrameTypesIdentifier.funccall;
             if (subSlots.value.length == 1) {
+                paramPromptPending.value = [false];
                 // If we are on an optional label slots structure that doesn't contain anything yet, we only show the placeholder if we're focused
                 const isOptionalEmpty = (useStore().frameObjects[componentInstance.frameId].frameType.labels[componentInstance.labelIndex].optionalSlot??OptionalSlotType.REQUIRED) == OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK && subSlots.value.length == 1 && subSlots.value[0].code.length == 0;
                 if(isOptionalEmpty && !isFocused()){
@@ -186,15 +195,18 @@ export default defineComponent({
                 return Promise.resolve([(isFuncCallFrame) ? getFunctionCallDefaultText(componentInstance.frameId) : componentInstance.defaultText]);
             }
             else {
-                return Promise.all((subSlots.value as FlatSlotBase[]).map((slotItem, index) => slotItem.placeholderSource !== undefined 
-                    ? calculateParamPrompt(componentInstance.frameId, slotItem.placeholderSource, slotItem.focused ?? false) 
-                    : Promise.resolve((useStore().frameObjects[componentInstance.frameId].frameType.type == AllFrameTypesIdentifier.funccall && index == 0) 
+                paramPromptPending.value = (subSlots.value as FlatSlotBase[]).map((slotItem) => slotItem.placeholderSource !== undefined);
+                return Promise.all((subSlots.value as FlatSlotBase[]).map((slotItem, index) => slotItem.placeholderSource !== undefined
+                    ? calculateParamPrompt(componentInstance.frameId, slotItem.placeholderSource, slotItem.focused ?? false).finally(() => {
+                        paramPromptPending.value = paramPromptPending.value.map((p, i) => i === index ? false : p);
+                    })
+                    : Promise.resolve((useStore().frameObjects[componentInstance.frameId].frameType.type == AllFrameTypesIdentifier.funccall && index == 0)
                         ? getFunctionCallDefaultText(componentInstance.frameId)
                         : "\u200b")));
             }
         }, []);
 
-        return { subSlots, labelSlotsStructDivId, isFocused, placeholderText };
+        return { subSlots, labelSlotsStructDivId, isFocused, placeholderText, paramPromptPending };
     },
 
     components:{
@@ -547,6 +559,24 @@ export default defineComponent({
                     this.partialIgnoreRefocus = true;
                 }
                 this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures = parsedCodeRes.slots;
+                // If this label is a funcdef's formal parameter list, any edit here (renaming a
+                // param, adding/removing one, adding/removing a default value) can change what
+                // calculateParamPrompt() should show at call sites elsewhere in the document --
+                // invalidate its cache so those pick up the change next time they're computed
+                // (see the comment on invalidateParamPromptCache() for why this is coarse rather
+                // than tracking which specific call sites are affected).
+                if (allowed === AllowedSlotContent.ONLY_FORMAL_PARAMS) {
+                    invalidateParamPromptCache();
+                }
+                // Editing an import/from-import frame's module or imported-names list can make new
+                // library data (signatures, evidence) resolvable -- warm the underlying fetch caches
+                // now rather than waiting for the user to type a call and hit calculateParamPrompt's
+                // give-up path while the network round-trip is still in flight (see
+                // prefetchImportedLibraryData's own comment for why this is safe to fire-and-forget).
+                if (this.appStore.frameObjects[this.frameId].frameType.type === AllFrameTypesIdentifier.import ||
+                    this.appStore.frameObjects[this.frameId].frameType.type === AllFrameTypesIdentifier.fromimport) {
+                    prefetchImportedLibraryData();
+                }
                 // The parser can be return a different size "code" of the slots than the code literal
                 // (that is for example the case with textual operators which requires spacing in typing, not in the UI)
                 focusCursorAbsPos += parsedCodeRes.cursorOffset;
@@ -637,6 +667,14 @@ export default defineComponent({
                                         // characters) -- buffering keystrokes during the conversion's own brief async
                                         // gap replaces it, so there's no reason left to delay the conversion itself.
                                         this.startPendingConversion();
+                                        // A keyword-frame conversion (if/elif/for/while/etc.) can reparent this frame and/or
+                                        // attach/detach joint frames on its parent, reaching beyond this.frameId -- so if
+                                        // stateBeforeChanges was captured scoped to just this frame (see LabelSlot.vue's
+                                        // onInput()), widen it to a full clone here, before any such mutation has happened,
+                                        // so undo/redo still captures every frame this conversion actually touches.
+                                        if((stateBeforeChanges as any).__touchedFrameIds !== undefined) {
+                                            stateBeforeChanges = this.appStore.cloneStateForUndo();
+                                        }
                                         this.performKeywordFrameConversion(keywordFrameConversionDef, candidateKeyword[1].length, uiLiteralCode, stateBeforeChanges, options?.triggeredByEnter ? 0 : 1, {...options, isColonTrigger});
                                     }
                                     else if(isVarAssignSlotStructure && this.labelIndex == 0 && !((currentFocusSlotCursorInfos?.slotInfos.slotId??",").includes(",")) && this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall && uiLiteralCode.match(/(?<!=)=(?!=)/) != null){
@@ -649,6 +687,7 @@ export default defineComponent({
                                         // Change the type of frame to varassign and adapt the content
                                         // (when we change the state in this next line, we need to COPY the FrameType object otherwise undo/redo makes weird changes in the commands)
                                         this.appStore.frameObjects[this.frameId].frameType = cloneDeep(getFrameDefType(AllFrameTypesIdentifier.varassign));
+                                        this.appStore.trackFrameConvert(AllFrameTypesIdentifier.varassign);
                                         const newContent: { [index: number]: LabelSlotsContent} = {
                                             // LHS
                                             0: {
@@ -964,6 +1003,7 @@ export default defineComponent({
             // Change the type of frame (when we change the state in this next line, we need to COPY
             // the FrameType object otherwise undo/redo makes weird changes in the commands)
             this.appStore.frameObjects[this.frameId].frameType = cloneDeep(getFrameDefType(def.targetType));
+            this.appStore.trackFrameConvert(def.targetType);
 
             const rawRemainder = uiLiteralCode.slice(keywordLen + separatorLength);
 
