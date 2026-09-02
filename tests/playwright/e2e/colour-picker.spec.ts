@@ -211,15 +211,16 @@ test.describe("Alpha slider", () => {
         await expect(page.locator("img[data-mediatype='colour']")).toHaveAttribute("data-code", "\"#3366cc\"");
 
         // Re-invoke the picker: the cursor sits in the empty field right after the swatch just
-        // inserted (see the "Ctrl-Shift-Y inside a string..." cursor-placement test above), so this
-        // inserts a second, new colour literal rather than editing the first one in place:
+        // inserted (see the "Ctrl-Shift-Y inside a string..." cursor-placement test above), which
+        // edits that swatch in place rather than inserting a new one next to it (see the
+        // "Editing an adjacent colour literal" describe block below):
         await page.keyboard.press("ControlOrMeta+Shift+Y");
         await expect(page.locator("#colourPickerDlg")).toBeVisible();
         await page.locator("#ColourPickerDlg-hex-input").fill("#3366cc80");
         await visibleOKButton(page).click();
         await waitForEditorSettled(page);
-        await expect(page.locator("img[data-mediatype='colour']")).toHaveCount(2);
-        await expect(page.locator("img[data-mediatype='colour']").last()).toHaveAttribute("data-code", "\"#3366cc80\"");
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveCount(1);
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveAttribute("data-code", "\"#3366cc80\"");
     });
 
     test("The Previous swatch restores both the colour and the alpha it was opened with", async ({page}) => {
@@ -393,6 +394,88 @@ test.describe("Cursor placement after picker-driven insertion/conversion", () =>
         await expect(page.locator("img[data-mediatype='colour']")).toHaveAttribute("data-code", "\"#112233\"");
         const text = await getRawFrameHeaderText(page);
         expect(text).toContain("9");
+    });
+});
+
+test.describe("Editing an adjacent colour literal", () => {
+    // Invoking the picker with the caret directly before/after an existing colour literal (and no
+    // selection) edits that colour literal in place, rather than inserting a brand new one next to
+    // it -- the caret naturally ends up right after a swatch following picker-driven insertion (see
+    // "Cursor placement..." above), so without this a second Ctrl-Shift-Y there would otherwise
+    // silently duplicate the swatch instead of tweaking it.
+    async function insertColourSwatch(page: Page, hex: string) {
+        await page.keyboard.press("ControlOrMeta+Shift+Y");
+        await page.locator(".ColourPickerDlg-family-btn", {hasText: "Blue"}).click();
+        await page.locator(".ColourPickerDlg-shade-cell").first().dblclick();
+        await waitForEditorSettled(page);
+        await page.keyboard.press("ControlOrMeta+Shift+Y");
+        await page.locator("button", {hasText: "Spectrum"}).click();
+        await waitForColourPickerSeeded(page);
+        await page.locator("#ColourPickerDlg-hex-input").fill(hex);
+        await visibleOKButton(page).click();
+        await waitForEditorSettled(page);
+    }
+
+    test("Invoking the picker with the caret right after a swatch edits it in place", async ({page}) => {
+        await openIfFrame(page);
+        await insertColourSwatch(page, "#112233");
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveCount(1);
+
+        // Caret is left in the empty field right after the swatch (see "Cursor placement..." above):
+        await page.keyboard.press("ControlOrMeta+Shift+Y");
+        await expect(page.locator("#colourPickerDlg")).toBeVisible();
+        // Seeded from the existing colour, not the DEFAULT_HEX fallback:
+        await expect(page.locator("#ColourPickerDlg-hex-input")).toHaveValue("#112233");
+        await page.locator("#ColourPickerDlg-hex-input").fill("#445566");
+        await visibleOKButton(page).click();
+        await waitForEditorSettled(page);
+
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveCount(1);
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveAttribute("data-code", "\"#445566\"");
+    });
+
+    test("Invoking the picker with the caret right before a swatch edits it in place", async ({page}) => {
+        await openIfFrame(page);
+        // Type a leading character first, so the field right before the swatch is non-empty --
+        // with an all-empty condition, a single ArrowLeft out of the (also-empty) trailing field
+        // skips over both empty fields at once and leaves the slot entirely (there's nothing for
+        // the caret to stop at), rather than landing adjacent to the swatch:
+        await typeIndividually(page, "1");
+        await page.keyboard.press("ControlOrMeta+Shift+Y");
+        await page.locator(".ColourPickerDlg-family-btn", {hasText: "Blue"}).click();
+        await page.locator(".ColourPickerDlg-shade-cell").first().dblclick();
+        await waitForEditorSettled(page);
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveCount(1);
+        const insertedHex = ((await page.locator("img[data-mediatype='colour']").getAttribute("data-code")) ?? "").replace(/"/g, "");
+
+        // Caret is in the trailing empty field after the swatch; one ArrowLeft skips back over the
+        // swatch as a single atomic step (media literals aren't entered), landing right after "1" --
+        // i.e. directly before the swatch:
+        await page.keyboard.press("ArrowLeft");
+        await page.keyboard.press("ControlOrMeta+Shift+Y");
+        await expect(page.locator("#colourPickerDlg")).toBeVisible();
+        await expect(page.locator("#ColourPickerDlg-hex-input")).toHaveValue(insertedHex);
+        await page.locator("#ColourPickerDlg-hex-input").fill("#778899");
+        await visibleOKButton(page).click();
+        await waitForEditorSettled(page);
+
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveCount(1);
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveAttribute("data-code", "\"#778899\"");
+        const text = await getRawFrameHeaderText(page);
+        expect(text).toContain("1");
+    });
+
+    test("Cancelling an adjacent-colour edit leaves the original colour untouched", async ({page}) => {
+        await openIfFrame(page);
+        await insertColourSwatch(page, "#112233");
+
+        await page.keyboard.press("ControlOrMeta+Shift+Y");
+        await expect(page.locator("#colourPickerDlg")).toBeVisible();
+        await page.locator("#ColourPickerDlg-hex-input").fill("#445566");
+        await visibleCancelButton(page).click();
+
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveCount(1);
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveAttribute("data-code", "\"#112233\"");
     });
 });
 
