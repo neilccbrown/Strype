@@ -192,8 +192,10 @@ test.describe("Alpha slider", () => {
 
         await visibleOKButton(page).click();
         await waitForEditorSettled(page);
-        const text = await getRawFrameHeaderText(page);
-        expect(text).toContain(hexValue);
+        // The colour is inserted as a colour-literal swatch (an <img data-mediatype="colour">), not
+        // plain text, so its hex code shows up in the swatch's data-code attribute, not in the raw
+        // frame header text (see colourSwatch()/the "Loading and saving" describe block's comment):
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveAttribute("data-code", "\"" + hexValue.toLowerCase() + "\"");
     });
 
     test("A fully-opaque (ff) alpha is dropped from the recorded string, an explicit non-ff alpha is kept", async ({page}) => {
@@ -205,19 +207,19 @@ test.describe("Alpha slider", () => {
         await page.locator("#ColourPickerDlg-hex-input").fill("#3366ccff");
         await visibleOKButton(page).click();
         await waitForEditorSettled(page);
-        // "ff" alpha must be dropped -- assert on the hex code itself (rather than toContain, which
-        // would also pass if a stray "#3366ccff" were present) since the quote character that
-        // follows it in the DOM isn't a plain ASCII quote:
-        const opaqueMatch = /#3366cc([0-9a-f]*)/i.exec(await getRawFrameHeaderText(page));
-        expect(opaqueMatch?.[1]).toBe("");
+        // "ff" alpha must be dropped -- assert on the swatch's data-code attribute (see above):
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveAttribute("data-code", "\"#3366cc\"");
 
-        // Re-open on the string just inserted and give it a genuine alpha this time:
+        // Re-invoke the picker: the cursor sits in the empty field right after the swatch just
+        // inserted (see the "Ctrl-Shift-Y inside a string..." cursor-placement test above), so this
+        // inserts a second, new colour literal rather than editing the first one in place:
         await page.keyboard.press("ControlOrMeta+Shift+Y");
         await expect(page.locator("#colourPickerDlg")).toBeVisible();
         await page.locator("#ColourPickerDlg-hex-input").fill("#3366cc80");
         await visibleOKButton(page).click();
         await waitForEditorSettled(page);
-        expect(await getRawFrameHeaderText(page)).toContain("#3366cc80");
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveCount(2);
+        await expect(page.locator("img[data-mediatype='colour']").last()).toHaveAttribute("data-code", "\"#3366cc80\"");
     });
 
     test("The Previous swatch restores both the colour and the alpha it was opened with", async ({page}) => {
