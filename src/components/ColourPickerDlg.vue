@@ -66,7 +66,12 @@
             <div class="ColourPickerDlg-hex-row">
                 <div v-if="previousHex" class="ColourPickerDlg-previous-box">
                     <span class="ColourPickerDlg-previous-label">{{ $t("colourPicker.previous") }}</span>
-                    <span class="ColourPickerDlg-swatch" :style="{background: previousHex}"></span>
+                    <button
+                        type="button"
+                        class="ColourPickerDlg-swatch ColourPickerDlg-swatch-btn"
+                        :style="{background: previousHex}"
+                        @click="selectPreviousHex"
+                    ></button>
                 </div>
                 <span class="ColourPickerDlg-swatch" :style="{background: currentHex}"></span>
                 <input
@@ -445,6 +450,45 @@ export default defineComponent({
                 this.classicVal = v;
                 this.currentFamilyKey = null;
                 this.view = "classic";
+            }
+        },
+
+        // Clicking the "Previous:" swatch restores that colour as the prospective new colour again --
+        // unlike applyHexColour (used for hex-text edits and opening the dialog), this never switches
+        // view: it just moves the current view's own selection (tile / SV-square position) to match.
+        selectPreviousHex() {
+            if (!this.previousHex) {
+                return;
+            }
+            this.hasSelectedColour = true;
+            this.hexText = this.previousHex;
+            if (this.view === "classic") {
+                const {h, s, v} = hexToHsv(this.previousHex);
+                this.classicHue = h;
+                this.classicSat = s;
+                this.classicVal = v;
+            }
+            else {
+                // Grid and tinker views are both tile-based (grid picks a family, tinker a shade
+                // within one). If the previous colour lands exactly on a swatch, jump to its family/
+                // shade and stay on a tile view (same as applyHexColour's tile-match branch, just
+                // without forcing a switch to "tinker" if we're still on "grid"); otherwise there's
+                // no tile to select, so fall through to the spectrum view, same as applyHexColour.
+                const match = this.findExactSwatchMatch(this.previousHex);
+                if (match) {
+                    this.currentFamilyKey = match.family.key;
+                    this.hue = match.hue;
+                    this.sat = match.sat;
+                    this.light = match.light;
+                }
+                else {
+                    const {h, s, v} = hexToHsv(this.previousHex);
+                    this.classicHue = h;
+                    this.classicSat = s;
+                    this.classicVal = v;
+                    this.currentFamilyKey = null;
+                    this.view = "classic";
+                }
             }
         },
 
@@ -835,6 +879,23 @@ export default defineComponent({
     border-radius: 5px;
     box-shadow: inset 0 0 0 1px var(--bs-border-color);
     flex-shrink: 0;
+}
+.ColourPickerDlg-swatch-btn {
+    all: unset;
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    border-radius: 5px;
+    box-shadow: inset 0 0 0 1px var(--bs-border-color);
+    flex-shrink: 0;
+    cursor: pointer;
+}
+.ColourPickerDlg-swatch-btn:hover {
+    box-shadow: inset 0 0 0 1px var(--bs-border-color), 0 0 0 2px var(--bs-primary);
+}
+.ColourPickerDlg-swatch-btn:focus-visible {
+    outline: 2px solid var(--bs-primary);
+    outline-offset: 2px;
 }
 
 .ColourPickerDlg-previous-box {
