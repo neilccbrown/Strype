@@ -21,7 +21,7 @@ export async function pressFrameShortcut(page: Page, key: string): Promise<void>
     await page.keyboard.press(key);
 }
 
-async function readEditorState(page: Page) : Promise<{focusId: string, cursor: string, frameCount: number, pendingConversion: boolean}> {
+async function readEditorState(page: Page) : Promise<{focusId: string, cursor: string, frameCount: number, pendingConversion: boolean, content: string}> {
     return page.evaluate(() => {
         const editor = document.querySelector("#editor");
         return {
@@ -29,6 +29,13 @@ async function readEditorState(page: Page) : Promise<{focusId: string, cursor: s
             cursor: editor?.getAttribute("data-slot-cursor") ?? "",
             frameCount: document.querySelectorAll(".frame-div").length,
             pendingConversion: editor?.getAttribute("data-pending-slot-conversion") === "true",
+            // Undo/redo of a content-only edit (e.g. inserting/removing a character within an
+            // already-focused slot) leaves focusId/cursor/frameCount unchanged, so those alone
+            // aren't enough to detect settling -- include the editor's text so such edits are
+            // still seen as a state change (confirmed via a real CI failure where a save()
+            // right after an undo read the pre-undo content, because focus/cursor/frameCount
+            // looked "stable" before Vue had actually re-rendered the text):
+            content: editor?.textContent ?? "",
         };
     });
 }
@@ -59,7 +66,7 @@ export async function waitForEditorSettled(page: Page, timeoutMs = 4000) : Promi
         // doesn't land at the wrong spot -- meaning focus/cursor look "stable" from the very first
         // poll even though the frame hasn't actually finished converting yet. Never treat that as
         // settled, however many consecutive stable reads we've seen:
-        if (!cur.pendingConversion && cur.focusId === last.focusId && cur.cursor === last.cursor && cur.frameCount === last.frameCount) {
+        if (!cur.pendingConversion && cur.focusId === last.focusId && cur.cursor === last.cursor && cur.frameCount === last.frameCount && cur.content === last.content) {
             stableCount++;
             // A blank focus id (no slot focused) is also used by the app as a transient marker
             // while some restructuring is in flight -- frame-level pastes can legitimately end up

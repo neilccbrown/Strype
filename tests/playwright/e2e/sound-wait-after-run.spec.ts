@@ -14,7 +14,10 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
         // Same headless-sound limitation noted in console-execution.spec.ts's sound tests.
         testInfo.skip(true, "Playing sound headless doesn't work in Firefox");
     }
-    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 120000});
+    // 180s, not 120s: startRunning() can itself wait up to 120s for Pyodide to be ready (see
+    // tests/playwright/support/execution.ts) -- see check-error-locations.spec.ts for the CI
+    // failure this fixes:
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 180000});
 });
 
 test.describe("Waiting for sounds after normal completion", () => {

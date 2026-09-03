@@ -7,7 +7,10 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     // One test in this file (the U+200B regression test below) actually runs the program, so
     // Pyodide can't be skipped for the whole file the way most dialog-only tests here otherwise
     // would want -- matches check-error-locations.spec.ts's convention for the same reason.
-    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 90000});
+    // 180s, not 90s: the U+200B regression test's runToFinish() can itself wait up to 120s for
+    // Pyodide to be ready (see tests/playwright/support/execution.ts) -- see
+    // check-error-locations.spec.ts for the CI failure this fixes:
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 180000});
 });
 
 // Opens an "if" frame and leaves the caret in its (empty) expression slot -- same helper as

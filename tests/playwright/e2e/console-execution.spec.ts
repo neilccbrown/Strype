@@ -4,7 +4,10 @@ import { checkConsoleContent, checkFrameErrorCount, runButtonShowsRun, runToFini
 import { setupStrypeTest } from "../support/general";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
-    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 120000});
+    // 180s, not 120s: startRunning()/runToFinish() can themselves wait up to 120s for Pyodide to
+    // be ready (see tests/playwright/support/execution.ts), which left no headroom against a
+    // 120s test-level budget -- see check-error-locations.spec.ts for the CI failure this fixes:
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 180000});
 });
 
 test.describe("Check console after execution", () => {
