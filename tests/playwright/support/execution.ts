@@ -3,16 +3,26 @@ import { Page, expect, Locator } from "@playwright/test";
 export async function startRunning(page: Page, extraTimeout?: boolean) : Promise<Locator> {
     // It should not be running:
     const button = page.locator("#runButton");
-    // It can take a while for Pyodide to load up:
-    await expect(button).toHaveText("Run", {timeout: (extraTimeout ? 120000: 60000)});
+    // It can take a while for Pyodide to load up -- and under CI worker contention (several
+    // Firefox instances each initialising Pyodide concurrently), 60s is not always enough: seen
+    // to genuinely exceed it on ubuntu-latest+firefox even though every retry then passed well
+    // within the window. This first wait is purely for Pyodide's one-off startup (not the
+    // long-running-program waits `extraTimeout` is otherwise used for below), so always give it
+    // the generous timeout -- it costs nothing when Pyodide is already ready, since `expect`
+    // resolves as soon as the condition is met:
+    await expect(button).toHaveText("Run", {timeout: 120000});
     // Click it:
     await page.click("#runButton");
     return button;
 }
 
 export async function runButtonShowsRun(button: Locator, extraTimeout?: boolean) : Promise<void> {
-    // Firefox is incredibly slow to reinitialise on CI, so we have a huge timeout:
-    await expect(button).toHaveText("Run", {timeout: (extraTimeout ? 120000 : 60000)});
+    // Firefox is incredibly slow to reinitialise on CI, so we have a huge timeout. This covers
+    // both a long-running program finishing (what `extraTimeout` was originally for) and Pyodide
+    // re-initialising after a run, which was seen locally to also blow past 60s under worker
+    // contention (the same "Initialising..." symptom as startRunning's wait above) -- so always
+    // use the generous timeout rather than only when a caller opts in via extraTimeout:
+    await expect(button).toHaveText("Run", {timeout: 120000});
 }
 
 

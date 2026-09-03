@@ -118,8 +118,15 @@ test.describe("Runtime errors scroll into view", () => {
             // "Finish" here is an exception
             await runToFinish(page);
             await checkConsoleContent(page, "< TypeError: object of type 'NoneType' has no len() >\n  From the highlighted call in your code");
-            // Now check its scroll position:
-            expect(await isInsideViewport(await page.locator("i.fa-exclamation-triangle").elementHandle(), visibleBefore ? 0 : 200)).toEqual(true);
+            // Now check its scroll position. The scroll-into-view for a runtime error is
+            // dispatched from a nextTick (store.ts's setCurrentFrame) and then actually performed
+            // from a further 100ms setTimeout (CaretContainer.vue), so it can genuinely still be
+            // pending right after checkConsoleContent resolves (which only waits for the console
+            // text, not the scroll) -- especially under CI worker contention where the main thread
+            // is busy elsewhere for longer than 100ms. Poll instead of a single check so we don't
+            // race that timer (confirmed as a real, single-worker-reproducible failure locally,
+            // not just contention noise: the element was found but not yet in view):
+            await expect.poll(async () => isInsideViewport(await page.locator("i.fa-exclamation-triangle").elementHandle(), visibleBefore ? 0 : 200)).toEqual(true);
         });
     }
 });

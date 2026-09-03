@@ -54,13 +54,20 @@ jobs:
         # install, Pyodide) twice.
         #
         # ubuntu-latest + firefox is likewise split into two jobs (firefoxPart:
-        # isolated/rest), but for a different reason than webkit's split: there's no known
-        # starvation/flakiness bug for Firefox, console-execution.spec.ts and
-        # storage-model.spec.ts are just the two slowest spec files (by measured CI
-        # duration, ~50 min combined out of the full suite's ~66 min wall-clock at 4
-        # workers) and pulling them into their own concurrent job cuts the main job's
-        # wall-clock by roughly that much. Both jobs keep the normal 4-worker parallelism
-        # (unlike webkit's single-worker isolation) since nothing here needs serialising.
+        # isolated/rest); console-execution.spec.ts and storage-model.spec.ts are the two
+        # slowest spec files (by measured CI duration, ~50 min combined out of the full
+        # suite's ~66 min wall-clock at 4 workers), so pulling them into their own
+        # concurrent job cuts the main job's wall-clock by roughly that much. Both jobs
+        # keep the normal 4-worker parallelism (unlike webkit's single-worker isolation).
+        # Update: this WAS believed to have no starvation/flakiness bug, but a real CI run
+        # (33719597232) showed every console-execution.spec.ts test failing its first
+        # attempt on this exact job with the Run button stuck on "Initialising..." past a
+        # 60s timeout, then passing comfortably on retry -- consistent with 4 concurrent
+        # Firefox instances each doing a cold Pyodide init contending for CPU. Addressed by
+        # giving the initial Pyodide-ready wait a flat 120s in
+        # tests/playwright/support/execution.ts (startRunning) rather than by reducing
+        # worker count here, since that wait is cheap to satisfy once Pyodide is actually
+        # ready. Revisit worker count for this job if the longer timeout isn't enough.
         include:
           - os: ubuntu-latest
             browser: chromium
