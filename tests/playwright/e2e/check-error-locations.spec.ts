@@ -6,7 +6,11 @@ import { setupStrypeTest } from "../support/general";
 
 let scssVars: {[varName: string]: string};
 test.beforeEach(async ({ page, browserName }, testInfo) => {
-    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 120000});
+    // 180s, not 120s: this suite's runToFinish() calls can themselves wait up to 120s for
+    // Pyodide to be ready (tests/playwright/support/execution.ts), and a 120s test-level budget
+    // left no headroom for that plus the rest of the test -- confirmed as a real CI failure
+    // ("Test timeout of 120000ms exceeded" racing the inner wait's own 120000ms, run 33729426452):
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 180000});
     scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
 });
 
