@@ -9,7 +9,7 @@
         <div class="MediaPreviewPopup-header">
             <span class="MediaPreviewPopup-header-text" v-html="mediaInfo"></span>
         </div>
-        <div class="MediaPreviewPopup-controls">
+        <div class="MediaPreviewPopup-controls" :class="{'MediaPreviewPopup-controls-single': mediaType === 'colour'}">
             <BButton v-if="mediaType !== 'colour'" size="sm" variant="outline-success" class="MediaPreviewPopup-header-preview-button" @click="doPreview">{{$t("media.preview")}}</BButton>
             <BButton v-if="mediaType !== 'colour'" size="sm" variant="outline-success" class="MediaPreviewPopup-header-download-button" @click="doDownload"><i class="fa fa-download"></i></BButton>
             <BButton size="sm" variant="outline-danger" class="MediaPreviewPopup-header-edit-button" @click="doEdit">{{$t("media.edit")}}</BButton>
@@ -290,5 +290,8 @@ export default defineComponent({
     display: flex;
     justify-content: space-between;
     margin-bottom: 5px;
+}
+.MediaPreviewPopup-controls-single {
+    justify-content: center;
 }
 </style>
