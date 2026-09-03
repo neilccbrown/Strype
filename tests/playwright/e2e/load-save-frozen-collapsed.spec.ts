@@ -5,6 +5,7 @@ import en from "@/localisation/en/en_main.json";
 import { CollapsedState } from "../../cypress/support/frame-types";
 import { checkFrameXorTextCursor, waitForEditorSettled } from "../support/editor";
 import { setupStrypeTest } from "../support/general";
+import { startRunning } from "../support/execution";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 120_000, fakeClipboard: true});
@@ -380,8 +381,10 @@ test.describe("Frozen state deals with errors", () => {
     });
     test("Can freeze if there is a runtime error #1", async ({page}) => {
         await loadContent(page, inputWhichWillRuntimeError);
-        // Run to provoke the error, and check it is there:
-        await page.getByText("Run").click();
+        // Run to provoke the error, and check it is there. Pyodide can still be initialising at
+        // this point (a raw click on "Run" here was seen to time out waiting for the button under
+        // CI contention), so wait for it to actually be ready to run rather than blindly clicking:
+        await startRunning(page);
         await expect(await page.locator(".fa-exclamation-triangle")).toBeVisible();
         expect(await page.locator("#peaConsole").inputValue()).toContain("object of type 'NoneType' has no len()");
         
@@ -397,8 +400,10 @@ test.describe("Frozen state deals with errors", () => {
         // We should then be frozen, despite there being an error because it is a runtime error:
         await saveAndCheck(page, testState({"class": "Frozen", "__init__": "FoldToHeader"}, inputWhichWillRuntimeError));
         
-        // Run to provoke the error, and check it is there:
-        await page.getByText("Run").click();
+        // Run to provoke the error, and check it is there. Pyodide can still be initialising at
+        // this point (a raw click on "Run" here was seen to time out waiting for the button under
+        // CI contention), so wait for it to actually be ready to run rather than blindly clicking:
+        await startRunning(page);
         await expect(await page.locator(".fa-exclamation-triangle")).toBeVisible();
         expect(await page.locator("#peaConsole").inputValue()).toContain("object of type 'NoneType' has no len()");
     });
@@ -468,10 +473,18 @@ test.describe("Folding state deals with errors", () => {
     });
     test("Can fold if there is a runtime error #1", async ({page}) => {
         await loadContent(page, inputWhichWillRuntimeError);
-        // Run to provoke the error, and check it is there:
-        await page.getByText("Run").click();
+        // Run to provoke the error, and check it is there. Pyodide can still be initialising at
+        // this point (a raw click on "Run" here was seen to time out waiting for the button under
+        // CI contention), so wait for it to actually be ready to run rather than blindly clicking:
+        await startRunning(page);
         await expect(await page.locator(".fa-exclamation-triangle")).toBeVisible();
         expect(await page.locator("#peaConsole").inputValue()).toContain("object of type 'NoneType' has no len()");
+        // The error triangle/console text land before the frame's own runtime-error state
+        // (wasLastRuntimeErrorFrameId) finishes propagating and re-rendering the "class" frame's
+        // header -- clicking fold immediately after can land mid-re-render and silently miss,
+        // confirmed as a genuine, consistently-reproducing failure in CI (not just occasional
+        // flakiness) where the save came back unfolded. Wait for that settling first:
+        await waitForEditorSettled(page);
 
         // Then try to fold:
         await clickFoldFor(page, "class");
@@ -485,8 +498,10 @@ test.describe("Folding state deals with errors", () => {
         // We should then be folded, despite there being an error because it is a runtime error:
         await saveAndCheck(page, testState({"class": "FoldToHeader"}, inputWhichWillRuntimeError));
 
-        // Run to provoke the error, and check it is there:
-        await page.getByText("Run").click();
+        // Run to provoke the error, and check it is there. Pyodide can still be initialising at
+        // this point (a raw click on "Run" here was seen to time out waiting for the button under
+        // CI contention), so wait for it to actually be ready to run rather than blindly clicking:
+        await startRunning(page);
         await expect(await page.locator(".fa-exclamation-triangle")).toBeVisible();
         expect(await page.locator("#peaConsole").inputValue()).toContain("object of type 'NoneType' has no len()");
     });
