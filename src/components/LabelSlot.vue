@@ -93,6 +93,7 @@ import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { eventBus, projectDocumentationFrameId } from "@/helpers/appContext";
 import { detectBrowser } from "@/helpers/browser";
 import { PrecedenceTier, UNARY_PREFIX_OPERATORS } from "@/helpers/operatorPrecedence";
+import { drawCheckerboard } from "@/helpers/colour";
 
 // Default time to keep in cache: 5 minutes.
 const soundPreviewImages = new Cache<LoadedMedia>({ defaultTtl: 5 * 60 * 1000 });
@@ -771,6 +772,16 @@ export default defineComponent({
                         keepEditingModeOn
                     );
                 }
+                // Give a plain string one last check as we leave it: if its content now matches a hex
+                // colour literal (e.g. the user just typed "#aabbcc"), auto-convert it to a colour swatch.
+                // Mere cursor movement (Tab/click-away/arrow-out) never fires onInput, so this is the only
+                // point such a conversion can happen -- reusing the same reparse pipeline as organic typing
+                // gets cursor repositioning, undo/redo and structural re-rendering for free.
+                if (this.slotType === SlotType.string) {
+                    const stateBeforeChanges = cloneDeep(this.appStore.$state);
+                    this.$emit(CustomEventTypes.requestSlotsRefactoring, this.UID, stateBeforeChanges, {useFlatMediaDataCode: true, treatAsBlurred: true});
+                }
+
                 //reset the flag for first code change
                 this.isFirstChange = true;
 
@@ -1105,10 +1116,15 @@ export default defineComponent({
             }
         },
 
-        // Ctrl-Shift-Y: opens the colour-picker dialog at the current caret position. Two cases,
+        // Ctrl-Shift-Y: opens the colour-picker dialog at the current caret position. Three cases,
         // per the same synchronous-capture approach as triggerMediaRecording above:
-        // - Outside a string: inserts a brand new string literal containing the picked hex code,
-        //   via addNewSlot (mirrors the media-literal-insertion case there).
+        // - Outside a string, with the caret directly before/after an existing colour literal
+        //   (no selection, at the start/end of this -- typically empty -- field, colour literal in
+        //   that direction): edits that colour literal in place, seeding the picker from its
+        //   current hex and replacing its code on "OK", via setFrameEditableSlotContent -- same
+        //   mechanism as the hover-popup "Edit" button (see showMediaPreviewPopup).
+        // - Outside a string, otherwise: inserts a brand new string literal containing the picked
+        //   hex code, via addNewSlot (mirrors the media-literal-insertion case there).
         // - Inside a string: seeds the picker from the current string content (if it parses as a
         //   colour), and on "OK" replaces the WHOLE string content with the picked hex code
         //   (regardless of whether the original content was a valid colour), via
@@ -1140,14 +1156,18 @@ export default defineComponent({
                 };
 
                 const commitReplacement = (hex: string) => {
-                    this.appStore.setFrameEditableSlotContent({...targetSlotInfos, code: hex, initCode: "", isFirstChange: true});
-                    const cursorInfo: SlotCursorInfos = {slotInfos: targetSlotInfos, cursorPos: hex.length};
+                    // Converts the whole string to a colour literal (now an atomic, 1-char-wide field), so
+                    // rather than leaving the cursor "inside" it, we place it in the adjacent sibling field.
+                    this.appStore.convertStringSlotToColourLiteral(targetSlotInfos, hex);
+                    const {parentId, slotIndex} = getSlotParentIdAndIndexSplit(targetSlotInfos.slotId);
+                    const rhsSlotInfos: SlotCoreInfos = {...targetSlotInfos, slotId: getSlotIdFromParentIdAndIndexSplit(parentId, slotIndex + 1)};
+                    const cursorInfo: SlotCursorInfos = {slotInfos: rhsSlotInfos, cursorPos: 0};
                     nextTick(() => {
                         setDocumentSelection(cursorInfo, cursorInfo);
                         this.appStore.setSlotTextCursors(cursorInfo, cursorInfo);
                         this.appStore.setFocusEditableSlot({
-                            frameSlotInfos: targetSlotInfos,
-                            caretPosition: this.appStore.getAllowedChildren(targetSlotInfos.frameId) ? CaretPosition.body : CaretPosition.below,
+                            frameSlotInfos: rhsSlotInfos,
+                            caretPosition: this.appStore.getAllowedChildren(rhsSlotInfos.frameId) ? CaretPosition.body : CaretPosition.below,
                         });
                     });
                 };
@@ -1156,6 +1176,50 @@ export default defineComponent({
             }
             else {
                 const {selectionStart, selectionEnd} = getFocusedEditableSlotTextSelectionStartEnd(this.UID);
+
+                // If the caret has no selection and sits right at the start/end of this (typically
+                // empty) field, and the adjacent field in that direction is an existing colour
+                // literal, edit that colour in place rather than inserting a new one next to it --
+                // this is what lets Ctrl-Shift-Y "just before/after" a swatch feel like editing it.
+                if (selectionStart === selectionEnd) {
+                    const plainTextLength = (inputSpanField.textContent ?? "").replace(/\u200B/g, "").length;
+                    const findAdjacentColourSlot = (findNext: boolean): SlotCoreInfos | null => {
+                        const neighbourSlotInfos = getFlatNeighbourFieldSlotInfos(targetSlotInfos, findNext, false);
+                        const neighbourSlot = neighbourSlotInfos && retrieveSlotFromSlotInfos(neighbourSlotInfos);
+                        return (neighbourSlot && (neighbourSlot as MediaSlot).mediaType === "colour") ? neighbourSlotInfos : null;
+                    };
+                    // Prefer the colour just before the caret over one just after, when both apply
+                    // (an empty field with a colour literal on each side):
+                    const adjacentColourSlotInfos = (selectionStart === 0 ? findAdjacentColourSlot(false) : null)
+                        ?? (selectionEnd === plainTextLength ? findAdjacentColourSlot(true) : null);
+                    if (adjacentColourSlotInfos) {
+                        const existingSlot = retrieveSlotFromSlotInfos(adjacentColourSlotInfos) as MediaSlot;
+                        const existingHex = existingSlot.code.replace(/["']/g, "");
+                        const commitEdit = (hex: string) => {
+                            this.appStore.setFrameEditableSlotContent({
+                                ...adjacentColourSlotInfos,
+                                code: "\"" + hex + "\"",
+                                mediaType: "colour",
+                                initCode: "",
+                                isFirstChange: true,
+                            });
+                        };
+                        const restoreOriginalCursorForEdit = () => {
+                            const cursorInfo: SlotCursorInfos = {slotInfos: targetSlotInfos, cursorPos: selectionStart};
+                            nextTick(() => {
+                                setDocumentSelection(cursorInfo, cursorInfo);
+                                this.appStore.setSlotTextCursors(cursorInfo, cursorInfo);
+                                this.appStore.setFocusEditableSlot({
+                                    frameSlotInfos: targetSlotInfos,
+                                    caretPosition: this.appStore.getAllowedChildren(targetSlotInfos.frameId) ? CaretPosition.body : CaretPosition.below,
+                                });
+                            });
+                        };
+                        this.doOpenColourPickerInDialog(existingHex, commitEdit, restoreOriginalCursorForEdit);
+                        return;
+                    }
+                }
+
                 const lhsCode = (inputSpanField.textContent?.substring(0, selectionStart) ?? "").replace(/\u200B/g, "");
                 const rhsCode = (inputSpanField.textContent?.substring(selectionEnd) ?? "").replace(/\u200B/g, "");
 
@@ -1173,9 +1237,9 @@ export default defineComponent({
                 };
 
                 const commitInsertion = (hex: string) => {
-                    this.appStore.addNewSlot(targetSlotInfos, "\"", lhsCode, rhsCode, SlotType.string, false, hex);
+                    this.appStore.addNewSlot(targetSlotInfos, "colour", lhsCode, rhsCode, SlotType.media, false, "\"" + hex + "\"");
                     // Place the cursor in the new trailing (empty) field right after the inserted
-                    // string, mirroring commitInsertion in triggerMediaRecording above:
+                    // colour literal, mirroring commitInsertion in triggerMediaRecording above:
                     const {parentId, slotIndex} = getSlotParentIdAndIndexSplit(targetSlotInfos.slotId);
                     const rhsSlotInfos: SlotCoreInfos = {...targetSlotInfos, slotId: getSlotIdFromParentIdAndIndexSplit(parentId, slotIndex + 2)};
                     const cursorInfo: SlotCursorInfos = {slotInfos: rhsSlotInfos, cursorPos: 0};
@@ -2113,7 +2177,22 @@ export default defineComponent({
 
         async loadMediaPreview(): Promise<LoadedMedia> {
             let slot = retrieveSlotFromSlotInfos(this.coreSlotInfo) as MediaSlot;
-            if (slot.mediaType.startsWith("image") && !slot.mediaType.startsWith("image/svg+xml")) {
+            if (slot.mediaType === "colour") {
+                const hex = slot.code.replace(/["']/g, "");
+                const canvas = document.createElement("canvas");
+                canvas.width = 32;
+                canvas.height = 32;
+                const ctx = canvas.getContext("2d");
+                if (ctx) {
+                    // Draw a checkerboard first so a non-opaque (8-digit hex) colour shows what's
+                    // "underneath" it, same as the colour picker dialog's own swatches:
+                    drawCheckerboard(ctx, canvas.width, canvas.height, 4);
+                    ctx.fillStyle = hex;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                }
+                return {mediaType: slot.mediaType, imageDataURL: canvas.toDataURL(), hex: hex};
+            }
+            else if (slot.mediaType.startsWith("image") && !slot.mediaType.startsWith("image/svg+xml")) {
                 return {mediaType: slot.mediaType, imageDataURL: "data:" + slot.mediaType + ";" + /base64,[^"']+/.exec(slot.code)?.[0]};
             }
             else if (slot.mediaType.startsWith("audio")) {

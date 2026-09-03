@@ -1,7 +1,8 @@
 import type Parser from "web-tree-sitter";
-import type { SlotsStructure, StringSlot } from "@/types/types";
+import type { MediaSlot, SlotsStructure, StringSlot } from "@/types/types";
 import { operators, trimmedKeywordOperators } from "@/helpers/pythonOperators";
 import { concatSlots, replaceMediaLiteralsAndInvalidOps, fromUnicodeEscapes, STRYPE_EXPRESSION_BLANK, STRYPE_INVALID_SLOT } from "@/helpers/pythonSlotsShared";
+import { isHexColourLiteral } from "@/helpers/colour";
 
 type SyntaxNode = Parser.SyntaxNode;
 
@@ -157,6 +158,12 @@ function stringNodeToSlots(node : SyntaxNode) : SlotsStructure {
         if (currentIsSPY && code.includes("\n")) {
             const indent = " ".repeat(node.startPosition.column);
             code = code.split("\n").map((line, i) => (i > 0 && line.startsWith(indent)) ? line.slice(indent.length) : line).join("\n");
+        }
+        // Unprefixed strings matching a hex colour (e.g. "#aabbcc") load as a colour literal rather
+        // than a plain string, mirroring the organic typing/blur auto-conversion (editor.ts parseCodeLiteral):
+        if (strMatch[1] === "" && isHexColourLiteral(code)) {
+            const colour : MediaSlot = {mediaType: "colour", code: strMatch[2] + code.toLowerCase() + strMatch[2]};
+            return {fields: [{code: ""}, colour, {code: ""}], operators: [{code: ""}, {code: ""}]};
         }
         const str : StringSlot = {code, quote: strMatch[2]};
         return {fields: [{code: strMatch[1]}, str, {code: ""}], operators: [{code: ""}, {code: ""}]};

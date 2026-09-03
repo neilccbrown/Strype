@@ -214,20 +214,26 @@
         </div>
         <div class="menu-icons-div">
             <div class="menu-icon-div">
-                <input 
-                    type="image" 
+                <!-- mousedown.prevent stops the click from blurring a currently-focused editable
+                     slot before the undo/redo below runs -- that blur's own commit path was
+                     corrupting the undo stack for an edit still in flight (Ctrl+Z, which doesn't
+                     blur, was unaffected). -->
+                <input
+                    type="image"
                     :src="undoImagePath"
                     :disabled="isUndoDisabled"
+                    @mousedown.prevent
                     @click="performUndoRedo(true)"
                     class="menu-icon-entry"
                     :title="$t('contextMenu.undo')"
                 />
             </div>
-            <div class="menu-icon-div">   
-                <input 
-                    type="image" 
+            <div class="menu-icon-div">
+                <input
+                    type="image"
                     :src="redoImagePath"
                     :disabled="isRedoDisabled"
+                    @mousedown.prevent
                     @click="performUndoRedo(false)"
                     class="menu-icon-entry"
                     :title="$t('contextMenu.redo')"

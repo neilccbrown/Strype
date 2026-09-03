@@ -35,6 +35,13 @@ export function parseColourToHex(input: string): string | null {
     return result;
 }
 
+// Strict predicate used for auto-detection (typing-blur and python-load) of a colour literal:
+// exactly 6 (RGB) or 8 (RGBA) hex digits after "#", unlike parseColourToHex's lenient CSS-colour
+// parsing (which is only used to seed the picker from arbitrary content).
+export function isHexColourLiteral(s: string): boolean {
+    return /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(s);
+}
+
 // Parses a colour that may carry an alpha channel: an exact "#rrggbb" or "#rrggbbaa" hex string is
 // read directly (so an explicit 8-digit value round-trips exactly), and anything else falls back to
 // parseColourToHex above (names, rgb()/hsl() functions, 3-digit hex, ...), which is always opaque.
@@ -69,6 +76,18 @@ export function hexToRgb(hex: string): { r: number, g: number, b: number } {
         g: parseInt(hex.substring(3, 5), 16),
         b: parseInt(hex.substring(5, 7), 16),
     };
+}
+
+// Draws a checkerboard pattern onto a canvas, so a non-opaque colour drawn on top of it shows what's
+// "underneath" -- the same pattern the colour picker dialog's swatches use (see
+// ColourPickerDlg.vue's CHECKERBOARD_CSS), used here for e.g. the frame-header colour-literal preview.
+export function drawCheckerboard(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D, width: number, height: number, tile = 8): void {
+    for (let y = 0; y < height; y += tile) {
+        for (let x = 0; x < width; x += tile) {
+            ctx.fillStyle = ((x / tile) + (y / tile)) % 2 === 0 ? "#ffffff" : "#cccccc";
+            ctx.fillRect(x, y, tile, tile);
+        }
+    }
 }
 
 export function hexToHsv(hex: string): { h: number, s: number, v: number } {

@@ -137,7 +137,7 @@ import { BvTriggerableEvent } from "bootstrap-vue-next";
 import {
     parseColourAndAlpha, combineHexAlpha, hexToRgb, hexToHsv, hsvToHex, hexToHsl, hslToHex,
     ColourFamily, COLOUR_FAMILIES, HUE_CHIP_COUNT, GOOD_CHIP_SAT, GOOD_CHIP_LIGHT,
-    SHADE_ROW_SAT_COUNTS, GREY_SHADE_BANDS, familyHasHueChoice, midOfRange,
+    SHADE_ROW_SAT_COUNTS, GREY_SHADE_BANDS, familyHasHueChoice, midOfRange, drawCheckerboard,
 } from "@/helpers/colour";
 
 const DEFAULT_HEX = "#ff0000";
@@ -160,17 +160,6 @@ function hexColourDistance(a: string, b: string): number {
 // The CSS for a checkerboard background, used everywhere a colour-with-alpha swatch needs to show
 // what's "underneath" a non-opaque colour (see checkerboardSwatchStyle below).
 const CHECKERBOARD_CSS = "repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 0 0 / 10px 10px";
-
-// Draws the same checkerboard pattern onto a canvas, for the graphics-area colour preview (which is
-// a filled canvas rather than a CSS background) -- see showGraphicsColourPreview.
-function drawCheckerboard(ctx: OffscreenCanvasRenderingContext2D, width: number, height: number, tile = 20) {
-    for (let y = 0; y < height; y += tile) {
-        for (let x = 0; x < width; x += tile) {
-            ctx.fillStyle = ((x / tile) + (y / tile)) % 2 === 0 ? "#ffffff" : "#cccccc";
-            ctx.fillRect(x, y, tile, tile);
-        }
-    }
-}
 
 // A single tile in the shade grid. No hue field: the grid always shows shades of whichever hue is
 // currently selected (or of the family's fixed hue for hue-less families like grey), so hue lives
@@ -723,7 +712,7 @@ export default defineComponent({
             document.getElementById("strypeGraphicsPEATab")?.click();
             const canvas = new OffscreenCanvas(800, 600);
             const ctx = canvas.getContext("2d") as OffscreenCanvasRenderingContext2D;
-            drawCheckerboard(ctx, 800, 600);
+            drawCheckerboard(ctx, 800, 600, 20);
             const {r, g, b} = hexToRgb(hex);
             ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha / 255})`;
             ctx.fillRect(0, 0, 800, 600);

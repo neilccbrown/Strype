@@ -1,6 +1,6 @@
 import { test, expect, Page } from "@playwright/test";
 import { setupStrypeTest } from "../support/general";
-import { pressFrameShortcut, waitForEditorSettled } from "../support/editor";
+import { pressFrameShortcut, waitForEditorSettled, checkTextSlotCursorPos, typeIndividually } from "../support/editor";
 import { checkFrameErrorCount, checkConsoleContent, runToFinish } from "../support/execution";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
@@ -49,6 +49,21 @@ function visibleCancelButton(page: Page) {
 
 function visibleOKButton(page: Page) {
     return page.locator(".btn.btn-primary", {hasText: "OK"}).filter({visible: true});
+}
+
+// ColourPickerDlg.vue's own hexText seeding (onShownModalDlg) runs on bootstrap-vue's async
+// "shown" modal event, which fires strictly after the dialog is already visible/interactable --
+// there's no DOM signal available to poll for it directly. Filling the hex input immediately after
+// opening (skipping the "Spectrum" button click, which happens when editing an
+// existing colour jumps straight there) races that handler: it can fire *after* the fill and
+// silently overwrite it back to the seeded value. A toHaveValue() check right after opening isn't
+// a reliable guard either -- the input can still be showing a stale leftover value from before the
+// dialog opened that happens to equal the correctly-seeded one, passing the check without the
+// handler having actually run yet (this is exactly what caused a real, reproducible CI failure).
+// Matches the same kind of buffer used elsewhere in this codebase for an async-settle race that
+// has no better observable signal (see media-recording.spec.ts's waitForImageCropperReady).
+async function waitForColourPickerSeeded(page: Page) {
+    await page.waitForTimeout(500);
 }
 
 test.describe("Colour picker shortcut gating", () => {
@@ -159,6 +174,7 @@ test.describe("Alpha slider", () => {
         await openIfFrame(page);
         await page.keyboard.press("ControlOrMeta+Shift+Y");
         await page.locator("button", {hasText: "Spectrum"}).click();
+        await waitForColourPickerSeeded(page);
         await page.locator("#ColourPickerDlg-hex-input").fill("#00ff00");
 
         const slider = page.locator(".ColourPickerDlg-alpha-slider");
@@ -179,31 +195,35 @@ test.describe("Alpha slider", () => {
 
         await visibleOKButton(page).click();
         await waitForEditorSettled(page);
-        const text = await getRawFrameHeaderText(page);
-        expect(text).toContain(hexValue);
+        // The colour is inserted as a colour-literal swatch (an <img data-mediatype="colour">), not
+        // plain text, so its hex code shows up in the swatch's data-code attribute, not in the raw
+        // frame header text (see colourSwatch()/the "Loading and saving" describe block's comment):
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveAttribute("data-code", "\"" + hexValue.toLowerCase() + "\"");
     });
 
     test("A fully-opaque (ff) alpha is dropped from the recorded string, an explicit non-ff alpha is kept", async ({page}) => {
         await openIfFrame(page);
         await page.keyboard.press("ControlOrMeta+Shift+Y");
         await page.locator("button", {hasText: "Spectrum"}).click();
+        await waitForColourPickerSeeded(page);
 
         await page.locator("#ColourPickerDlg-hex-input").fill("#3366ccff");
         await visibleOKButton(page).click();
         await waitForEditorSettled(page);
-        // "ff" alpha must be dropped -- assert on the hex code itself (rather than toContain, which
-        // would also pass if a stray "#3366ccff" were present) since the quote character that
-        // follows it in the DOM isn't a plain ASCII quote:
-        const opaqueMatch = /#3366cc([0-9a-f]*)/i.exec(await getRawFrameHeaderText(page));
-        expect(opaqueMatch?.[1]).toBe("");
+        // "ff" alpha must be dropped -- assert on the swatch's data-code attribute (see above):
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveAttribute("data-code", "\"#3366cc\"");
 
-        // Re-open on the string just inserted and give it a genuine alpha this time:
+        // Re-invoke the picker: the cursor sits in the empty field right after the swatch just
+        // inserted (see the "Ctrl-Shift-Y inside a string..." cursor-placement test above), which
+        // edits that swatch in place rather than inserting a new one next to it (see the
+        // "Editing an adjacent colour literal" describe block below):
         await page.keyboard.press("ControlOrMeta+Shift+Y");
         await expect(page.locator("#colourPickerDlg")).toBeVisible();
         await page.locator("#ColourPickerDlg-hex-input").fill("#3366cc80");
         await visibleOKButton(page).click();
         await waitForEditorSettled(page);
-        expect(await getRawFrameHeaderText(page)).toContain("#3366cc80");
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveCount(1);
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveAttribute("data-code", "\"#3366cc80\"");
     });
 
     test("The Previous swatch restores both the colour and the alpha it was opened with", async ({page}) => {
@@ -245,6 +265,7 @@ test.describe("Graphics preview", () => {
         await openIfFrame(page);
         await page.keyboard.press("ControlOrMeta+Shift+Y");
         await page.locator("button", {hasText: "Spectrum"}).click();
+        await waitForColourPickerSeeded(page);
         await page.locator("#ColourPickerDlg-hex-input").fill("#3366cc");
         await expect.poll(() => getGraphicsCenterPixel(page)).toEqual([0x33, 0x66, 0xcc, 255]);
         await visibleCancelButton(page).click();
@@ -252,22 +273,28 @@ test.describe("Graphics preview", () => {
 });
 
 test.describe("Inserting and editing colour string literals", () => {
-    test("Typing a hex value and confirming inserts that literal string into an empty expression slot", async ({page}) => {
+    // Since the colour-literals feature (see colour-literals.spec.ts), confirming the picker no
+    // longer inserts/replaces a plain string -- it produces a colour MediaSlot, rendered as an
+    // <img class="...labelSlotMediaClassName..." data-mediatype="colour" data-code='"#hex"'>,
+    // the same way image/sound literals are (media-recording.spec.ts), so we assert via that
+    // element's data-code attribute rather than the raw frame header text (which no longer
+    // contains the hex as visible text).
+    test("Typing a hex value and confirming inserts a colour literal into an empty expression slot", async ({page}) => {
         await openIfFrame(page);
         await page.keyboard.press("ControlOrMeta+Shift+Y");
         await page.locator("button", {hasText: "Spectrum"}).click();
+        await waitForColourPickerSeeded(page);
         await page.locator("#ColourPickerDlg-hex-input").fill("#3366cc");
         await visibleOKButton(page).click();
         await waitForEditorSettled(page);
 
-        const text = await getRawFrameHeaderText(page);
-        expect(text).toContain("#3366cc");
-        // A bare condition consisting of just a string literal is valid Python (truthy check), so
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveAttribute("data-code", "\"#3366cc\"");
+        // A bare condition consisting of just a colour literal is valid Python (truthy check), so
         // this should never show a syntax error:
         await checkFrameErrorCount(page, 0);
     });
 
-    test("Invoking the picker inside an existing string replaces its whole content with the picked hex", async ({page}) => {
+    test("Invoking the picker inside an existing string replaces the whole string with a colour literal", async ({page}) => {
         await openIfFrame(page);
         await page.keyboard.type("\"notacolour");
         await waitForEditorSettled(page);
@@ -279,12 +306,13 @@ test.describe("Inserting and editing colour string literals", () => {
         if (!(await page.locator("#ColourPickerDlg-hex-input").isVisible())) {
             await page.locator("button", {hasText: "Spectrum"}).click();
         }
+        await waitForColourPickerSeeded(page);
         await page.locator("#ColourPickerDlg-hex-input").fill("#996633");
         await visibleOKButton(page).click();
         await waitForEditorSettled(page);
 
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveAttribute("data-code", "\"#996633\"");
         const text = await getRawFrameHeaderText(page);
-        expect(text).toContain("#996633");
         expect(text).not.toContain("notacolour");
         await checkFrameErrorCount(page, 0);
     });
@@ -322,5 +350,181 @@ test.describe("Inserting and editing colour string literals", () => {
         // so its output comes first, followed by the pre-existing "Hello from Strype" -- the key
         // thing being tested is that a clean hex string appears at all, rather than a crash:
         await checkConsoleContent(page, /^#[0-9a-f]{6}\nHello from Strype\s*$/i);
+    });
+});
+
+test.describe("Cursor placement after picker-driven insertion/conversion", () => {
+    // §3 of the plan: both the not-in-string (fresh insert) and in-string (convert-in-place)
+    // branches place the cursor in the empty sibling field right after the now-atomic colour
+    // literal, rather than leaving it "inside" the swatch (which has no text content to be inside
+    // of). Confirmed two ways: checkTextSlotCursorPos (position 0 of whichever field is now
+    // focused) and that subsequently typed text lands as a plain sibling, not merged into the swatch.
+    test("Ctrl-Shift-Y outside a string places the cursor in the empty field right after the new swatch", async ({page}) => {
+        await openIfFrame(page);
+        await page.keyboard.press("ControlOrMeta+Shift+Y");
+        await page.locator(".ColourPickerDlg-family-btn", {hasText: "Blue"}).click();
+        await page.locator(".ColourPickerDlg-shade-cell").first().dblclick();
+        await waitForEditorSettled(page);
+
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveCount(1);
+        await checkTextSlotCursorPos(page, 0);
+
+        await typeIndividually(page, "9");
+        // The swatch itself must be untouched, and the "9" must land as separate sibling text --
+        // not merged into (or replacing) the media literal:
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveCount(1);
+        const text = await getRawFrameHeaderText(page);
+        expect(text).toContain("9");
+    });
+
+    test("Ctrl-Shift-Y inside a string places the cursor in the empty field right after the converted swatch", async ({page}) => {
+        await openIfFrame(page);
+        await page.keyboard.type("\"notacolour");
+        await waitForEditorSettled(page);
+        await page.keyboard.press("ControlOrMeta+Shift+Y");
+        if (!(await page.locator("#ColourPickerDlg-hex-input").isVisible())) {
+            await page.locator("button", {hasText: "Spectrum"}).click();
+        }
+        await waitForColourPickerSeeded(page);
+        await page.locator("#ColourPickerDlg-hex-input").fill("#112233");
+        await visibleOKButton(page).click();
+        await waitForEditorSettled(page);
+
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveAttribute("data-code", "\"#112233\"");
+        await checkTextSlotCursorPos(page, 0);
+
+        await typeIndividually(page, "9");
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveAttribute("data-code", "\"#112233\"");
+        const text = await getRawFrameHeaderText(page);
+        expect(text).toContain("9");
+    });
+});
+
+test.describe("Editing an adjacent colour literal", () => {
+    // Invoking the picker with the caret directly before/after an existing colour literal (and no
+    // selection) edits that colour literal in place, rather than inserting a brand new one next to
+    // it -- the caret naturally ends up right after a swatch following picker-driven insertion (see
+    // "Cursor placement..." above), so without this a second Ctrl-Shift-Y there would otherwise
+    // silently duplicate the swatch instead of tweaking it.
+    async function insertColourSwatch(page: Page, hex: string) {
+        await page.keyboard.press("ControlOrMeta+Shift+Y");
+        await page.locator(".ColourPickerDlg-family-btn", {hasText: "Blue"}).click();
+        await page.locator(".ColourPickerDlg-shade-cell").first().dblclick();
+        await waitForEditorSettled(page);
+        await page.keyboard.press("ControlOrMeta+Shift+Y");
+        await page.locator("button", {hasText: "Spectrum"}).click();
+        await waitForColourPickerSeeded(page);
+        await page.locator("#ColourPickerDlg-hex-input").fill(hex);
+        await visibleOKButton(page).click();
+        await waitForEditorSettled(page);
+    }
+
+    test("Invoking the picker with the caret right after a swatch edits it in place", async ({page}) => {
+        await openIfFrame(page);
+        await insertColourSwatch(page, "#112233");
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveCount(1);
+
+        // Caret is left in the empty field right after the swatch (see "Cursor placement..." above):
+        await page.keyboard.press("ControlOrMeta+Shift+Y");
+        await expect(page.locator("#colourPickerDlg")).toBeVisible();
+        // Seeded from the existing colour, not the DEFAULT_HEX fallback:
+        await expect(page.locator("#ColourPickerDlg-hex-input")).toHaveValue("#112233");
+        await page.locator("#ColourPickerDlg-hex-input").fill("#445566");
+        await visibleOKButton(page).click();
+        await waitForEditorSettled(page);
+
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveCount(1);
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveAttribute("data-code", "\"#445566\"");
+    });
+
+    test("Invoking the picker with the caret right before a swatch edits it in place", async ({page}) => {
+        await openIfFrame(page);
+        // Type a leading character first, so the field right before the swatch is non-empty --
+        // with an all-empty condition, a single ArrowLeft out of the (also-empty) trailing field
+        // skips over both empty fields at once and leaves the slot entirely (there's nothing for
+        // the caret to stop at), rather than landing adjacent to the swatch:
+        await typeIndividually(page, "1");
+        await page.keyboard.press("ControlOrMeta+Shift+Y");
+        await page.locator(".ColourPickerDlg-family-btn", {hasText: "Blue"}).click();
+        await page.locator(".ColourPickerDlg-shade-cell").first().dblclick();
+        await waitForEditorSettled(page);
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveCount(1);
+        const insertedHex = ((await page.locator("img[data-mediatype='colour']").getAttribute("data-code")) ?? "").replace(/"/g, "");
+
+        // Caret is in the trailing empty field after the swatch; one ArrowLeft skips back over the
+        // swatch as a single atomic step (media literals aren't entered), landing right after "1" --
+        // i.e. directly before the swatch:
+        await page.keyboard.press("ArrowLeft");
+        await page.keyboard.press("ControlOrMeta+Shift+Y");
+        await expect(page.locator("#colourPickerDlg")).toBeVisible();
+        await expect(page.locator("#ColourPickerDlg-hex-input")).toHaveValue(insertedHex);
+        await page.locator("#ColourPickerDlg-hex-input").fill("#778899");
+        await visibleOKButton(page).click();
+        await waitForEditorSettled(page);
+
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveCount(1);
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveAttribute("data-code", "\"#778899\"");
+        const text = await getRawFrameHeaderText(page);
+        expect(text).toContain("1");
+    });
+
+    test("Cancelling an adjacent-colour edit leaves the original colour untouched", async ({page}) => {
+        await openIfFrame(page);
+        await insertColourSwatch(page, "#112233");
+
+        await page.keyboard.press("ControlOrMeta+Shift+Y");
+        await expect(page.locator("#colourPickerDlg")).toBeVisible();
+        await page.locator("#ColourPickerDlg-hex-input").fill("#445566");
+        await visibleCancelButton(page).click();
+
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveCount(1);
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveAttribute("data-code", "\"#112233\"");
+    });
+});
+
+test.describe("Hover preview popup and edit round-trip", () => {
+    // §5 of the plan: hovering the swatch shows a filled-rectangle preview with the hex as the
+    // header text (not the image dimensions text used for actual images/sounds), the
+    // Preview/Download buttons are hidden (colour literals have neither a sensible world-preview
+    // nor a downloadable file), and Edit reopens the colour picker seeded with the current hex.
+    test("Hovering a colour swatch shows the hex as the popup header, with Preview/Download hidden", async ({page}) => {
+        await openIfFrame(page);
+        await page.keyboard.press("ControlOrMeta+Shift+Y");
+        await page.locator(".ColourPickerDlg-family-btn", {hasText: "Green"}).click();
+        await page.locator(".ColourPickerDlg-shade-cell").first().dblclick();
+        await waitForEditorSettled(page);
+        const dataCode = await page.locator("img[data-mediatype='colour']").getAttribute("data-code");
+        const hex = (dataCode as string).replace(/"/g, "");
+
+        await page.locator("img[data-mediatype='colour']").hover();
+        await expect(page.locator(".MediaPreviewPopup-header-text")).toHaveText(hex);
+        await expect(page.locator(".MediaPreviewPopup-header-preview-button")).not.toBeVisible();
+        await expect(page.locator(".MediaPreviewPopup-header-download-button")).not.toBeVisible();
+        await expect(page.locator(".MediaPreviewPopup-header-edit-button")).toBeVisible();
+    });
+
+    test("Edit from the hover popup reopens the picker seeded with the current hex and updates the swatch on OK", async ({page}) => {
+        await openIfFrame(page);
+        await page.keyboard.press("ControlOrMeta+Shift+Y");
+        await page.locator("button", {hasText: "Spectrum"}).click();
+        await waitForColourPickerSeeded(page);
+        await page.locator("#ColourPickerDlg-hex-input").fill("#445566");
+        await visibleOKButton(page).click();
+        await waitForEditorSettled(page);
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveAttribute("data-code", "\"#445566\"");
+
+        await page.locator("img[data-mediatype='colour']").hover();
+        await page.locator(".MediaPreviewPopup-header-edit-button").click();
+        await expect(page.locator("#colourPickerDlg")).toBeVisible();
+        await waitForColourPickerSeeded(page);
+        // Editing an existing colour literal jumps straight into the fine-grained selector, seeded
+        // with its current hex (same as editing an in-progress string, see onShownModalDlg):
+        await expect(page.locator("#ColourPickerDlg-hex-input")).toHaveValue("#445566");
+
+        await page.locator("#ColourPickerDlg-hex-input").fill("#778899");
+        await visibleOKButton(page).click();
+        await waitForEditorSettled(page);
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveAttribute("data-code", "\"#778899\"");
+        await checkFrameErrorCount(page, 0);
     });
 });
