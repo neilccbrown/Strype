@@ -8,7 +8,10 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
         // For some reasons these tests take ages on Firefox on CI, even though they work locally on Firefox:
         testInfo.skip(true, "Skipping on Firefox due to slowness");
     }
-    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 120000});
+    // 180s, not 120s: runToFinish() can itself wait up to 120s for Pyodide to be ready (see
+    // tests/playwright/support/execution.ts) -- see check-error-locations.spec.ts for the CI
+    // failure this fixes:
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 180000});
 });
 
 test.describe("Check in-built packages", () => {

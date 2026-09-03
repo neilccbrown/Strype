@@ -47,9 +47,11 @@
     "invalidPythonParsePaste": "Code Python collé invalide : {errorMsg}",
     "wrongPythonStructCopied": "impossible de coller else/elif/except/finally suivi d'autre contenu en une fois",
     "incompatiblePythonStrypeSection": "le code Python copié ne peut pas être collé dans la section actuelle de Strype",
+    "invalidPythonCodeSyntax": "syntaxe invalide",
     "invalidMatchStmtContent": "ce contenu n'est pas autorisé dans une instruction 'match'",
     "errorAccessingIndexedDB": "Erreur d'accès au stockage du navigateur (probablement dû à la navigation privée). Votre projet ne sera pas automatiquement sauvegardé. (Erreur : {errorMsg})",
-    "foundRecentUnsavedState": "Un récent projet non enregistré (dernière modification {when}) a été trouvé. Souhaitez-vous le charger ?"
+    "foundRecentUnsavedState": "Un récent projet non enregistré (dernière modification {when}) a été trouvé. Souhaitez-vous le charger ?",
+    "newVersionAvailable": "Une nouvelle version de Strype est disponible. Rechargez la page pour mettre à jour."
   },
   "buttonLabel": {
     "undo": "Annuler",
@@ -73,6 +75,7 @@
     "select": "Selectionner",
     "refresh": "rafraîchir",
     "choose": "Sélectionner",
+    "reload": "Recharger",
     "renameAllWithShortcut": "Renommer tout <span class=\"kb-shortcut\">({modifierkey}+R)</span>"
   },
   "errorMessage": {
@@ -236,6 +239,7 @@
     "shareProject": "Partager...",
     "needSaveShareProj": "Sauvegardez votre projet Strype dans le Cloud avant de le partager",
     "lang": "Langue: ",
+    "frameNumbers": "Numéros de cadre :",
     "homepage": "Page d'accueil de Strype",
     "apiDocumentation": "Documentation...",
     "version": "Version",
@@ -335,10 +339,10 @@
     "familyPink": "Rose",
     "familyBrown": "Marron",
     "familyGrey": "Niveaux de gris",
-    "allColours": "Toutes les couleurs",
+    "allColours": "Couleurs principales",
     "hue": "Teinte",
     "shade": "Nuance",
-    "fineGrainedSelector": "Sélecteur précis…",
+    "fineGrainedSelector": "Spectre",
     "tiles": "Tuiles",
     "previous": "Précédente :",
     "alpha": "Alpha"

@@ -5,6 +5,7 @@ import en from "@/localisation/en/en_main.json";
 import { CollapsedState } from "../../cypress/support/frame-types";
 import { checkFrameXorTextCursor, waitForEditorSettled } from "../support/editor";
 import { setupStrypeTest } from "../support/general";
+import { startRunning } from "../support/execution";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 120_000, fakeClipboard: true});
@@ -22,7 +23,9 @@ async function waitForErrorDetected(page: Page) : Promise<void> {
     await expect(page.locator(".error-count-span")).toBeVisible();
 }
 
-async function clickFoldFor(page: Page, identifyingText: string) : Promise<void> {
+// Returns the folding-control element for identifyingText's frame, having hovered it and
+// confirmed it's actually clickable (cursor: pointer).
+async function getFoldControlFor(page: Page, identifyingText: string) {
     // Find the span with text "top1"
     const header = page.locator("span,div", { hasText: identifyingText });
     // Find its frame header ancestor:
@@ -30,7 +33,42 @@ async function clickFoldFor(page: Page, identifyingText: string) : Promise<void>
     const control = ancestor.locator(":scope > .frame-controls-container > .folding-control");
     await control.hover();
     expect(await control.evaluate((el) => getComputedStyle(el).cursor)).toEqual("pointer");
+    return control;
+}
+
+async function clickFoldFor(page: Page, identifyingText: string) : Promise<void> {
+    const control = await getFoldControlFor(page, identifyingText);
     await control.click();
+}
+
+// Like clickFoldFor, but for callers that know the fold is expected to actually take effect (as
+// opposed to e.g. being legitimately blocked by a syntax error) -- confirms the click actually
+// changed the control's own fold-state class (fold-full/fold-header/fold-doc, from
+// FrameHeader.vue's isFoldDoc/isFoldHeader/isFoldFull) and retries the click if it didn't.
+// Confirmed as a real, consistently-reproducing CI failure on WebKit for "Can fold if there is a
+// runtime error #1" (the saved state came back unfolded on every one of 4 attempts, across
+// multiple separate CI runs) where a plain waitForEditorSettled() beforehand made no difference,
+// since the runtime-error highlighting this races doesn't touch #editor's own focus/cursor/
+// content that waitForEditorSettled tracks -- so the click itself, not a pre-click wait, is what
+// needs to be robust here. Plain clickFoldFor can't safely retry-until-changed itself: some of its
+// callers (e.g. "Cannot fold if there is a syntax error #1") click expecting the fold to be
+// blocked, where a class change would never come and retrying would just waste time before
+// correctly reporting no change.
+async function clickFoldForAndConfirm(page: Page, identifyingText: string) : Promise<void> {
+    const control = await getFoldControlFor(page, identifyingText);
+    const classBefore = await control.evaluate((el) => el.className);
+    for (let attempt = 0; attempt < 3; attempt++) {
+        await control.click();
+        try {
+            await expect(control).not.toHaveClass(classBefore, {timeout: 3000});
+            return;
+        }
+        catch {
+            // Fold didn't register -- loop round and click again.
+        }
+    }
+    // Let the final attempt's own failure surface normally:
+    await expect(control).not.toHaveClass(classBefore);
 }
 
 async function clickFoldChildrenFor(page: Page, identifyingText: string) : Promise<void> {
@@ -380,8 +418,10 @@ test.describe("Frozen state deals with errors", () => {
     });
     test("Can freeze if there is a runtime error #1", async ({page}) => {
         await loadContent(page, inputWhichWillRuntimeError);
-        // Run to provoke the error, and check it is there:
-        await page.getByText("Run").click();
+        // Run to provoke the error, and check it is there. Pyodide can still be initialising at
+        // this point (a raw click on "Run" here was seen to time out waiting for the button under
+        // CI contention), so wait for it to actually be ready to run rather than blindly clicking:
+        await startRunning(page);
         await expect(await page.locator(".fa-exclamation-triangle")).toBeVisible();
         expect(await page.locator("#peaConsole").inputValue()).toContain("object of type 'NoneType' has no len()");
         
@@ -397,8 +437,10 @@ test.describe("Frozen state deals with errors", () => {
         // We should then be frozen, despite there being an error because it is a runtime error:
         await saveAndCheck(page, testState({"class": "Frozen", "__init__": "FoldToHeader"}, inputWhichWillRuntimeError));
         
-        // Run to provoke the error, and check it is there:
-        await page.getByText("Run").click();
+        // Run to provoke the error, and check it is there. Pyodide can still be initialising at
+        // this point (a raw click on "Run" here was seen to time out waiting for the button under
+        // CI contention), so wait for it to actually be ready to run rather than blindly clicking:
+        await startRunning(page);
         await expect(await page.locator(".fa-exclamation-triangle")).toBeVisible();
         expect(await page.locator("#peaConsole").inputValue()).toContain("object of type 'NoneType' has no len()");
     });
@@ -468,13 +510,18 @@ test.describe("Folding state deals with errors", () => {
     });
     test("Can fold if there is a runtime error #1", async ({page}) => {
         await loadContent(page, inputWhichWillRuntimeError);
-        // Run to provoke the error, and check it is there:
-        await page.getByText("Run").click();
+        // Run to provoke the error, and check it is there. Pyodide can still be initialising at
+        // this point (a raw click on "Run" here was seen to time out waiting for the button under
+        // CI contention), so wait for it to actually be ready to run rather than blindly clicking:
+        await startRunning(page);
         await expect(await page.locator(".fa-exclamation-triangle")).toBeVisible();
         expect(await page.locator("#peaConsole").inputValue()).toContain("object of type 'NoneType' has no len()");
+        await waitForEditorSettled(page);
 
-        // Then try to fold:
-        await clickFoldFor(page, "class");
+        // Then try to fold. Use clickFoldForAndConfirm (not plain clickFoldFor) here: this fold
+        // is expected to actually succeed, and was seen to silently not register on WebKit --
+        // see that function's comment for why:
+        await clickFoldForAndConfirm(page, "class");
         // We should then be folded, despite there being an error because it is a runtime error:
         await saveAndCheck(page, testState({"class": "FoldToHeader"}, inputWhichWillRuntimeError));
     });
@@ -485,8 +532,10 @@ test.describe("Folding state deals with errors", () => {
         // We should then be folded, despite there being an error because it is a runtime error:
         await saveAndCheck(page, testState({"class": "FoldToHeader"}, inputWhichWillRuntimeError));
 
-        // Run to provoke the error, and check it is there:
-        await page.getByText("Run").click();
+        // Run to provoke the error, and check it is there. Pyodide can still be initialising at
+        // this point (a raw click on "Run" here was seen to time out waiting for the button under
+        // CI contention), so wait for it to actually be ready to run rather than blindly clicking:
+        await startRunning(page);
         await expect(await page.locator(".fa-exclamation-triangle")).toBeVisible();
         expect(await page.locator("#peaConsole").inputValue()).toContain("object of type 'NoneType' has no len()");
     });
