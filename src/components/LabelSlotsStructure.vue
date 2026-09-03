@@ -587,8 +587,16 @@ export default defineComponent({
                 if (options?.treatAsBlurred) {
                     // We're leaving the slot (e.g. a string just auto-converted to a colour literal on
                     // blur), so there's no cursor position to restore into -- just persist the change as
-                    // its own undo step.
-                    this.$nextTick(() => this.appStore.saveStateChanges(stateBeforeChanges));
+                    // its own undo step. Only do this when something actually changed here (majorChange,
+                    // e.g. the string->colour-literal type change): this runs on every blur of every
+                    // string slot, so unconditionally calling saveStateChanges() pushed a spurious no-op
+                    // undo/redo diff on every such blur, corrupting the undo stack for whatever edit came
+                    // right before it (confirmed via a real CI failure, "Undo test #1" in
+                    // scroll-into-view.spec.ts, where one undo silently did nothing before the edit it
+                    // should have reverted was undone on the next one).
+                    if (majorChange) {
+                        this.$nextTick(() => this.appStore.saveStateChanges(stateBeforeChanges));
+                    }
                     return;
                 }
                 this.$nextTick(() => {
