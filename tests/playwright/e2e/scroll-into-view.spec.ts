@@ -92,6 +92,7 @@ async function typeWithKeys(page: Page, input: string) {
     const remaining = input.slice(lastIndex);
     if (remaining) {
         await page.keyboard.type(remaining);
+        await waitForEditorSettled(page);
     }
 }
 
