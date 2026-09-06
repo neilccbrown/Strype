@@ -14,6 +14,12 @@ import {
 } from "@/store/analytics";
 
 export function initialiseAnalytics(): void {
+    // Tools such as Strypify drive Strype programmatically to generate images; these aren't
+    // genuine user sessions, so skip starting analytics entirely for them.
+    if (new URLSearchParams(window.location.search).get("purpose") === "strypify") {
+        return;
+    }
+
     initAnalyticsUserId();
     initAnalyticsSession();
     initAnalyticsPlatform();
