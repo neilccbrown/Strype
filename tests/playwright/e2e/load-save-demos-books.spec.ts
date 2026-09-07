@@ -27,13 +27,13 @@ test.describe("Load/save book projects", () => {
             // the comment would be blank in the body, or the imports or defs would end up
             // in the main code section.  It was caused by having the frame cursor in the
             // imports or defs
-            const original = readFileSync("public/book_projects/chapter02/fireworks.spy", "utf8").replace(/\r\n/g, "\n");
+            const original = readFileSync("public/book_vol01/chapter03/fireworks.spy", "utf8").replace(/\r\n/g, "\n");
             for (let j = 0; j < i; j++) {
                 await page.keyboard.press("ArrowUp");
             }
             await page.click("#" + await strypeElIds.getEditorMenuUID());
             await page.locator("." + scssVars.strypeMenuItemClassName, {hasText: "Book..."}).click();
-            await page.locator(".open-book-dlg-book-group-item", {hasText: "Chapter 2"}).click();
+            await page.locator(".open-book-dlg-book-group-item", {hasText: "Chapter 3"}).first().click();
             await page.locator(".open-book-dlg-name", {hasText: /^fireworks$/}).click({clickCount: 2});
             // Selecting a book example loads it asynchronously (Menu.vue awaits
             // selectedProject.projectFile before applying the new state); the visible
@@ -47,7 +47,7 @@ test.describe("Load/save book projects", () => {
 
         test(`Paste fireworks after moving up ${i} times`, async ({page}) => {
             // Check same as above but with pasting:
-            const original = readFileSync("public/book_projects/chapter02/fireworks.spy", "utf8").replace(/\r\n/g, "\n");
+            const original = readFileSync("public/book_vol01/chapter03/fireworks.spy", "utf8").replace(/\r\n/g, "\n");
             await clearDefaultProject(page);
             // clearDefaultProject leaves the caret at the top of (now empty) Imports; return to
             // Main so the "move up i times" logic below still exercises pasting with the caret in
@@ -75,7 +75,7 @@ test.describe("Loading a book project does not spuriously mark it as modified", 
     test("Loading yellow-fish-v7 leaves the project showing as unmodified", async ({page}) => {
         await page.click("#" + await strypeElIds.getEditorMenuUID());
         await page.locator("." + scssVars.strypeMenuItemClassName, {hasText: "Book..."}).click();
-        await page.locator(".open-book-dlg-book-group-item", {hasText: "Chapter 4"}).click();
+        await page.locator(".open-book-dlg-book-group-item", {hasText: "Chapter 8"}).first().click();
         await page.locator(".open-book-dlg-name", {hasText: "yellow-fish-v7"}).click({clickCount: 2});
         // As above, the ".project-name" label only updates once the load (including restoring
         // the saved divider positions) has fully completed, so no extra wait is needed here.
@@ -89,26 +89,26 @@ test.describe("Book dialog chapter selection survives dialog opening", () => {
     // above: the book dialog used to reset its chapter selection back to Chapter 1 from its
     // modal's "shown" handler (fired once the dialog is already interactable), so a chapter
     // picked in the brief window before "shown" actually fired got silently wiped out -- e.g.
-    // Chapter 2 was selected, "fireworks" appeared, then the dialog reverted to Chapter 1's
+    // Chapter 3 was selected, "fireworks" appeared, then the dialog reverted to Chapter 1's
     // projects underneath it. That's a genuine timing race (confirmed via CI's resource-monitor
     // log showing normal, non-spiking load during the hangs -- this isn't runner overload). The
     // fix moved the reset to the dialog's "show" event (fired before it's interactable), closing
     // that window.
     //
-    // This drives the dialog the normal way and checks the selection is still showing Chapter 2's
+    // This drives the dialog the normal way and checks the selection is still showing Chapter 3's
     // projects after giving any pending reset every chance to run. It's exercising the same race
     // as the "Load and save fireworks" tests above, just without the full load-and-save round
     // trip, so -- like those -- it may not always land inside the window that used to trigger the
     // bug; it's here as a faster, more targeted check of the same thing.
-    test("Selecting Chapter 2 in the Book dialog keeps showing its projects", async ({page}) => {
+    test("Selecting Chapter 3 in the Book dialog keeps showing its projects", async ({page}) => {
         await page.click("#" + await strypeElIds.getEditorMenuUID());
         await page.locator("." + scssVars.strypeMenuItemClassName, {hasText: "Book..."}).click();
-        await page.locator(".open-book-dlg-book-group-item", {hasText: "Chapter 2"}).click();
+        await page.locator(".open-book-dlg-book-group-item", {hasText: "Chapter 3"}).first().click();
         const fireworksEntry = page.locator(".open-book-dlg-name", {hasText: /^fireworks$/});
         await expect(fireworksEntry).toBeVisible();
 
         // Give the dialog's "shown" event (and anything it might still trigger) every chance to
-        // fire before checking the selection is still showing Chapter 2's projects:
+        // fire before checking the selection is still showing Chapter 3's projects:
         await page.waitForTimeout(2000);
         await expect(fireworksEntry).toBeVisible();
     });
