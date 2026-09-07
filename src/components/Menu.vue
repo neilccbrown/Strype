@@ -1388,8 +1388,7 @@ export default defineComponent({
                         // #v-else
                         // For micro:bit, we can simply open a shared the project as an exteral resource since it exists in our public repository.
                         // Of course, this rely on how we expose the projects, and that we have the correct project name set.
-                        const normalisedChapterNumber = selectedProject.chapter.replace(/chapter\s+(\d+)/i, (_, n) => n.padStart(2, "0"));
-                        window.open(`https://strype.org/editor/?${sharedStrypeProjectIdKey}=${encodeURI(`https://strype.org/editor/book_projects/chapter${normalisedChapterNumber}/${projectName}.spy`)}`, "_blank");
+                        window.open(`https://strype.org/editor/?${sharedStrypeProjectIdKey}=${encodeURI(`https://strype.org/editor/${selectedProject.path}/${projectName}.spy`)}`, "_blank");
                         // #v-endif
                     }
                 }

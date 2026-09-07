@@ -14,16 +14,22 @@
         </div>
         <div class="d-flex" style="height: 400px;border-top: #aaa solid 1px; padding-top: 1rem;">
             <!-- Left Pane: List Group -->
-            <BListGroup class="flex-column overflow-auto" style="width: 30% !important;">
-                <BListGroupItem
-                    v-for="(item, index) in chapters"
-                    :key="index"
-                    :active="selectedChapterIndex === index && chapters.length > 1"
-                    button
-                    class="open-book-dlg-book-group-item"
-                >
-                    {{ item.name }}
-                </BListGroupItem>
+            <BListGroup class="flex-column overflow-auto open-book-dlg-chapter-list" style="width: 30% !important;">
+                <template v-for="(item, index) in chapters" :key="index">
+                    <div
+                        v-if="index === 0 || chapters[index - 1].volume !== item.volume"
+                        class="open-book-dlg-volume-header"
+                    >
+                        {{ item.volume }}
+                    </div>
+                    <BListGroupItem
+                        :active="selectedChapterIndex === index && chapters.length > 1"
+                        button
+                        class="open-book-dlg-book-group-item"
+                    >
+                        {{ item.name }}
+                    </BListGroupItem>
+                </template>
             </BListGroup>
 
             <!-- Right Pane: Dynamic Grid -->
@@ -74,24 +80,38 @@ import {Demo, DemoAsset, getBuiltinDemos} from "@/helpers/demos";
 import {drawSoundOnCanvas} from "@/helpers/media";
 
 interface Chapter {
+    volume: string;
     name: string;
+    // Path (relative to public/) that the projects/assets physically live under,
+    // e.g. "book_vol01/chapter07" -- also used to build shared-project URLs.
+    path: string;
     content: Promise<{demos: Demo[], assets: DemoAsset[]}>;
 }
 
-const chapters: Chapter[] = [
-    {name: "Chapter 1", content: getBuiltinDemos("book_projects/chapter01")},
-    {name: "Chapter 2", content: getBuiltinDemos("book_projects/chapter02")},
-    {name: "Chapter 3", content: getBuiltinDemos("book_projects/chapter03")},
-    {name: "Chapter 4", content: getBuiltinDemos("book_projects/chapter04")},
-    {name: "Chapter 5", content: getBuiltinDemos("book_projects/chapter05")},
-    {name: "Chapter 6", content: getBuiltinDemos("book_projects/chapter06")},
-    {name: "Chapter 7", content: getBuiltinDemos("book_projects/chapter07")},
-    {name: "Chapter 8", content: getBuiltinDemos("book_projects/chapter08")},
-    {name: "Chapter 9", content: getBuiltinDemos("book_projects/chapter09")},
-    {name: "Chapter 10", content: getBuiltinDemos("book_projects/chapter10")},
-    {name: "Chapter 11", content: getBuiltinDemos("book_projects/chapter11")},
-    {name: "Chapter 12", content: getBuiltinDemos("book_projects/chapter12")},
+// Only volumes/chapters that have actually been published are listed here; further
+// chapters get added as they're written:
+const allChapters: Chapter[] = [
+    {volume: "Volume 1", name: "Chapter 1", path: "book_vol01/chapter01", content: getBuiltinDemos("book_vol01/chapter01")},
+    {volume: "Volume 1", name: "Chapter 2", path: "book_vol01/chapter02", content: getBuiltinDemos("book_vol01/chapter02")},
+    {volume: "Volume 1", name: "Chapter 3", path: "book_vol01/chapter03", content: getBuiltinDemos("book_vol01/chapter03")},
+    {volume: "Volume 1", name: "Chapter 4", path: "book_vol01/chapter04", content: getBuiltinDemos("book_vol01/chapter04")},
+    {volume: "Volume 1", name: "Chapter 5", path: "book_vol01/chapter05", content: getBuiltinDemos("book_vol01/chapter05")},
+    {volume: "Volume 1", name: "Chapter 6", path: "book_vol01/chapter06", content: getBuiltinDemos("book_vol01/chapter06")},
+    {volume: "Volume 1", name: "Chapter 7", path: "book_vol01/chapter07", content: getBuiltinDemos("book_vol01/chapter07")},
+    {volume: "Volume 1", name: "Chapter 8", path: "book_vol01/chapter08", content: getBuiltinDemos("book_vol01/chapter08")},
+    {volume: "Volume 2", name: "Chapter 1", path: "book_vol02/chapter01", content: getBuiltinDemos("book_vol02/chapter01")},
+    {volume: "Volume 2", name: "Chapter 2", path: "book_vol02/chapter02", content: getBuiltinDemos("book_vol02/chapter02")},
+    {volume: "Volume 2", name: "Chapter 3", path: "book_vol02/chapter03", content: getBuiltinDemos("book_vol02/chapter03")},
+    {volume: "Volume 2", name: "Chapter 4", path: "book_vol02/chapter04", content: getBuiltinDemos("book_vol02/chapter04")},
+    {volume: "Volume 2", name: "Chapter 5", path: "book_vol02/chapter05", content: getBuiltinDemos("book_vol02/chapter05")},
+    {volume: "Volume 2", name: "Chapter 6", path: "book_vol02/chapter06", content: getBuiltinDemos("book_vol02/chapter06")},
 ];
+
+// TEMPORARY HACK: Volume 2 isn't ready to show to users yet, so filter it out of the
+// dialog here rather than removing its entries above -- remove this filter (and this
+// comment) once Volume 2 is ready to be shown.
+const HIDDEN_VOLUMES = ["Volume 2"];
+const chapters: Chapter[] = allChapters.filter((c) => !HIDDEN_VOLUMES.includes(c.volume));
 
 const props = defineProps<{
     dlgId: string;
@@ -210,10 +230,10 @@ function shown() {
     changeBookDialogCategory(selectedChapterIndex.value);
 }
 
-function getSelectedProject(): ({ name: string, chapter: string, projectFile: Promise<string | undefined> } | undefined) {
+function getSelectedProject(): ({ name: string, chapter: string, path: string, projectFile: Promise<string | undefined> } | undefined) {
     if (selectedChapterProjectIndex.value >= 0 && selectedChapterProjectIndex.value < projectsInCurrentChapter.value.length) {
         const d = projectsInCurrentChapter.value[selectedChapterProjectIndex.value];
-        return { name: d.name, projectFile: d.projectFile(), chapter: chapters[selectedChapterIndex.value].name };
+        return { name: d.name, projectFile: d.projectFile(), chapter: chapters[selectedChapterIndex.value].name, path: chapters[selectedChapterIndex.value].path };
     }
     return undefined;
 }
@@ -291,9 +311,24 @@ span.open-book-dlg-description {
     color: white;
 }
 
+.open-book-dlg-chapter-list {
+    /* Reserve space for the scrollbar so it doesn't overlap the list items: */
+    scrollbar-gutter: stable;
+}
+
 .open-book-dlg-book-group-item {
     --bs-list-group-item-padding-x:1.25rem;
-    --bs-list-group-item-padding-y:0.75rem;
+    --bs-list-group-item-padding-y:0.3rem;
+    /* Indent outside the item itself, so it appears nested under its volume heading: */
+    margin-left: 1.25rem;
+    width: calc(100% - 1.25rem);
+}
+
+.open-book-dlg-volume-header {
+    padding: 0.75rem 1.25rem;
+    font-weight: bold;
+    color: #555;
+    background-color: #f0f0f0;
 }
 
 .open-book-dlg-add-library-panel input {
