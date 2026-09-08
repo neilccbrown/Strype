@@ -288,7 +288,9 @@ export default defineComponent({
             // smaller than the actual image once its aspect ratio no longer matches the container's.
             // setCoordinates() is also a no-op while a rotate's CSS transition is still active, so the
             // rotation itself has to run without one here.
-            cropper.rotate(90, {transitions: false});
+            // vue-advanced-cropper's type declarations only expose rotate(angle), but it accepts
+            // a second options argument at runtime (confirmed against its implementation).
+            (cropper.rotate as (angle: number, options?: {transitions?: boolean}) => void)(90, {transitions: false});
             cropper.setCoordinates(({imageSize} : { imageSize: {width: number, height: number} }) => ({
                 left: 0,
                 top: 0,
