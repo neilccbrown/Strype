@@ -74,15 +74,15 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, nextTick, PropType } from "vue";
+import { defineComponent, PropType } from "vue";
 import Cache from "timed-cache";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
 import { bumpCaretRequestSeq, closeBracketCharacters, CustomEventTypes, getACLabelSlotUID, getCaretRequestSeq, getFocusedEditableSlotTextSelectionStartEnd, getFrameHeaderUID, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFrameUID, getLabelSlotUID, getMatchingBracket, getNumPrecedingBackslashes, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, keywordOperatorsWithSurroundSpaces, openBracketCharacters, operators, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, simpleSlotStructureToString, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringDoubleQuoteChar, stringQuoteCharacters, stringSingleQuoteChar, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength } from "@/helpers/editor";
-import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, CollapsedState, EditImageInDialogFunction, FieldSlot, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, getFrameDefType, isFieldBracketedSlot, isFieldStringSlot, LoadedMedia, MediaSlot, MessageDefinitions, OpenColourPickerInDialogFunction, OptionalSlotType, PythonExecRunningState, RecordNewImageInDialogFunction, RecordNewSoundInDialogFunction, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
+import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, CollapsedState, EditImageInDialogFunction, FieldSlot, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, getFrameDefType, isFieldBracketedSlot, isFieldStringSlot, LoadedMedia, MediaSlot, MessageDefinitions, OptionalSlotType, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
-import {evaluateSlotType, getFlatNeighbourFieldSlotInfos, getOutmostDisabledAncestorFrameId, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
+import {evaluateSlotType, getAdjacentColourSlotInfos, getFlatNeighbourFieldSlotInfos, getOutmostDisabledAncestorFrameId, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
 import Parser from "@/parser/parser";
 import { cloneDeep, debounce, DebouncedFunc } from "lodash";
 import { BPopover, useToggle } from "bootstrap-vue-next";
@@ -111,26 +111,6 @@ export default defineComponent({
     },
 
     created() {
-        // Expose this component that other components might need.
-        // Vue 3 has deprecated direct access to components.
-        // (we don't set it in setup() because we want to have this accessible, and the component created!)
-        const apiMethods = {
-            handleUpDown: this.handleUpDown,
-            triggerMediaRecording: this.triggerMediaRecording,
-            triggerColourPicker: this.triggerColourPicker,
-        };
-        
-        if(vueComponentsAPIHandler.labelSlotComponentAPI == null){    
-            vueComponentsAPIHandler.labelSlotComponentAPI = {
-                forInstance: {
-                    [this.UID]: apiMethods,
-                },
-            };
-        }
-        else{
-            vueComponentsAPIHandler.labelSlotComponentAPI.forInstance[this.UID] = apiMethods;
-        }
-
         // updateAC() triggers a full-document TigerPython parse (via AutoCompletion.vue's
         // updateAC()) on essentially every keystroke while a slot is focused, which is expensive
         // on large documents (profiled separately). Debounce it so a burst of typing only pays
@@ -431,18 +411,6 @@ export default defineComponent({
 
         doEditImageInDialog() : EditImageInDialogFunction {
             return (this as any).editImageInDialog as EditImageInDialogFunction;
-        },
-
-        doRecordNewImageInDialog() : RecordNewImageInDialogFunction {
-            return (this as any).recordNewImageInDialog as RecordNewImageInDialogFunction;
-        },
-
-        doRecordNewSoundInDialog() : RecordNewSoundInDialogFunction {
-            return (this as any).recordNewSoundInDialog as RecordNewSoundInDialogFunction;
-        },
-
-        doOpenColourPickerInDialog() : OpenColourPickerInDialogFunction {
-            return (this as any).openColourPickerInDialog as OpenColourPickerInDialogFunction;
         },
     },
 
@@ -976,6 +944,33 @@ export default defineComponent({
             // Any text input is now handled by the input event because that properly
             // handles behaviours such as IME and composition shortcuts (e.g. alt + keys).
 
+            // Pressing plain Space with an active selection opens the slot shortcuts pane (see
+            // Commands.vue's openSlotShortcutsPane/canOpenSlotShortcutsPane) instead of letting the
+            // browser natively replace the selection with a literal space -- this must be
+            // intercepted here, at keydown, before that native replacement happens, so the
+            // selection is still intact when a shortcut letter is later pressed (triggerMediaRecording/
+            // triggerColourPicker below read it via getFocusedEditableSlotTextSelectionStartEnd).
+            // Not offered inside strings or comments, matching the empty-slot case in processInput.
+            const anchorSlotCursorInfos = this.appStore.anchorSlotCursorInfos;
+            const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
+            const hasSelection = !!anchorSlotCursorInfos && !!focusSlotCursorInfos
+                && (!areSlotCoreInfosEqual(anchorSlotCursorInfos.slotInfos, focusSlotCursorInfos.slotInfos) || anchorSlotCursorInfos.cursorPos != focusSlotCursorInfos.cursorPos);
+            // A collapsed caret directly before/after an existing colour literal also opens the
+            // pane, even though this field isn't empty -- otherwise there'd be no way to trigger
+            // "edit that colour in place" (see App.vue's triggerColourPicker) once anything else
+            // shares the field with the swatch (matches the pre-slot-shortcuts-pane Ctrl-Shift-Y
+            // shortcut, which worked from that position too).
+            const isAdjacentToColour = !hasSelection && focusSlotCursorInfos
+                && !!getAdjacentColourSlotInfos(this.coreSlotInfo, focusSlotCursorInfos.cursorPos, this.code.replace(/\u200B/g, "").length);
+            if(event.key === " " && !event.ctrlKey && !event.metaKey && !event.altKey && (hasSelection || isAdjacentToColour)
+                    && this.frameType !== AllFrameTypesIdentifier.comment && this.slotType != SlotType.string){
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+                vueComponentsAPIHandler.commandsComponentAPI?.openSlotShortcutsPane();
+                return;
+            }
+
             // We capture the key shortcut for opening the a/c
             if((event.metaKey || event.ctrlKey) && event.key == " "){
                 // updateAC() is debounced (see created()) so a paused-but-not-yet-fired debounce
@@ -987,39 +982,6 @@ export default defineComponent({
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation();
-            }
-
-            // Ctrl-Shift-I / Ctrl-Shift-U record a new image/sound literal from the webcam/microphone
-            // at the current caret position. Not available inside strings or comments (mirrors the
-            // gate used elsewhere for slot-type-sensitive shortcuts, e.g. around line 1239), and not
-            // while any modal (including one of our own) is already open, to avoid re-entrancy.
-            if((event.ctrlKey || event.metaKey) && event.shiftKey
-                    && (event.key.toLowerCase() == "i" || event.key.toLowerCase() == "u")
-                    && this.slotType != SlotType.string && this.slotType != SlotType.comment
-                    && this.frameType != AllFrameTypesIdentifier.comment
-                    && !this.appStore.isModalDlgShown){
-                event.preventDefault();
-                event.stopPropagation();
-                event.stopImmediatePropagation();
-                this.triggerMediaRecording(event.key.toLowerCase() == "i" ? "image" : "sound");
-            }
-
-            // Ctrl-Shift-Y opens a colour-picker dialog (Ctrl-Shift-L was already taken by the
-            // project-sharing-link shortcut in Menu.vue; Ctrl-Shift-P is Firefox's reserved Private
-            // Browsing shortcut; Ctrl-Alt-C collides with AltGr on many non-US keyboard layouts;
-            // Ctrl-Shift-K opens Firefox's Web Console regardless of preventDefault, same
-            // unblockable-by-the-page category as Ctrl-Shift-P). Unlike Ctrl-Shift-I/U above, this
-            // one IS allowed inside string slots (it's meant to help build/edit colour string
-            // literals), just not inside comments where a colour string wouldn't make sense.
-            if((event.ctrlKey || event.metaKey) && event.shiftKey
-                    && event.key.toLowerCase() == "y"
-                    && this.slotType != SlotType.comment
-                    && this.frameType != AllFrameTypesIdentifier.comment
-                    && !this.appStore.isModalDlgShown){
-                event.preventDefault();
-                event.stopPropagation();
-                event.stopImmediatePropagation();
-                this.triggerColourPicker();
             }
 
             // Manage the handling of home/end and page up/page down keys (see macOS case in method details)
@@ -1043,218 +1005,6 @@ export default defineComponent({
             
             // All other input events (i.e. typing, no modifiers) are handled by
             // processInput instead.
-        },
-
-        // Captures where to insert the recorded media literal (the slot and the text either side
-        // of the caret) synchronously, at the moment the shortcut is pressed -- NOT re-derived from
-        // DOM/focus later, since focus moves to the record/edit modals for a while before the user
-        // finishes (or cancels). Mirrors the DOM-read logic already used for paste in
-        // onCodePasteImpl below. The record/edit dialogs are true modals that block all editor
-        // interaction while open, so the target slot cannot change or be deleted in the meantime.
-        triggerMediaRecording(kind: "image" | "sound") {
-            const inputSpanField = document.getElementById(this.UID) as HTMLSpanElement;
-            if (!inputSpanField) {
-                return;
-            }
-            const {selectionStart, selectionEnd} = getFocusedEditableSlotTextSelectionStartEnd(this.UID);
-            const lhsCode = (inputSpanField.textContent?.substring(0, selectionStart) ?? "").replace(/\u200B/g, "");
-            const rhsCode = (inputSpanField.textContent?.substring(selectionEnd) ?? "").replace(/\u200B/g, "");
-            const targetSlotInfos = parseLabelSlotUID(this.UID);
-
-            // Suppress the artificial blur about to happen as focus moves to the modal, exactly as
-            // is already done before opening the large-image edit dialog on paste (see onCodePaste):
-            this.appStore.ignoreBlurEditableSlot = true;
-
-            // If the user cancels (at either the record or the edit dialog) instead of confirming,
-            // nothing is inserted -- but real DOM focus has still moved to the modal throughout, so
-            // without this we'd be left showing the frame cursor instead of back in the slot. Restore
-            // the original selection exactly as it was before the shortcut was pressed:
-            const restoreOriginalCursor = () => {
-                const anchorCursorInfo: SlotCursorInfos = {slotInfos: targetSlotInfos, cursorPos: selectionStart};
-                const focusCursorInfo: SlotCursorInfos = {slotInfos: targetSlotInfos, cursorPos: selectionEnd};
-                nextTick(() => {
-                    setDocumentSelection(anchorCursorInfo, focusCursorInfo);
-                    this.appStore.setSlotTextCursors(anchorCursorInfo, focusCursorInfo);
-                    this.appStore.setFocusEditableSlot({
-                        frameSlotInfos: targetSlotInfos,
-                        caretPosition: this.appStore.getAllowedChildren(targetSlotInfos.frameId) ? CaretPosition.body : CaretPosition.below,
-                    });
-                });
-            };
-
-            const commitInsertion = (replacement: {code: string, mediaType: string}) => {
-                this.appStore.addNewSlot(targetSlotInfos, replacement.mediaType, lhsCode, rhsCode, SlotType.media, false, replacement.code);
-                // Explicitly place the cursor in the new trailing (empty) field right after the
-                // inserted media, mirroring the same three calls onGetCaret() uses when a user
-                // clicks into a slot (setDocumentSelection + setSlotTextCursors +
-                // setFocusEditableSlot, see ~line 595 above). We can't rely on leftRightKey()'s
-                // *relative* navigation here (as paste's onCodePasteImpl does) because that
-                // depends on appStore.isEditing/focusSlotCursorInfos reflecting where we were
-                // focused, which is no longer valid after going through the record/edit dialogs:
-                // real DOM focus has been on dialog buttons throughout, not any text slot, so
-                // leftRightKey ends up navigating frame-caret-style from a stale/wrong position
-                // instead of moving within the slot text (observed: caret landing at the very
-                // start of the line rather than after the media).
-                const {parentId, slotIndex} = getSlotParentIdAndIndexSplit(targetSlotInfos.slotId);
-                const rhsSlotInfos: SlotCoreInfos = {...targetSlotInfos, slotId: getSlotIdFromParentIdAndIndexSplit(parentId, slotIndex + 2)};
-                const cursorInfo: SlotCursorInfos = {slotInfos: rhsSlotInfos, cursorPos: 0};
-                nextTick(() => {
-                    setDocumentSelection(cursorInfo, cursorInfo);
-                    this.appStore.setSlotTextCursors(cursorInfo, cursorInfo);
-                    this.appStore.setFocusEditableSlot({
-                        frameSlotInfos: rhsSlotInfos,
-                        caretPosition: this.appStore.getAllowedChildren(rhsSlotInfos.frameId) ? CaretPosition.body : CaretPosition.below,
-                    });
-                });
-            };
-
-            if (kind == "image") {
-                this.doRecordNewImageInDialog(commitInsertion, restoreOriginalCursor);
-            }
-            else {
-                this.doRecordNewSoundInDialog(commitInsertion, restoreOriginalCursor);
-            }
-        },
-
-        // Ctrl-Shift-Y: opens the colour-picker dialog at the current caret position. Three cases,
-        // per the same synchronous-capture approach as triggerMediaRecording above:
-        // - Outside a string, with the caret directly before/after an existing colour literal
-        //   (no selection, at the start/end of this -- typically empty -- field, colour literal in
-        //   that direction): edits that colour literal in place, seeding the picker from its
-        //   current hex and replacing its code on "OK", via setFrameEditableSlotContent -- same
-        //   mechanism as the hover-popup "Edit" button (see showMediaPreviewPopup).
-        // - Outside a string, otherwise: inserts a brand new string literal containing the picked
-        //   hex code, via addNewSlot (mirrors the media-literal-insertion case there).
-        // - Inside a string: seeds the picker from the current string content (if it parses as a
-        //   colour), and on "OK" replaces the WHOLE string content with the picked hex code
-        //   (regardless of whether the original content was a valid colour), via
-        //   setFrameEditableSlotContent. Cancel leaves the string untouched.
-        triggerColourPicker() {
-            const inputSpanField = document.getElementById(this.UID) as HTMLSpanElement;
-            if (!inputSpanField) {
-                return;
-            }
-            const targetSlotInfos = parseLabelSlotUID(this.UID);
-            const isInString = this.slotType == SlotType.string;
-
-            // Suppress the artificial blur about to happen as focus moves to the modal (see
-            // triggerMediaRecording above for why):
-            this.appStore.ignoreBlurEditableSlot = true;
-
-            if (isInString) {
-                const currentCode = (inputSpanField.textContent ?? "").replace(/\u200B/g, "");
-                const restoreOriginalCursor = () => {
-                    const cursorInfo: SlotCursorInfos = {slotInfos: targetSlotInfos, cursorPos: currentCode.length};
-                    nextTick(() => {
-                        setDocumentSelection(cursorInfo, cursorInfo);
-                        this.appStore.setSlotTextCursors(cursorInfo, cursorInfo);
-                        this.appStore.setFocusEditableSlot({
-                            frameSlotInfos: targetSlotInfos,
-                            caretPosition: this.appStore.getAllowedChildren(targetSlotInfos.frameId) ? CaretPosition.body : CaretPosition.below,
-                        });
-                    });
-                };
-
-                const commitReplacement = (hex: string) => {
-                    // Converts the whole string to a colour literal (now an atomic, 1-char-wide field), so
-                    // rather than leaving the cursor "inside" it, we place it in the adjacent sibling field.
-                    this.appStore.convertStringSlotToColourLiteral(targetSlotInfos, hex);
-                    const {parentId, slotIndex} = getSlotParentIdAndIndexSplit(targetSlotInfos.slotId);
-                    const rhsSlotInfos: SlotCoreInfos = {...targetSlotInfos, slotId: getSlotIdFromParentIdAndIndexSplit(parentId, slotIndex + 1)};
-                    const cursorInfo: SlotCursorInfos = {slotInfos: rhsSlotInfos, cursorPos: 0};
-                    nextTick(() => {
-                        setDocumentSelection(cursorInfo, cursorInfo);
-                        this.appStore.setSlotTextCursors(cursorInfo, cursorInfo);
-                        this.appStore.setFocusEditableSlot({
-                            frameSlotInfos: rhsSlotInfos,
-                            caretPosition: this.appStore.getAllowedChildren(rhsSlotInfos.frameId) ? CaretPosition.body : CaretPosition.below,
-                        });
-                    });
-                };
-
-                this.doOpenColourPickerInDialog(currentCode, commitReplacement, restoreOriginalCursor);
-            }
-            else {
-                const {selectionStart, selectionEnd} = getFocusedEditableSlotTextSelectionStartEnd(this.UID);
-
-                // If the caret has no selection and sits right at the start/end of this (typically
-                // empty) field, and the adjacent field in that direction is an existing colour
-                // literal, edit that colour in place rather than inserting a new one next to it --
-                // this is what lets Ctrl-Shift-Y "just before/after" a swatch feel like editing it.
-                if (selectionStart === selectionEnd) {
-                    const plainTextLength = (inputSpanField.textContent ?? "").replace(/\u200B/g, "").length;
-                    const findAdjacentColourSlot = (findNext: boolean): SlotCoreInfos | null => {
-                        const neighbourSlotInfos = getFlatNeighbourFieldSlotInfos(targetSlotInfos, findNext, false);
-                        const neighbourSlot = neighbourSlotInfos && retrieveSlotFromSlotInfos(neighbourSlotInfos);
-                        return (neighbourSlot && (neighbourSlot as MediaSlot).mediaType === "colour") ? neighbourSlotInfos : null;
-                    };
-                    // Prefer the colour just before the caret over one just after, when both apply
-                    // (an empty field with a colour literal on each side):
-                    const adjacentColourSlotInfos = (selectionStart === 0 ? findAdjacentColourSlot(false) : null)
-                        ?? (selectionEnd === plainTextLength ? findAdjacentColourSlot(true) : null);
-                    if (adjacentColourSlotInfos) {
-                        const existingSlot = retrieveSlotFromSlotInfos(adjacentColourSlotInfos) as MediaSlot;
-                        const existingHex = existingSlot.code.replace(/["']/g, "");
-                        const commitEdit = (hex: string) => {
-                            this.appStore.setFrameEditableSlotContent({
-                                ...adjacentColourSlotInfos,
-                                code: "\"" + hex + "\"",
-                                mediaType: "colour",
-                                initCode: "",
-                                isFirstChange: true,
-                            });
-                        };
-                        const restoreOriginalCursorForEdit = () => {
-                            const cursorInfo: SlotCursorInfos = {slotInfos: targetSlotInfos, cursorPos: selectionStart};
-                            nextTick(() => {
-                                setDocumentSelection(cursorInfo, cursorInfo);
-                                this.appStore.setSlotTextCursors(cursorInfo, cursorInfo);
-                                this.appStore.setFocusEditableSlot({
-                                    frameSlotInfos: targetSlotInfos,
-                                    caretPosition: this.appStore.getAllowedChildren(targetSlotInfos.frameId) ? CaretPosition.body : CaretPosition.below,
-                                });
-                            });
-                        };
-                        this.doOpenColourPickerInDialog(existingHex, commitEdit, restoreOriginalCursorForEdit);
-                        return;
-                    }
-                }
-
-                const lhsCode = (inputSpanField.textContent?.substring(0, selectionStart) ?? "").replace(/\u200B/g, "");
-                const rhsCode = (inputSpanField.textContent?.substring(selectionEnd) ?? "").replace(/\u200B/g, "");
-
-                const restoreOriginalCursor = () => {
-                    const anchorCursorInfo: SlotCursorInfos = {slotInfos: targetSlotInfos, cursorPos: selectionStart};
-                    const focusCursorInfo: SlotCursorInfos = {slotInfos: targetSlotInfos, cursorPos: selectionEnd};
-                    nextTick(() => {
-                        setDocumentSelection(anchorCursorInfo, focusCursorInfo);
-                        this.appStore.setSlotTextCursors(anchorCursorInfo, focusCursorInfo);
-                        this.appStore.setFocusEditableSlot({
-                            frameSlotInfos: targetSlotInfos,
-                            caretPosition: this.appStore.getAllowedChildren(targetSlotInfos.frameId) ? CaretPosition.body : CaretPosition.below,
-                        });
-                    });
-                };
-
-                const commitInsertion = (hex: string) => {
-                    this.appStore.addNewSlot(targetSlotInfos, "colour", lhsCode, rhsCode, SlotType.media, false, "\"" + hex + "\"");
-                    // Place the cursor in the new trailing (empty) field right after the inserted
-                    // colour literal, mirroring commitInsertion in triggerMediaRecording above:
-                    const {parentId, slotIndex} = getSlotParentIdAndIndexSplit(targetSlotInfos.slotId);
-                    const rhsSlotInfos: SlotCoreInfos = {...targetSlotInfos, slotId: getSlotIdFromParentIdAndIndexSplit(parentId, slotIndex + 2)};
-                    const cursorInfo: SlotCursorInfos = {slotInfos: rhsSlotInfos, cursorPos: 0};
-                    nextTick(() => {
-                        setDocumentSelection(cursorInfo, cursorInfo);
-                        this.appStore.setSlotTextCursors(cursorInfo, cursorInfo);
-                        this.appStore.setFocusEditableSlot({
-                            frameSlotInfos: rhsSlotInfos,
-                            caretPosition: this.appStore.getAllowedChildren(rhsSlotInfos.frameId) ? CaretPosition.body : CaretPosition.below,
-                        });
-                    });
-                };
-
-                this.doOpenColourPickerInDialog(null, commitInsertion, restoreOriginalCursor);
-            }
         },
 
         // Removes the given string which has just been entered as part of an input event,
@@ -1423,9 +1173,17 @@ export default defineComponent({
                     this.doArrowRightNextTick();
                 }
             }
-            // We also prevent start trailing spaces on all slots except comments and string content, to avoid indentation errors
+            // We also prevent start trailing spaces on all slots except comments and string content, to avoid indentation errors.
+            // If the slot was completely empty before this space was typed, this key is otherwise unused here (an empty
+            // slot has no other content a leading space could usefully separate), so we repurpose it to open the slot
+            // shortcuts pane (record image/sound, colour picker) -- see Commands.vue's openSlotShortcutsPane/
+            // handleSlotShortcutsPaneKeyDown, and its equivalent frame-caret mechanism (Tab/Space -> frame commands pane).
             else if(inputString === " " && this.frameType !== AllFrameTypesIdentifier.comment && this.slotType != SlotType.string && cursorPos == 0){
+                const wasEmpty = inputSpanFieldContent.replace(/\u200B/g, "") === inputString;
                 this.removeLastInput(inputString);
+                if(wasEmpty){
+                    this.$nextTick(() => vueComponentsAPIHandler.commandsComponentAPI?.openSlotShortcutsPane());
+                }
             }
             // If we type ":" as the very first character of a function/class definition's docs field, we
             // discard it: the user has just overtyped the closing bracket/name (which moves the cursor past
@@ -2230,6 +1988,29 @@ export default defineComponent({
         },
     },
     watch: {
+        // Expose this component that other components might need, keyed by its (reactive) UID.
+        // Vue 3 has deprecated direct access to components. Registering only once (e.g. in
+        // created()) is NOT enough: v-for can reuse this same component instance for a different
+        // slot after the slot list is spliced (e.g. inserting a new media literal via the slot
+        // shortcuts pane), which changes UID without recreating the component -- so this must be
+        // reactive, not a one-shot snapshot, or a stale key is left pointing here while the new
+        // UID resolves to nothing (observed with the media/colour shortcut triggers, before they
+        // were moved to App.vue -- see its triggerMediaRecording/triggerColourPicker -- precisely
+        // to sidestep this: a true singleton component can never go stale this way).
+        UID: {
+            immediate: true,
+            handler(newUID: string, oldUID: string | undefined) {
+                if(vueComponentsAPIHandler.labelSlotComponentAPI == null){
+                    vueComponentsAPIHandler.labelSlotComponentAPI = {forInstance: {}};
+                }
+                if(oldUID && oldUID !== newUID){
+                    delete vueComponentsAPIHandler.labelSlotComponentAPI.forInstance[oldUID];
+                }
+                vueComponentsAPIHandler.labelSlotComponentAPI.forInstance[newUID] = {
+                    handleUpDown: this.handleUpDown,
+                };
+            },
+        },
         slotType: function() {
             if (this.isMediaSlot) {
                 this.loadMediaPreview().then((m) => {

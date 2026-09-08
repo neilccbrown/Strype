@@ -1,6 +1,6 @@
 import {expect, test} from "@playwright/test";
 import {setupStrypeTest} from "../support/general";
-import {pressFrameShortcut, waitForEditorSettled} from "../support/editor";
+import {assertStateOfIfFrame, pressFrameShortcut, typeIndividually, waitForEditorSettled} from "../support/editor";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     await setupStrypeTest(page, browserName, testInfo, {skipPyodide: true});
@@ -63,34 +63,6 @@ test.describe("Commands pane -- code completion shortcut", () => {
     });
 });
 
-test.describe("Commands pane -- record media shortcuts", () => {
-    test("shown while editing a plain code slot", async ({page}) => {
-        const panel = page.locator("#addFramePanel");
-        await getPlainCodeSlot(page).click();
-
-        await expect(panel).toContainText("Record image");
-        await expect(panel).toContainText("Record sound");
-    });
-
-    test("not shown while editing a string literal slot", async ({page}) => {
-        const panel = page.locator("#addFramePanel");
-        await getStringLiteralSlot(page).click();
-
-        await expect(panel).not.toContainText("Record image");
-        await expect(panel).not.toContainText("Record sound");
-    });
-
-    test("not shown while editing a comment", async ({page}) => {
-        const panel = page.locator("#addFramePanel");
-        await page.keyboard.press("#");
-        await waitForEditorSettled(page);
-        await page.keyboard.type("hello world");
-
-        await expect(panel).not.toContainText("Record image");
-        await expect(panel).not.toContainText("Record sound");
-    });
-});
-
 test.describe("Commands pane -- stale add-frame-commands height doesn't hide the editing hints", () => {
     // Regression test for a bug where the code-completion/record-media hints were rendered but
     // effectively invisible: computeAddFrameCommandContainerSize() (helpers/editor.ts) pins an
@@ -133,6 +105,95 @@ test.describe("Commands pane -- stale add-frame-commands height doesn't hide the
         expect(hintBox).not.toBeNull();
         expect(peaBox).not.toBeNull();
         expect((hintBox?.y ?? 0) + (hintBox?.height ?? 0)).toBeLessThanOrEqual(peaBox?.y ?? 0);
+    });
+});
+
+test.describe("Commands pane -- slot shortcuts pane (Space at an empty slot)", () => {
+    test("shown as a hint while a plain empty code slot is focused", async ({page}) => {
+        await pressFrameShortcut(page, "i");
+        await waitForEditorSettled(page);
+        const panel = page.locator("#addFramePanel");
+
+        await expect(panel).toContainText("Record image");
+        await expect(panel).toContainText("Record sound");
+        await expect(panel).toContainText("Colour picker");
+    });
+
+    test("not shown once the slot has content", async ({page}) => {
+        await pressFrameShortcut(page, "i");
+        await waitForEditorSettled(page);
+        await page.keyboard.type("1");
+        await waitForEditorSettled(page);
+
+        await expect(page.locator("#addSlotShortcutsPanel")).toHaveCount(0);
+    });
+
+    test("not shown inside a string literal slot", async ({page}) => {
+        await pressFrameShortcut(page, "i");
+        await waitForEditorSettled(page);
+        await page.keyboard.type("\"");
+        await waitForEditorSettled(page);
+
+        await expect(page.locator("#addSlotShortcutsPanel")).toHaveCount(0);
+    });
+
+    test("not shown inside an (empty) comment", async ({page}) => {
+        await page.keyboard.press("#");
+        await waitForEditorSettled(page);
+
+        await expect(page.locator("#addSlotShortcutsPanel")).toHaveCount(0);
+    });
+
+    test("pressing space focuses the first shortcut button, and arrow keys cycle between them", async ({page}) => {
+        await pressFrameShortcut(page, "i");
+        await waitForEditorSettled(page);
+
+        await page.keyboard.press(" ");
+        const buttons = page.locator("#addSlotShortcutsPanel .frame-cmd-btn");
+        await expect(buttons).toHaveCount(3);
+        await expect(buttons.nth(0)).toBeFocused();
+
+        await page.keyboard.press("ArrowDown");
+        await expect(buttons.nth(1)).toBeFocused();
+        await page.keyboard.press("ArrowUp");
+        await expect(buttons.nth(0)).toBeFocused();
+    });
+
+    test("escape closes the pane and returns the cursor to the (still empty) slot", async ({page}) => {
+        await pressFrameShortcut(page, "i");
+        await waitForEditorSettled(page);
+
+        await page.keyboard.press(" ");
+        const firstButton = page.locator("#addSlotShortcutsPanel .frame-cmd-btn").first();
+        await expect(firstButton).toBeFocused();
+        await expect(firstButton).not.toHaveClass(/frame-cmd-greyed/);
+
+        await page.keyboard.press("Escape");
+        await waitForEditorSettled(page);
+        // The pane itself must be closed (back to its plain, greyed-out hint state)...
+        await expect(firstButton).not.toBeFocused();
+        await expect(firstButton).toHaveClass(/frame-cmd-greyed/);
+        // ...and the cursor must be back in the slot, ready to type, with no extra click needed:
+        await typeIndividually(page, "9");
+        await waitForEditorSettled(page);
+        await assertStateOfIfFrame(page, "{9$}", []);
+    });
+
+    test("pressing space again while the pane is focused closes it and returns to the slot", async ({page}) => {
+        await pressFrameShortcut(page, "i");
+        await waitForEditorSettled(page);
+
+        await page.keyboard.press(" ");
+        const firstButton = page.locator("#addSlotShortcutsPanel .frame-cmd-btn").first();
+        await expect(firstButton).toBeFocused();
+
+        await page.keyboard.press(" ");
+        await waitForEditorSettled(page);
+        await expect(firstButton).not.toBeFocused();
+        await expect(firstButton).toHaveClass(/frame-cmd-greyed/);
+        await typeIndividually(page, "9");
+        await waitForEditorSettled(page);
+        await assertStateOfIfFrame(page, "{9$}", []);
     });
 });
 

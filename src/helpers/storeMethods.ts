@@ -315,6 +315,23 @@ export const getFlatNeighbourFieldSlotInfos = (slotInfos: SlotCoreInfos, findNex
     }
 };
 
+// If the caret sits with no selection right at the start or end of the given field (cursorPos is
+// 0 or fieldLength respectively), and the flat neighbour field in that direction is an existing
+// colour literal, returns that colour literal's slot infos; otherwise null. Shared by
+// App.vue's triggerColourPicker (to edit that colour in place rather than inserting a new one next
+// to it) and Commands.vue's canOpenSlotShortcutsPane (to offer the shortcuts pane there even though
+// the field itself isn't empty).
+export const getAdjacentColourSlotInfos = (slotInfos: SlotCoreInfos, cursorPos: number, fieldLength: number): SlotCoreInfos | null => {
+    const findAdjacent = (findNext: boolean): SlotCoreInfos | null => {
+        const neighbourSlotInfos = getFlatNeighbourFieldSlotInfos(slotInfos, findNext, false);
+        const neighbourSlot = neighbourSlotInfos && retrieveSlotFromSlotInfos(neighbourSlotInfos);
+        return (neighbourSlot && isFieldMediaSlot(neighbourSlot) && neighbourSlot.mediaType === "colour") ? neighbourSlotInfos : null;
+    };
+    // Prefer the colour just before the caret over one just after, when both apply (an empty
+    // field with a colour literal on each side):
+    return (cursorPos === 0 ? findAdjacent(false) : null) ?? (cursorPos === fieldLength ? findAdjacent(true) : null);
+};
+
 // Helper method to get the number of direct children for a slot's parent based on its ID
 export const getFrameParentSlotsLength = (slotInfos: SlotCoreInfos): number => {
     if(slotInfos.slotId.includes(",")) {

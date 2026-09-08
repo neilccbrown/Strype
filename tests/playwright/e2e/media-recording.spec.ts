@@ -15,6 +15,17 @@ async function openIfFrame(page: import("@playwright/test").Page) {
     await waitForEditorSettled(page);
 }
 
+// Opens the record-image ("i") or record-sound ("s") dialog via the slot shortcuts pane -- Space
+// at the start of an empty, non-string slot, then the shortcut letter (see Commands.vue's
+// triggerSlotShortcut). Only works at exactly that caret position.
+async function openMediaShortcut(page: import("@playwright/test").Page, key: "i" | "s") {
+    await page.keyboard.press(" ");
+    // The pane focuses its first button asynchronously, so wait for that rather than pressing the
+    // shortcut letter immediately -- otherwise it can race and land back on the slot itself.
+    await expect(page.locator("#addSlotShortcutsPanel .frame-cmd-btn").first()).toBeFocused();
+    await page.keyboard.press(key);
+}
+
 async function waitForFakeVideoPlaying(page: import("@playwright/test").Page) {
     // readyState/videoWidth alone can be satisfied before the fake device has actually decoded a
     // real frame (seen as a flaky "stuck on Loading..." crop dialog when this runs shortly after
@@ -64,11 +75,9 @@ async function waitForImageCropperReady(page: import("@playwright/test").Page) {
     await page.waitForTimeout(300);
 }
 
-test.describe("Record media literal shortcut gating", () => {
-    test("Ctrl-Shift-I does nothing inside a string slot", async ({page}) => {
+test.describe("Record media literal -- old direct shortcuts no longer do anything", () => {
+    test("Ctrl-Shift-I no longer opens the record-image dialog", async ({page}) => {
         await openIfFrame(page);
-        await page.keyboard.type("\"abc");
-        await waitForEditorSettled(page);
         await page.keyboard.press("ControlOrMeta+Shift+I");
         // No good positive signal for "nothing happened", so just give it a moment then assert absence.
         // Note: the dialog stays mounted (but hidden) in the DOM even when "closed", so we must check
@@ -77,43 +86,47 @@ test.describe("Record media literal shortcut gating", () => {
         await expect(page.locator(".RecordImageDlg-video-wrapper")).not.toBeVisible();
     });
 
-    test("Ctrl-Shift-U does nothing inside a comment frame", async ({page}) => {
-        await page.keyboard.press("#");
-        await waitForEditorSettled(page);
-        await page.keyboard.type("hello");
-        await waitForEditorSettled(page);
+    test("Ctrl-Shift-U no longer opens the record-sound dialog", async ({page}) => {
+        await openIfFrame(page);
         await page.keyboard.press("ControlOrMeta+Shift+U");
         await page.waitForTimeout(300);
         await expect(page.locator(".RecordSoundDlg-waveform")).not.toBeVisible();
     });
+});
 
-    test("Ctrl-Shift-I opens the record-image dialog in a plain expression slot", async ({page}) => {
+test.describe("Slot shortcuts pane (Space at an empty slot) -- keyboard letter activation", () => {
+    test("space then i opens the record-image dialog", async ({page}) => {
         await openIfFrame(page);
-        await page.keyboard.press("ControlOrMeta+Shift+I");
+        await page.keyboard.press(" ");
+        await expect(page.locator("#addSlotShortcutsPanel .frame-cmd-btn").first()).toBeFocused();
+        await page.keyboard.press("i");
         await expect(page.locator(".RecordImageDlg-video-wrapper")).toBeVisible();
-        // Release the fake camera before the test ends, rather than leaving it open across the
-        // context teardown -- avoids any risk of the next test's getUserMedia() request racing
-        // with this context's release of the (process-wide) fake video device:
         await page.locator(".RecordImageDlg-cancel-button").click();
     });
 
-    test("Ctrl-Shift-U opens the record-sound dialog in a plain expression slot", async ({page}) => {
+    test("space then s opens the record-sound dialog", async ({page}) => {
         await openIfFrame(page);
-        await page.keyboard.press("ControlOrMeta+Shift+U");
+        await page.keyboard.press(" ");
+        await expect(page.locator("#addSlotShortcutsPanel .frame-cmd-btn").first()).toBeFocused();
+        await page.keyboard.press("s");
         await expect(page.locator(".RecordSoundDlg-waveform")).toBeVisible();
         await page.locator(".RecordSoundDlg-cancel-button").click();
+    });
+
+    test("space then enter activates the focused (first) button", async ({page}) => {
+        await openIfFrame(page);
+        await page.keyboard.press(" ");
+        await expect(page.locator("#addSlotShortcutsPanel .frame-cmd-btn").first()).toBeFocused();
+        await page.keyboard.press("Enter");
+        await expect(page.locator(".RecordImageDlg-video-wrapper")).toBeVisible();
+        await page.locator(".RecordImageDlg-cancel-button").click();
     });
 });
 
 test.describe("Record and insert an image", () => {
     test("Record (immediate), edit OK, inserted at the caret position", async ({page}) => {
         await openIfFrame(page);
-        // Deliberately not ending in a dangling operator (e.g. "1+") when the shortcut fires --
-        // that splices the raw unparsed text "1+" in as a single field (the same as pasting would),
-        // which a later refactor pass can re-tokenize oddly (seen turning into "+1"); inserting
-        // after a plain, already-complete operand avoids that unrelated edge case:
-        await typeIndividually(page, "1");
-        await page.keyboard.press("ControlOrMeta+Shift+I");
+        await openMediaShortcut(page, "i");
         await waitForFakeVideoPlaying(page);
         await page.locator(".RecordImageDlg-record-button").click();
 
@@ -126,17 +139,17 @@ test.describe("Record and insert an image", () => {
         await typeIndividually(page, "+2");
 
         // Derive the actual captured base64 tail from what got inserted, then use it to verify
-        // the media literal landed in exactly the right spot (right after the typed "1") --
+        // the media literal landed in exactly the right spot (right at the start of the slot) --
         // we can't know the fake camera's exact PNG bytes in advance, but we can check the splice
         // position against whatever was actually captured:
         const dataCode = await page.locator("img[data-code^='load_image']").getAttribute("data-code");
         const endOfB64 = (dataCode as string).slice(-11, -2); // strip the trailing "\")" first
-        await assertStateOfIfFrame(page, "{1}" + MEDIA_SLOT_PARSED_PLACEHOLDER.image + "{}+{2$}", [{mediaType: "img", endOfB64}]);
+        await assertStateOfIfFrame(page, "{}" + MEDIA_SLOT_PARSED_PLACEHOLDER.image + "{}+{2$}", [{mediaType: "img", endOfB64}]);
     });
 
     test("Record with 3s countdown then captures automatically", async ({page}) => {
         await openIfFrame(page);
-        await page.keyboard.press("ControlOrMeta+Shift+I");
+        await openMediaShortcut(page, "i");
         await waitForFakeVideoPlaying(page);
         await page.locator(".RecordImageDlg-record-countdown-button").click();
         await expect(page.locator(".RecordImageDlg-countdown")).toBeVisible();
@@ -148,7 +161,7 @@ test.describe("Record and insert an image", () => {
 
     test("Re-record discards the first capture and only inserts the second", async ({page}) => {
         await openIfFrame(page);
-        await page.keyboard.press("ControlOrMeta+Shift+I");
+        await openMediaShortcut(page, "i");
         await waitForFakeVideoPlaying(page);
         await page.locator(".RecordImageDlg-record-button").click();
         await expect(page.locator("span.EditImageDlg-sizeInfo").first()).toBeVisible();
@@ -170,12 +183,16 @@ test.describe("Record and insert an image", () => {
 
     test("Cancelling the record dialog inserts nothing and restores the cursor to the slot", async ({page}) => {
         await openIfFrame(page);
-        await page.keyboard.press("ControlOrMeta+Shift+I");
+        await openMediaShortcut(page, "i");
         await expect(page.locator(".RecordImageDlg-video-wrapper")).toBeVisible();
         await page.locator(".RecordImageDlg-cancel-button").click();
         await expect(page.locator(".RecordImageDlg-video-wrapper")).not.toBeVisible();
         await expect(page.locator("img[data-code^='load_image']")).toHaveCount(0);
 
+        // Restoring focus into the slot (from the pane button the shortcut was triggered from)
+        // goes through an extra async hop compared to the old direct-shortcut flow -- settle
+        // before typing, or the keypress can race ahead of the restore and land nowhere:
+        await waitForEditorSettled(page);
         // The text cursor should be back in the slot (not left on the frame cursor) -- if it
         // wasn't, this keypress would do something other than extend the slot's own content:
         await typeIndividually(page, "2");
@@ -185,7 +202,7 @@ test.describe("Record and insert an image", () => {
 
     test("Cancelling the edit dialog after a capture inserts nothing and restores the cursor to the slot", async ({page}) => {
         await openIfFrame(page);
-        await page.keyboard.press("ControlOrMeta+Shift+I");
+        await openMediaShortcut(page, "i");
         await waitForFakeVideoPlaying(page);
         await page.locator(".RecordImageDlg-record-button").click();
         await expect(page.locator("span.EditImageDlg-sizeInfo").first()).toBeVisible();
@@ -203,7 +220,7 @@ test.describe("Record and insert an image", () => {
 test.describe("Record and insert a sound", () => {
     test("Live waveform changes over time while the dialog is open", async ({page}) => {
         await openIfFrame(page);
-        await page.keyboard.press("ControlOrMeta+Shift+U");
+        await openMediaShortcut(page, "s");
         const canvas = page.locator(".RecordSoundDlg-waveform");
         await expect(canvas).toBeVisible();
         const firstFrame = await canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL());
@@ -212,9 +229,7 @@ test.describe("Record and insert a sound", () => {
 
     test("Record, stop, edit OK, inserted at the caret position", async ({page}) => {
         await openIfFrame(page);
-        // See the equivalent image test above for why this doesn't end in a dangling operator:
-        await typeIndividually(page, "1");
-        await page.keyboard.press("ControlOrMeta+Shift+U");
+        await openMediaShortcut(page, "s");
         await expect(page.locator(".RecordSoundDlg-waveform")).toBeVisible();
         await page.locator(".RecordSoundDlg-record-button").click();
         // Let a moment of (fake) audio actually get recorded:
@@ -230,17 +245,21 @@ test.describe("Record and insert a sound", () => {
 
         const dataCode = await page.locator("img[data-code^='load_sound']").getAttribute("data-code");
         const endOfB64 = (dataCode as string).slice(-11, -2);
-        await assertStateOfIfFrame(page, "{1}" + MEDIA_SLOT_PARSED_PLACEHOLDER.sound + "{}+{2$}", [{mediaType: "snd", endOfB64}]);
+        await assertStateOfIfFrame(page, "{}" + MEDIA_SLOT_PARSED_PLACEHOLDER.sound + "{}+{2$}", [{mediaType: "snd", endOfB64}]);
     });
 
     test("Cancelling the record dialog inserts nothing and restores the cursor to the slot", async ({page}) => {
         await openIfFrame(page);
-        await page.keyboard.press("ControlOrMeta+Shift+U");
+        await openMediaShortcut(page, "s");
         await expect(page.locator(".RecordSoundDlg-waveform")).toBeVisible();
         await page.locator(".RecordSoundDlg-cancel-button").click();
         await expect(page.locator(".RecordSoundDlg-waveform")).not.toBeVisible();
         await expect(page.locator("img[data-code^='load_sound']")).toHaveCount(0);
 
+        // Restoring focus into the slot (from the pane button the shortcut was triggered from)
+        // goes through an extra async hop compared to the old direct-shortcut flow -- settle
+        // before typing, or the keypress can race ahead of the restore and land nowhere:
+        await waitForEditorSettled(page);
         // The text cursor should be back in the slot (not left on the frame cursor) -- if it
         // wasn't, this keypress would do something other than extend the slot's own content:
         await typeIndividually(page, "2");

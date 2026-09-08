@@ -1292,20 +1292,22 @@ export default defineComponent({
             }
             
             if(this.appStore.focusSlotCursorInfos){
+                const forwardedEvent = new KeyboardEvent(event.type, {
+                    key: event.key,
+                    altKey: event.altKey,
+                    shiftKey: event.shiftKey,
+                    ctrlKey: event.ctrlKey,
+                    metaKey: event.metaKey,
+                    cancelable: true,
+                });
                 document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos))
-                    ?.dispatchEvent(new KeyboardEvent(event.type, {
-                        key: event.key,
-                        altKey: event.altKey,
-                        shiftKey: event.shiftKey,
-                        ctrlKey: event.ctrlKey,
-                        metaKey: event.metaKey,
-                    }));
-                
+                    ?.dispatchEvent(forwardedEvent);
+
                 // We want to prevent some events to be handled wrongly twice or at all by the browser and our code.
                 // However, for comments (e.g. frame or documentation slot) and string literals, we need to let some navigation event go through otherwise they're blocked as we rely on the browser for them.
                 // For macOS we have a specific behaviour to consider: see LabelSlot.vue handleFastUDNavKeys for explanations
                 const textHomeEndBehaviourKeys = (isMacOSPlatform() && event.metaKey) ? ["ArrowLeft", "ArrowRight"] : ((!isMacOSPlatform()) ? ["Home", "End"] : []);
-                if(this.appStore.allowsKeyEventThroughInLabelSlotStructure || 
+                if(this.appStore.allowsKeyEventThroughInLabelSlotStructure ||
                     (textHomeEndBehaviourKeys.includes(event.key) && (this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.comment || this.focusSlotCursorInfos?.slotInfos.slotType == SlotType.comment || this.focusSlotCursorInfos?.slotInfos.slotType == SlotType.string))){
                     // A few events need to be handled by the brower solely.
                     // That is, for comments: "PageUp", "PageDown", "Home", "End" (these last 2 for Windows only)
@@ -1324,7 +1326,16 @@ export default defineComponent({
                     || event.key == "PageDown"
                     || event.key == "Tab"
                     || (isMacOSPlatform() && event.metaKey && textHomeEndBehaviourKeys.includes(event.key))
-                    || (event.key == " " && (event.ctrlKey || event.metaKey))) {
+                    || (event.key == " " && (event.ctrlKey || event.metaKey))
+                    // Plain Space isn't otherwise in this list (it's usually left for the browser to type
+                    // a literal space natively), but if the forwarded copy above was actually consumed --
+                    // LabelSlot.vue's onKeyDown calling preventDefault() on it, to open the slot shortcuts
+                    // pane for a selection or an adjacent colour literal -- this *real* event must stop
+                    // here too. Otherwise it keeps bubbling past this container (its own preventDefault()
+                    // only applies to the synthetic copy) all the way to the window-level keydown listener
+                    // in Commands.vue, whose "pane not focused yet" check (the pane's button focus() is
+                    // still pending in a macrotask) then immediately undoes the pane it was just opened.
+                    || (event.key == " " && forwardedEvent.defaultPrevented)) {
                     event.preventDefault();
                     event.stopPropagation();
                     event.stopImmediatePropagation();

@@ -72,6 +72,29 @@
                                                         <span>{{ codeCompletionCommand.description }}</span>
                                                     </div>
                                                 </div>
+                                                <div v-if="slotShortcutsCommands.length" class="frame-cmd-divider"></div>
+                                                <div
+                                                    class="frame-commands-pane-intro"
+                                                    :class="{'frame-commands-pane-intro-hidden': isSlotShortcutsPaneActive}"
+                                                    v-if="slotShortcutsCommands.length"
+                                                >
+                                                    <span class="frame-cmd-prefix-btn frame-cmd-btn-large frame-cmd-prefix-btn-wide">{{ $t('autoCompletion.spaceKey') }}</span>
+                                                    <span>{{ $t('commandsPane.pressSpaceThenSuffix') }}</span>
+                                                </div>
+                                                <p v-if="slotShortcutsCommands.length" id="addSlotShortcutsPanel" class="frame-cmd-row">
+                                                    <div
+                                                        v-for="slotShortcutCommand in slotShortcutsCommands"
+                                                        :key="slotShortcutCommand.kind"
+                                                        class="frame-cmd-container"
+                                                        @click="triggerSlotShortcut(slotShortcutCommand.kind)"
+                                                    >
+                                                        <button
+                                                            class="frame-cmd-btn"
+                                                            :class="{'frame-cmd-greyed': !isSlotShortcutsPaneActive}"
+                                                        >{{ slotShortcutCommand.key }}</button>
+                                                        <span>{{ slotShortcutCommand.description }}</span>
+                                                    </div>
+                                                </p>
                                                 <div v-if="wrapSelectionCommands.length" class="frame-cmd-row">
                                                     <div
                                                         v-for="wrapSelectionCommand in wrapSelectionCommands"
@@ -80,38 +103,6 @@
                                                     >
                                                         <button class="frame-cmd-btn">{{ wrapSelectionCommand.symbol }}</button>
                                                         <span>{{ wrapSelectionCommand.description }}</span>
-                                                    </div>
-                                                </div>
-                                                <div v-if="mediaRecordingCommands.length" class="frame-cmd-row">
-                                                    <div
-                                                        v-for="mediaRecordingCommand in mediaRecordingCommands"
-                                                        :key="mediaRecordingCommand.description"
-                                                        class="frame-cmd-container text-editing-command clickable-command"
-                                                        @click="triggerMediaRecordingFromHint(mediaRecordingCommand.kind)"
-                                                    >
-                                                        <span class="text-editing-command-keys">
-                                                            <template v-for="(key, keyIndex) in mediaRecordingCommand.keys" :key="key.label">
-                                                                <span v-if="keyIndex > 0" class="text-editing-command-keys-plus">+</span>
-                                                                <button class="frame-cmd-btn frame-cmd-btn-large" :title="key.title">{{ key.label }}</button>
-                                                            </template>
-                                                        </span>
-                                                        <span>{{ mediaRecordingCommand.description }}</span>
-                                                    </div>
-                                                </div>
-                                                <div v-if="colourPickerCommand.length" class="frame-cmd-row">
-                                                    <div
-                                                        v-for="colourPickerCmd in colourPickerCommand"
-                                                        :key="colourPickerCmd.description"
-                                                        class="frame-cmd-container text-editing-command clickable-command"
-                                                        @click="triggerColourPickerFromHint"
-                                                    >
-                                                        <span class="text-editing-command-keys">
-                                                            <template v-for="(key, keyIndex) in colourPickerCmd.keys" :key="key.label">
-                                                                <span v-if="keyIndex > 0" class="text-editing-command-keys-plus">+</span>
-                                                                <button class="frame-cmd-btn frame-cmd-btn-large" :title="key.title">{{ key.label }}</button>
-                                                            </template>
-                                                        </span>
-                                                        <span>{{ colourPickerCmd.description }}</span>
                                                     </div>
                                                 </div>
                                             <!-- this conditional rendering is only used for our code editor to see the closing <div> right -->
@@ -168,13 +159,13 @@
 
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
-import { alwaysDirectFrameShortcutKeys, computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCaretContainerUID, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectAllAction, getFrameUID, getEditorMiddleUID, getLabelSlotUID, getLegacyShortcut, getMenuLeftPaneUID, hiddenShorthandFrames, notifyDragEnded, waitForPanesSettled } from "@/helpers/editor";
+import { alwaysDirectFrameShortcutKeys, bumpCaretRequestSeq, computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCaretContainerUID, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectAllAction, getFrameUID, getFrameLabelSlotsStructureUID, getEditorMiddleUID, getLabelSlotUID, getLegacyShortcut, getMenuLeftPaneUID, hiddenShorthandFrames, notifyDragEnded, setDocumentSelection, waitForPanesSettled } from "@/helpers/editor";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, CaretPosition, CollapsedState, defaultEmptyStrypeLayoutDividerSettings, FrameObject, getFrameDefType, isSlotStringLiteralType, PythonExecRunningState, SelectAllFramesAction, SlotType, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
 import { defineComponent } from "vue";
 import { mapStores } from "pinia";
-import {computeFrameSnapshot, getAvailableNavigationPositions, getFrameSectionIdFromFrameId} from "@/helpers/storeMethods";
+import {computeFrameSnapshot, getAdjacentColourSlotInfos, getAvailableNavigationPositions, getFrameSectionIdFromFrameId} from "@/helpers/storeMethods";
 import scssVars  from "@/assets/style/_export.module.scss";
 import { isMacOSPlatform } from "@/helpers/common";
 import fsIcon from "@/assets/images/FSicon.png";
@@ -232,6 +223,13 @@ export default defineComponent({
             progressPercent: 0,
             uploadThroughUSB: false,
             frameCommandsReactiveFlag: false, // this flag is only use to allow a reactive binding when the add frame commands are updated (language),
+            // Set right before closing the slot shortcuts pane on Escape: LabelSlot.vue's onEscKeyUp
+            // (bound to the slot's own span) reacts to appStore.isEditing still being true (which it
+            // deliberately is throughout this pane's whole lifetime) by blurring whatever now has real
+            // DOM focus -- which, by the time that keyup fires, is the slot we just carefully refocused
+            // in closeSlotShortcutsPane(). This flag tells the capturing "keyup" listener (created())
+            // to consume that one specific Escape keyup before it can reach onEscKeyUp at all.
+            suppressNextEscapeKeyUp: false,
             lastProjectSavedDateTooltip: "", // update on a mouse over event (in getLastProjectSavedDateTooltip)
             // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
             isExpandedPEA: false, // flag indicating whether the Python Execution Area is expanded (to update the UI parts accordingly)
@@ -342,6 +340,71 @@ export default defineComponent({
             return this.appStore.isFrameCommandsPaneActive;
         },
 
+        isSlotShortcutsPaneActive(): boolean {
+            return this.appStore.isSlotShortcutsPaneActive;
+        },
+
+        // Whether the slot shortcuts pane (record image/sound, colour picker) is currently valid to open:
+        // only at the very start of a completely empty non-string, non-comment code slot -- see LabelSlot.vue's
+        // processInput, which is what actually opens the pane once this condition holds and Space is pressed.
+        // Re-checked here too since it also gates whether this row/pane is shown at all as a hint.
+        canOpenSlotShortcutsPane(): boolean {
+            const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
+            if(!this.appStore.isEditing || !focusSlotCursorInfos){
+                return false;
+            }
+            const slotInfos = focusSlotCursorInfos.slotInfos;
+            if(slotInfos.slotType == SlotType.comment || isSlotStringLiteralType(slotInfos.slotType)){
+                return false;
+            }
+            const frameType = this.appStore.frameObjects[slotInfos.frameId]?.frameType.type;
+            if(frameType == AllFrameTypesIdentifier.comment){
+                return false;
+            }
+            // A non-empty selection (whether within this one slot, or spanning several sibling
+            // slots) also opens the pane -- Space then a shortcut letter replaces the selection
+            // with the new item (LabelSlot.vue's triggerMediaRecording/triggerColourPicker), rather
+            // than Space just typing a literal space over it. See onKeyDown's own matching check
+            // (which is what actually intercepts Space for this case, before it can reach the slot's
+            // native text handling at all -- this getter only re-confirms it for showing the hint).
+            const anchorSlotCursorInfos = this.appStore.anchorSlotCursorInfos;
+            if(anchorSlotCursorInfos && (!areSlotCoreInfosEqual(anchorSlotCursorInfos.slotInfos, focusSlotCursorInfos.slotInfos) || anchorSlotCursorInfos.cursorPos != focusSlotCursorInfos.cursorPos)){
+                return true;
+            }
+            const slotContent = (document.getElementById(getLabelSlotUID(slotInfos)) as HTMLSpanElement | null)?.textContent?.replace(/\u200B/g, "") ?? "";
+            if(focusSlotCursorInfos.cursorPos == 0 && slotContent.length === 0){
+                return true;
+            }
+            // A collapsed caret directly before/after an existing colour literal also opens the
+            // pane (offering only the colour shortcut, see slotShortcutsCommands below), even
+            // though this field isn't empty -- otherwise there'd be no way to trigger "edit that
+            // colour in place" (App.vue's triggerColourPicker) once anything else shares the field
+            // with the swatch. Matches LabelSlot.vue's onKeyDown, which is what actually intercepts
+            // Space for this case.
+            return !!getAdjacentColourSlotInfos(slotInfos, focusSlotCursorInfos.cursorPos, slotContent.length);
+        },
+
+        slotShortcutsCommands(): {key: string; description: string; kind: "image" | "sound" | "colour"}[] {
+            if(!this.canOpenSlotShortcutsPane){
+                return [];
+            }
+            const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
+            const anchorSlotCursorInfos = this.appStore.anchorSlotCursorInfos;
+            const hasSelection = !!anchorSlotCursorInfos && !!focusSlotCursorInfos
+                && (!areSlotCoreInfosEqual(anchorSlotCursorInfos.slotInfos, focusSlotCursorInfos.slotInfos) || anchorSlotCursorInfos.cursorPos != focusSlotCursorInfos.cursorPos);
+            const slotContent = focusSlotCursorInfos ? ((document.getElementById(getLabelSlotUID(focusSlotCursorInfos.slotInfos)) as HTMLSpanElement | null)?.textContent?.replace(/\u200B/g, "") ?? "") : "";
+            // Reachable only via the adjacent-colour-literal case above (a non-empty field, no
+            // selection): editing that colour is the only meaningful action here, so only offer it.
+            if(!hasSelection && slotContent.length > 0){
+                return [{key: "c", description: this.$t("autoCompletion.colourPickerShortcut"), kind: "colour"}];
+            }
+            return [
+                {key: "i", description: this.$t("autoCompletion.recordImageShortcut"), kind: "image"},
+                {key: "s", description: this.$t("autoCompletion.recordSoundShortcut"), kind: "sound"},
+                {key: "c", description: this.$t("autoCompletion.colourPickerShortcut"), kind: "colour"},
+            ];
+        },
+
         addFrameCommands(): Record<string, AddFrameCommandDef[]> {
             // Just use the flag data to bind this computed property to the flag, so that when the frame commands are changed, we can update the UI
             this.frameCommandsReactiveFlag;
@@ -397,53 +460,6 @@ export default defineComponent({
             ];
         },
 
-        // When a text cursor is focused inside a code slot (not a comment/documentation slot, and
-        // not a string literal slot -- recording media there wouldn't make sense either),
-        // Ctrl-Shift-I/U opens a dialog to record a new image/sound literal from the webcam/
-        // microphone. We show those shortcuts here as a hint, mirroring the same gating
-        // LabelSlot.vue's onKeyDown uses for the shortcut itself.
-        mediaRecordingCommands(): {keys: ({label: string, title?: string})[]; description: string; kind: "image" | "sound"}[] {
-            const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
-            if(!this.appStore.isEditing || !focusSlotCursorInfos){
-                return [];
-            }
-
-            const slotInfos = focusSlotCursorInfos.slotInfos;
-            const frameType = this.appStore.frameObjects[slotInfos.frameId]?.frameType.type;
-            if(slotInfos.slotType == SlotType.comment || isSlotStringLiteralType(slotInfos.slotType) || frameType == AllFrameTypesIdentifier.comment){
-                return [];
-            }
-
-            const ctrl = {label: this.$t("contextMenu.ctrl")};
-            const shift = {label: "⇧", title: this.$t("autoCompletion.shiftKey")};
-            return [
-                {keys: [ctrl, shift, {label: "i"}], description: this.$t("autoCompletion.recordImageShortcut"), kind: "image"},
-                {keys: [ctrl, shift, {label: "u"}], description: this.$t("autoCompletion.recordSoundShortcut"), kind: "sound"},
-            ];
-        },
-
-        // Ctrl-Shift-Y opens the colour-picker dialog. Unlike mediaRecordingCommands above, this is
-        // shown for string slots too, since that's exactly where it's most useful (editing colour
-        // string literals in place); only comments are excluded.
-        colourPickerCommand(): {keys: ({label: string, title?: string})[]; description: string}[] {
-            const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
-            if(!this.appStore.isEditing || !focusSlotCursorInfos){
-                return [];
-            }
-
-            const slotInfos = focusSlotCursorInfos.slotInfos;
-            const frameType = this.appStore.frameObjects[slotInfos.frameId]?.frameType.type;
-            if(slotInfos.slotType == SlotType.comment || frameType == AllFrameTypesIdentifier.comment){
-                return [];
-            }
-
-            const ctrl = {label: this.$t("contextMenu.ctrl")};
-            const shift = {label: "⇧", title: this.$t("autoCompletion.shiftKey")};
-            return [
-                {keys: [ctrl, shift, {label: "y"}], description: this.$t("autoCompletion.colourPickerShortcut")},
-            ];
-        },
-
         progressPercentWidthStyle(): string {
             return "width: " + this.progressPercent + "%;";
         },
@@ -456,7 +472,7 @@ export default defineComponent({
             // add-frame-commands <p> so its buttons can wrap into columns when a row doesn't fit. That height is only
             // ever recomputed on PEA expand/collapse and splitter-resize events -- never when isEditing toggles, even
             // though addFrameCommands is deliberately emptied while editing a slot (replaced by the codeCompletionCommand/
-            // wrapSelectionCommands/mediaRecordingCommands hints below it). Left pinned, a stale height leaves a gap
+            // wrapSelectionCommands/slotShortcutsCommands hints below it). Left pinned, a stale height leaves a gap
             // above those hints, pushing them down the pane -- enough indentation (more column-wrapping, hence a taller
             // pinned height to start with) can push them far enough to be hidden behind the PEA pane below, even though
             // they're still rendered and their shortcuts still work.
@@ -485,6 +501,7 @@ export default defineComponent({
             setCommandsSplitterPane2Size: (value: number) => {
                 this.commandsSplitterPane2Size= value;
             },
+            openSlotShortcutsPane: this.openSlotShortcutsPane,
             // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
             setPEACommandsSplitterPanesMinSize: this.setPEACommandsSplitterPanesMinSize,
             setIsExpandedPEA: (value: boolean) => {
@@ -563,15 +580,17 @@ export default defineComponent({
                 }
 
                 // While the frame commands pane is focused (entered via Tab/Space at the frame caret),
-                // it owns all keydown handling until a frame is inserted or Escape is hit.
-                if(this.appStore.isFrameCommandsPaneActive){
-                    if(document.activeElement?.closest("#addFramePanel")){
-                        this.handleFrameCommandsPaneKeyDown(event);
-                        return;
-                    }
-                    // Focus left the panel some other way (e.g. a mouse click elsewhere); don't let
-                    // a stale flag hijack normal keydown handling below.
-                    this.appStore.isFrameCommandsPaneActive = false;
+                // it owns all keydown handling until a frame is inserted or Escape is hit. Same
+                // mechanism for the slot shortcuts pane just below (entered via Space at the start of
+                // an empty non-string code slot, or adjacent to a colour literal -- see LabelSlot.vue's
+                // processInput/onKeyDown and openSlotShortcutsPane below) -- see dispatchToPaneIfActive.
+                const setFrameCommandsPaneInactive = () => this.appStore.isFrameCommandsPaneActive = false;
+                if(this.dispatchToPaneIfActive(event, this.appStore.isFrameCommandsPaneActive, "#addFramePanel", this.handleFrameCommandsPaneKeyDown, setFrameCommandsPaneInactive)){
+                    return;
+                }
+                const setSlotShortcutsPaneInactive = () => this.appStore.isSlotShortcutsPaneActive = false;
+                if(this.dispatchToPaneIfActive(event, this.appStore.isSlotShortcutsPaneActive, "#addSlotShortcutsPanel", this.handleSlotShortcutsPaneKeyDown, setSlotShortcutsPaneInactive)){
+                    return;
                 }
 
                 if(!isDraggingFrames && (event.ctrlKey || event.metaKey)) {
@@ -890,6 +909,24 @@ export default defineComponent({
             this.frameCommandsReactiveFlag = !this.frameCommandsReactiveFlag;
         });
 
+        // See suppressNextEscapeKeyUp's own comment (data()): this must run in the CAPTURE phase (root
+        // to target), not the usual bubble phase, so it runs *before* LabelSlot.vue's own
+        // "keyup.esc"-bound onEscKeyUp handler on the slot's span -- by the time a bubble-phase listener
+        // on window (like the one just below) would run, bubbling has already reached and fired every
+        // listener on the way up, including that one.
+        document.addEventListener(
+            "keyup",
+            (event: KeyboardEvent) => {
+                if(this.suppressNextEscapeKeyUp && event.key === "Escape"){
+                    this.suppressNextEscapeKeyUp = false;
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    event.stopPropagation();
+                }
+            },
+            true
+        );
+
         // Companion to the frame commands pane's Enter handling in handleFrameCommandsPaneKeyDown() above
         // (see the comment there): the actual activation of the focused command happens on keyup, not
         // keydown, so that moving focus into the newly-inserted frame only happens once this key press's
@@ -897,12 +934,16 @@ export default defineComponent({
         window.addEventListener(
             "keyup",
             (event: KeyboardEvent) => {
-                if(this.appStore.isFrameCommandsPaneActive && event.key === "Enter" && document.activeElement?.closest("#addFramePanel")){
-                    event.preventDefault();
-                    event.stopImmediatePropagation();
-                    event.stopPropagation();
-                    (document.activeElement as HTMLElement).click();
-                }
+                const activateFocusedButtonOnEnter = (isPaneActive: boolean, containerSelector: string) => {
+                    if(isPaneActive && event.key === "Enter" && document.activeElement?.closest(containerSelector)){
+                        event.preventDefault();
+                        event.stopImmediatePropagation();
+                        event.stopPropagation();
+                        (document.activeElement as HTMLElement).click();
+                    }
+                };
+                activateFocusedButtonOnEnter(this.appStore.isFrameCommandsPaneActive, "#addFramePanel");
+                activateFocusedButtonOnEnter(this.appStore.isSlotShortcutsPaneActive, "#addSlotShortcutsPanel");
             }
         );
     },
@@ -931,6 +972,20 @@ export default defineComponent({
             }
         });
 
+        // Unlike #addFramePanel above, #addSlotShortcutsPanel is only rendered (v-if) while it has
+        // content to show, so it doesn't necessarily exist yet at mount time to attach a listener to
+        // directly -- attached on document instead (focusout bubbles) and filtered by event.target.
+        document.addEventListener("focusout", (event: FocusEvent) => {
+            const target = event.target as HTMLElement | null;
+            if(!target?.closest("#addSlotShortcutsPanel")){
+                return;
+            }
+            const relatedTarget = event.relatedTarget as HTMLElement | null;
+            if(!relatedTarget?.closest("#addSlotShortcutsPanel")){
+                this.appStore.isSlotShortcutsPaneActive = false;
+            }
+        });
+
         // #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
         mbSimulator = (document.querySelector("#mbSimulatorIframe") as HTMLIFrameElement)?.contentWindow;
         window.addEventListener("blur", this.handleMBSimulatorTakesFocus);        
@@ -941,31 +996,6 @@ export default defineComponent({
     methods: {
         addFrameCommandUID(commandType: string): string {
             return getAddFrameCmdElementUID(commandType);
-        },
-
-        // Clicking these hints should do the same thing as pressing the shortcut they describe,
-        // for users who don't know/remember the shortcut. The tricky part is that they live in a
-        // totally different component to the focused slot -- the wrapping @mousedown.prevent.stop
-        // above stops the click from blurring the focused slot (so appStore.focusSlotCursorInfos
-        // is still valid by the time this runs), and we then dispatch to that specific LabelSlot
-        // instance's own triggerMediaRecording/triggerColourPicker via the shared component API
-        // registry, exactly as if its own keydown handler had fired.
-        triggerMediaRecordingFromHint(kind: "image" | "sound") {
-            const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
-            if(!focusSlotCursorInfos){
-                return;
-            }
-            const uid = getLabelSlotUID(focusSlotCursorInfos.slotInfos);
-            vueComponentsAPIHandler.labelSlotComponentAPI?.forInstance[uid]?.triggerMediaRecording(kind);
-        },
-
-        triggerColourPickerFromHint() {
-            const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
-            if(!focusSlotCursorInfos){
-                return;
-            }
-            const uid = getLabelSlotUID(focusSlotCursorInfos.slotInfos);
-            vueComponentsAPIHandler.labelSlotComponentAPI?.forInstance[uid]?.triggerColourPicker();
         },
 
         // Inserts the frame matching this (lowercased) shortcut key -- by its original shortcut, its
@@ -1032,9 +1062,79 @@ export default defineComponent({
             });
         },
 
-        // All command buttons currently in the frame commands pane, in DOM order.
-        getFrameCommandButtons(): HTMLButtonElement[] {
-            return Array.from(document.querySelectorAll("#addFramePanel .frame-cmd-btn")) as HTMLButtonElement[];
+        // All command buttons currently in the given space-triggered command pane (the frame commands
+        // pane or the slot shortcuts pane), in DOM order.
+        getPaneButtons(containerSelector: string): HTMLButtonElement[] {
+            return Array.from(document.querySelectorAll(`${containerSelector} .frame-cmd-btn`)) as HTMLButtonElement[];
+        },
+
+        // If the pane flagged active by isPaneActive still has focus within it, dispatches the keydown
+        // to its own handler and reports it as consumed (the caller should return immediately). If the
+        // flag is stale -- focus left the pane some other way, e.g. a mouse click elsewhere -- clears it
+        // via setInactive() instead, so a stale flag doesn't hijack normal keydown handling below.
+        // Shared by both the frame commands pane and the slot shortcuts pane in the top-level keydown
+        // listener above.
+        dispatchToPaneIfActive(event: KeyboardEvent, isPaneActive: boolean, containerSelector: string,
+            handler: (event: KeyboardEvent) => void, setInactive: () => void): boolean {
+            if(!isPaneActive){
+                return false;
+            }
+            if(document.activeElement?.closest(containerSelector)){
+                handler(event);
+                return true;
+            }
+            setInactive();
+            return false;
+        },
+
+        // Handles all keydown events while a space-triggered command pane (the frame commands pane or
+        // the slot shortcuts pane) is focused: arrow keys cycle between command buttons, Enter activates
+        // whichever one is currently focused (same as a mouse click, done on keyup instead of keydown --
+        // see the "keyup" listener in created() -- because focused <button> elements natively
+        // self-activate (synthesise a click) on Enter keydown, and if we let that happen -- or trigger
+        // our own click here -- focus can move to whatever the command inserts/opens *before* this same
+        // physical key press's keyup fires; that keyup would then land somewhere else entirely and be
+        // reacted to there, e.g. immediately leaving a newly-focused slot again. Same fix Menu.vue
+        // already uses for its own Enter-confirms-selection handling), shouldClose's keys close the pane
+        // and hand off to onClose (e.g. Escape, and whatever else re-toggles shut the way it was opened),
+        // and any other key is tried as a direct shortcut letter via onActivateKey.
+        handlePaneKeyDown(event: KeyboardEvent, options: {
+            containerSelector: string,
+            shouldClose: (event: KeyboardEvent) => boolean,
+            onClose: (event: KeyboardEvent) => void,
+            shouldCycle: (event: KeyboardEvent) => boolean,
+            onActivateKey: (key: string) => void,
+        }): void {
+            event.stopImmediatePropagation();
+            event.stopPropagation();
+
+            if(options.shouldClose(event)){
+                event.preventDefault();
+                options.onClose(event);
+                return;
+            }
+
+            if(event.key === "Enter"){
+                event.preventDefault();
+                return;
+            }
+
+            if(options.shouldCycle(event)){
+                // Only this needs the current button list/position -- everything above is handled
+                // (and returns) without it.
+                const buttons = this.getPaneButtons(options.containerSelector);
+                const currentIndex = buttons.indexOf(document.activeElement as HTMLButtonElement);
+                event.preventDefault();
+                if(buttons.length > 0){
+                    const delta = (event.key === "ArrowDown" || event.key === "ArrowRight") ? 1 : -1;
+                    buttons[(currentIndex + delta + buttons.length) % buttons.length].focus();
+                }
+                return;
+            }
+
+            // Any other key: try it as a direct shortcut letter (a no-op if it doesn't match anything).
+            event.preventDefault();
+            options.onActivateKey(event.key.toLowerCase());
         },
 
         // Opens the frame commands pane: moves real DOM focus onto the first available command button.
@@ -1051,7 +1151,7 @@ export default defineComponent({
             // character instead. (This also relies on the Commands tab switch above -- see
             // validateSlot() in store.ts -- being instant: BTabs is set `no-fade` for exactly this
             // reason, otherwise its buttons would stay display:none for the fade's duration.)
-            const firstAvailableButton = this.getFrameCommandButtons().find((button) => !button.disabled && button.offsetParent !== null);
+            const firstAvailableButton = this.getPaneButtons("#addFramePanel").find((button) => !button.disabled && button.offsetParent !== null);
             firstAvailableButton?.focus();
         },
 
@@ -1062,55 +1162,116 @@ export default defineComponent({
             }
         },
 
-        // Handles all keydown events while the frame commands pane is focused: arrow keys cycle between
-        // command buttons (Shift+Tab also cycles backwards, matching ArrowUp/ArrowLeft), Enter activates
-        // whichever one is currently focused (same as a mouse click), and any other shortcut key inserts
-        // that frame directly. Plain Tab and Space both close the pane and return to the frame caret,
-        // same as Escape: they're what opened the pane in the first place (at the bare frame caret), so
-        // a second press toggles it shut again, the same way you'd expect of any open/close key -- arrow
-        // keys are the dedicated way to navigate between buttons once the pane is open, so Tab isn't
-        // needed for that too, and Space no longer doubles as a func-call shortcut (that's "c" now, see
-        // allFrameCommandsDefs in editor.ts), so it's free for this instead.
+        // Plain Tab and Space both close the pane and return to the frame caret, same as Escape:
+        // they're what opened the pane in the first place (at the bare frame caret), so a second press
+        // toggles it shut again, the same way you'd expect of any open/close key -- arrow keys are the
+        // dedicated way to navigate between buttons once the pane is open, so Tab isn't needed for that
+        // too, and Space no longer doubles as a func-call shortcut (that's "c" now, see
+        // allFrameCommandsDefs in editor.ts), so it's free for this instead. Shift+Tab falls through to
+        // shouldCycle below instead of closing, cycling backwards like ArrowUp/ArrowLeft.
         handleFrameCommandsPaneKeyDown(event: KeyboardEvent): void {
-            event.stopImmediatePropagation();
-            event.stopPropagation();
+            this.handlePaneKeyDown(event, {
+                containerSelector: "#addFramePanel",
+                shouldClose: (e) => e.key === "Escape" || e.key === " " || (e.key === "Tab" && !e.shiftKey),
+                onClose: () => this.closeFrameCommandsPane(true),
+                shouldCycle: (e) => ["ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft", "Tab"].includes(e.key),
+                onActivateKey: (key) => this.insertFrameForShortcutKey(key),
+            });
+        },
 
-            if(event.key === "Escape" || event.key === " " || (event.key === "Tab" && !event.shiftKey)){
-                event.preventDefault();
-                this.closeFrameCommandsPane(true);
+        // Opens the slot shortcuts pane: moves real DOM focus onto the first command button, mirroring
+        // openFrameCommandsPane() above. Called from LabelSlot.vue's processInput/onKeyDown once it's
+        // determined Space was pressed at a valid position (the start of a completely empty non-string/
+        // comment code slot, a selection, or adjacent to a colour literal -- see canOpenSlotShortcutsPane).
+        openSlotShortcutsPane(): void {
+            if(!this.canOpenSlotShortcutsPane){
                 return;
             }
+            this.appStore.isSlotShortcutsPaneActive = true;
+            // Moving DOM focus away from the slot below would otherwise trigger LabelSlotsStructure.vue's
+            // blurEditableSlot() in full (error-checking, prepend-text updates, etc.) -- same suppression
+            // LabelSlot.vue's own triggerMediaRecording/triggerColourPicker already use before moving
+            // focus to their modal dialogs, needed here for the same reason (this flag is consumed/reset
+            // by blurEditableSlot() itself the next time it runs).
+            this.appStore.ignoreBlurEditableSlot = true;
+            // The keystroke/click that originally put the caret into this (empty) slot already scheduled
+            // LabelSlot.vue's onGetCaret() delayed re-selection (its "on Firefox, force the focus" branch
+            // for empty slots) -- left alone, that still-pending callback fires shortly after we move focus
+            // to the button below and silently steals it back. bumpCaretRequestSeq() invalidates it, the
+            // same fix used for the identical race in LabelSlotsStructure.vue's checkSlotRefactoring().
+            bumpCaretRequestSeq();
+            // This is called from inside the contenteditable slot's own native "input" event handling
+            // (see LabelSlot.vue's processInput) -- on Firefox/WebKit, moving focus away within that same
+            // call stack/microtask queue can be silently overridden once the browser finishes its own
+            // internal focus/selection bookkeeping for the edit that's still in flight. A macrotask
+            // (rather than $nextTick's microtask) defers this until after that's genuinely done.
+            setTimeout(() => {
+                this.getPaneButtons("#addSlotShortcutsPanel")[0]?.focus();
+            }, 0);
+        },
 
-            if(event.key === "Enter"){
-                // Don't click the button here on keydown: focused <button> elements natively
-                // self-activate (synthesise a click) on Enter keydown, and if we let that happen --
-                // or trigger our own click here -- focus moves to the newly-inserted frame's slot
-                // *before* this same physical key press's keyup fires. That keyup then lands on the
-                // slot instead of the button, and the slot's own Enter handling immediately reacts to
-                // it (e.g. leaving the slot again). So we only preventDefault() here (blocking the
-                // native keydown auto-click) and do the actual activation in the "keyup" listener
-                // below instead, once this key's lifecycle is otherwise finished. Same fix Menu.vue
-                // already uses for its own Enter-confirms-selection handling.
-                event.preventDefault();
+        // Restoring focus into the (still-empty) slot needs a real focus() call, not just
+        // setDocumentSelection() -- and crucially, it must target the label's own *containing*
+        // contenteditable element (getFrameLabelSlotsStructureUID), not the individual slot's span:
+        // each slot is a contenteditable <span> nested inside further contenteditable ancestors (its
+        // own wrapper div, and the whole label row), and once editing is underway, real DOM focus is
+        // actually held by that outermost row container, not by any individual span -- see
+        // LabelSlotsStructure.vue's own comment ("the spans don't get focus anymore because the
+        // containing editable div grabs it") and the identical pattern already used to move focus
+        // *away* from a slot (changeCaretWithKeyboard-adjacent code there). setDocumentSelection() then
+        // places the actual text cursor within that now-focused container, exactly as it does for a
+        // normal click (LabelSlot.vue's onGetCaret).
+        closeSlotShortcutsPane(): void {
+            this.appStore.isSlotShortcutsPaneActive = false;
+            const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
+            if(focusSlotCursorInfos){
+                const targetSlotInfos = focusSlotCursorInfos.slotInfos;
+                const cursorInfo = {slotInfos: targetSlotInfos, cursorPos: 0};
+                document.getElementById(getFrameLabelSlotsStructureUID(targetSlotInfos.frameId, targetSlotInfos.labelSlotsIndex))?.focus();
+                setDocumentSelection(cursorInfo, cursorInfo);
+                this.appStore.setSlotTextCursors(cursorInfo, cursorInfo);
+            }
+        },
+
+        // Escape/Space close the pane and return focus to the slot (closeSlotShortcutsPane()); any
+        // other key is tried as a direct shortcut letter against slotShortcutsCommands.
+        handleSlotShortcutsPaneKeyDown(event: KeyboardEvent): void {
+            this.handlePaneKeyDown(event, {
+                containerSelector: "#addSlotShortcutsPanel",
+                shouldClose: (e) => e.key === "Escape" || e.key === " ",
+                onClose: (e) => {
+                    if(e.key === "Escape"){
+                        this.suppressNextEscapeKeyUp = true;
+                    }
+                    this.closeSlotShortcutsPane();
+                },
+                shouldCycle: (e) => ["ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft"].includes(e.key),
+                onActivateKey: (key) => {
+                    const matchingCommand = this.slotShortcutsCommands.find((command) => command.key === key);
+                    if(matchingCommand){
+                        this.triggerSlotShortcut(matchingCommand.kind);
+                    }
+                },
+            });
+        },
+
+        // Dispatches to the focused LabelSlot instance's own triggerMediaRecording/triggerColourPicker
+        // via the shared component API registry -- used both for a direct click on a pane button and
+        // for the pane's own keyboard activation (Enter or a shortcut letter). This is now the *only*
+        // way to reach these actions (see LabelSlot.vue's onKeyDown -- the old direct Ctrl-Shift-I/U/Y
+        // shortcuts have been removed).
+        triggerSlotShortcut(kind: "image" | "sound" | "colour"): void {
+            const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
+            this.appStore.isSlotShortcutsPaneActive = false;
+            if(!focusSlotCursorInfos){
                 return;
             }
-
-            if(event.key === "ArrowDown" || event.key === "ArrowRight" || event.key === "ArrowUp" || event.key === "ArrowLeft" || event.key === "Tab"){
-                // Only these need the current button list/position -- everything above is handled
-                // (and returns) without it.
-                const buttons = this.getFrameCommandButtons();
-                const currentIndex = buttons.indexOf(document.activeElement as HTMLButtonElement);
-                event.preventDefault();
-                if(buttons.length > 0){
-                    const delta = (event.key === "ArrowDown" || event.key === "ArrowRight") ? 1 : -1;
-                    buttons[(currentIndex + delta + buttons.length) % buttons.length].focus();
-                }
-                return;
+            if(kind === "colour"){
+                vueComponentsAPIHandler.appComponentAPI?.triggerColourPicker(focusSlotCursorInfos.slotInfos);
             }
-
-            // Any other key: try it as a direct shortcut letter (a no-op if it doesn't match anything).
-            event.preventDefault();
-            this.insertFrameForShortcutKey(event.key.toLowerCase());
+            else{
+                vueComponentsAPIHandler.appComponentAPI?.triggerMediaRecording(kind, focusSlotCursorInfos.slotInfos);
+            }
         },
 
         handleAppScroll(event: WheelEvent) {
@@ -1493,6 +1654,11 @@ export default defineComponent({
     flex-wrap: wrap;
     gap: 4px;
     margin: 2px 5px 8px 0;
+}
+
+.frame-cmd-divider {
+    border-top: 1px solid #d0d0d0;
+    margin: 0 5px 8px 0;
 }
 
 // Hidden via visibility (rather than the content being swapped or removed) once the pane becomes

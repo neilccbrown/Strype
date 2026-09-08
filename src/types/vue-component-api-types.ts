@@ -18,7 +18,7 @@
  **/
 
 import { CloudDriveAPIState, CloudDriveComponent, CloudDriveFile, CloudFileSharingStatus, SaveExistingCloudProjectInfos } from "@/types/cloud-drive-types";
-import { AppEvent, LoadRequestReason, Position, SaveRequestReason, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
+import { AppEvent, LoadRequestReason, Position, SaveRequestReason, SlotCoreInfos, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import { LoadedMedia } from "@/types/types";
 import { BvTriggerableEvent } from "bootstrap-vue-next";
@@ -30,12 +30,21 @@ export type AppComponentAPI = {
   finaliseOpenShareProject: (message?: {key: string, param: string}) => void,
   onExpandedPythonExecAreaSplitPaneResize: (event: any, calledForResize?: boolean, isProgrammaticRestore?: boolean) => void,
   onStrypeCommandsSplitPaneResize: (event: any, useSpecificPEALayout?: StrypePEALayoutMode) => void,
+  // Exposed so the clickable shortcut hints in Commands.vue can trigger these on whichever slot is
+  // currently focused (passed in explicitly, as its SlotCoreInfos), the same as if that slot's own
+  // Ctrl-Shift-I/U/Y keyboard shortcut had been pressed directly. Lives on App.vue (a singleton),
+  // not on the LabelSlot instance itself, since Vue can reuse a LabelSlot component for a different
+  // slot after the slot list is spliced (e.g. inserting a new media literal), which a lookup keyed
+  // by slot id can't safely follow.
+  triggerMediaRecording: (kind: "image" | "sound", targetSlotInfos: SlotCoreInfos) => void,
+  triggerColourPicker: (targetSlotInfos: SlotCoreInfos) => void,
 };
 
 export type CommandsComponentAPI = {
   onCommandsSplitterResize: (event: any, isProgrammaticRestore?: boolean) => void,
   resetPEACommmandsSplitterDefaultState: () => Promise<void>,
   setCommandsSplitterPane2Size: (v: number) => void,
+  openSlotShortcutsPane: () => void,
   // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
   setPEACommandsSplitterPanesMinSize: (onlyResizePEA?: boolean) => void,
   setIsExpandedPEA: (v: boolean) => void,
@@ -116,11 +125,6 @@ export type LabelSlotComponentAPI = {
   forInstance: {
     [componentInstanceKey: string]: {
       handleUpDown: (event: KeyboardEvent) => boolean,
-      // Exposed so the clickable shortcut hints in Commands.vue can trigger these on whichever
-      // slot is currently focused, the same as if its own Ctrl-Shift-I/U/Y keyboard shortcut had
-      // been pressed directly.
-      triggerMediaRecording: (kind: "image" | "sound") => void,
-      triggerColourPicker: () => void,
     },
   }
 }
