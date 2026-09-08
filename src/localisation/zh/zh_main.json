@@ -8,7 +8,7 @@
     "defaultText": {
       "condition": "条件 ",
       "list": "列表 ",
-      "identifier": "标识符 ",
+      "identifier": "变量 ",
       "expression": "表达式 ",
       "value": "值 ",
       "variable": "变量 ",

@@ -8,7 +8,7 @@
     "defaultText": {
       "condition": "condition ",
       "list": "list ",
-      "identifier": "identifier ",
+      "identifier": "variable ",
       "expression": "expression ",
       "value": "value ",
       "variable": "variable ",
