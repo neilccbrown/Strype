@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
-import { PNG } from "pngjs";
 import { doPagePaste, pressFrameShortcut } from "../support/editor";
 import { setupStrypeTest } from "../support/general";
+import { createBlackPngBase64 } from "../support/media";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     // Each test pastes and resizes an image (paste, dialog load, slider, OK-click, then up to a
@@ -9,30 +9,6 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     // fast local machine, but tight on a loaded CI runner where any one of those steps can be slow.
     await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 60000, skipPyodide: true});
 });
-
-/**
- * Generates a data URL for a solid black PNG.
- *
- * @param width Image width in pixels
- * @param height Image height in pixels
- * @returns A base64 encode of the image
- */
-export function createBlackPngBase64(width: number, height: number): string {
-    if (width <= 0 || height <= 0) {
-        throw new Error("Width and height must be positive");
-    }
-
-    const png = new PNG({ width, height });
-
-    // Every pixel defaults to 0, so set alpha to 255.
-    for (let i = 0; i < png.data.length; i += 4) {
-        png.data[i + 3] = 255; // A
-    }
-
-    const buffer = PNG.sync.write(png);
-
-    return buffer.toString("base64");
-}
 
 function expectWithin(a: number, b: number, tolerance: number) {
     expect(a).toBeGreaterThanOrEqual(b - tolerance);

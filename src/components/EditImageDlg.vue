@@ -280,7 +280,21 @@ export default defineComponent({
             (this.$refs.cropper as InstanceType<typeof Cropper>).flip(false, true);
         },
         doRotate90() {
-            (this.$refs.cropper as InstanceType<typeof Cropper>).rotate(90);
+            const cropper = this.$refs.cropper as InstanceType<typeof Cropper>;
+            // Rotating doesn't resize the crop area to fit the (now swapped-dimension) image, so on
+            // non-square images it leaves the stencil cropping into the rotated content. Fix that by
+            // resetting the crop area to the whole (rotated) image -- using imageSize rather than
+            // visibleArea, since visibleArea is the letterboxed viewport around the image and can be
+            // smaller than the actual image once its aspect ratio no longer matches the container's.
+            // setCoordinates() is also a no-op while a rotate's CSS transition is still active, so the
+            // rotation itself has to run without one here.
+            cropper.rotate(90, {transitions: false});
+            cropper.setCoordinates(({imageSize} : { imageSize: {width: number, height: number} }) => ({
+                left: 0,
+                top: 0,
+                width: imageSize.width,
+                height: imageSize.height,
+            }));
         },
     },
     watch: {
