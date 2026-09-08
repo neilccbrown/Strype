@@ -60,6 +60,6 @@ test.describe("Pasting augmented assignment works in nested locations", () => {
         // assertStateOfVarAssignFrame only ever looks at the first frame in Main, so instead just
         // check the rendered text directly for the nested augmented assignment's expansion:
         const bodyText = await page.locator("#frameContainer_-3 .frame-div").first().innerText();
-        expect(bodyText.replaceAll("​", "")).toEqual("if\nTrue\n:\ntotal\n⇐\ntotal\n+\n1");
+        expect(bodyText.replaceAll("\u200B", "")).toEqual("if\nTrue\n:\ntotal\n⇐\ntotal\n+\n1");
     });
 });
