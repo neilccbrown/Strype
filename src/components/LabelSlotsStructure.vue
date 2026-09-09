@@ -1291,6 +1291,23 @@ export default defineComponent({
                 return;
             }
             
+            // Plain Space (no modifiers) at the start of a genuinely blank, non-string/comment slot opens
+            // the slot shortcuts pane (record image/sound, colour picker) -- see Commands.vue's
+            // canOpenSlotShortcutsPane/openSlotShortcutsPane. This must be intercepted here, on the real
+            // keydown event (this container div is the actual contenteditable focus target), not on the
+            // synthetic copy dispatched to the slot's own span below: calling preventDefault() on that
+            // synthetic copy has no effect on the browser's native insertion for the real event, which is
+            // why an earlier attempt to do this from LabelSlot.vue's onKeyDown silently failed to stop the
+            // space being typed.
+            if(event.type === "keydown" && event.key === " " && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey &&
+                vueComponentsAPIHandler.commandsComponentAPI?.canOpenSlotShortcutsPane?.()){
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+                vueComponentsAPIHandler.commandsComponentAPI?.openSlotShortcutsPane();
+                return;
+            }
+
             if(this.appStore.focusSlotCursorInfos){
                 document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos))
                     ?.dispatchEvent(new KeyboardEvent(event.type, {

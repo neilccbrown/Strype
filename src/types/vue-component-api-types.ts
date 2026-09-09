@@ -45,6 +45,7 @@ export type CommandsComponentAPI = {
   resetPEACommmandsSplitterDefaultState: () => Promise<void>,
   setCommandsSplitterPane2Size: (v: number) => void,
   openSlotShortcutsPane: () => void,
+  canOpenSlotShortcutsPane: () => boolean,
   // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
   setPEACommandsSplitterPanesMinSize: (onlyResizePEA?: boolean) => void,
   setIsExpandedPEA: (v: boolean) => void,

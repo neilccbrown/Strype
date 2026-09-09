@@ -1147,16 +1147,11 @@ export default defineComponent({
                 }
             }
             // We also prevent start trailing spaces on all slots except comments and string content, to avoid indentation errors.
-            // If the slot was completely empty before this space was typed, this key is otherwise unused here (an empty
-            // slot has no other content a leading space could usefully separate), so we repurpose it to open the slot
-            // shortcuts pane (record image/sound, colour picker) -- see Commands.vue's openSlotShortcutsPane/
-            // handleSlotShortcutsPaneKeyDown, and its equivalent frame-caret mechanism (Tab/Space -> frame commands pane).
+            // (Space on a genuinely blank slot is intercepted at keydown instead -- see onKeyDown -- so by the
+            // time we get here it never fires for that case; this only handles a leading space typed before
+            // other, already-present content.)
             else if(inputString === " " && this.frameType !== AllFrameTypesIdentifier.comment && this.slotType != SlotType.string && cursorPos == 0){
-                const wasEmpty = inputSpanFieldContent.replace(/\u200B/g, "") === inputString;
                 this.removeLastInput(inputString);
-                if(wasEmpty){
-                    this.$nextTick(() => vueComponentsAPIHandler.commandsComponentAPI?.openSlotShortcutsPane());
-                }
             }
             // If we type ":" as the very first character of a function/class definition's docs field, we
             // discard it: the user has just overtyped the closing bracket/name (which moves the cursor past

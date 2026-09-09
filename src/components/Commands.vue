@@ -476,6 +476,7 @@ export default defineComponent({
                 this.commandsSplitterPane2Size= value;
             },
             openSlotShortcutsPane: this.openSlotShortcutsPane,
+            canOpenSlotShortcutsPane: () => this.canOpenSlotShortcutsPane,
             // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
             setPEACommandsSplitterPanesMinSize: this.setPEACommandsSplitterPanesMinSize,
             setIsExpandedPEA: (value: boolean) => {
