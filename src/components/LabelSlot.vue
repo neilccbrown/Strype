@@ -82,7 +82,7 @@ import { bumpCaretRequestSeq, closeBracketCharacters, CustomEventTypes, getACLab
 import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, CollapsedState, EditImageInDialogFunction, FieldSlot, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, getFrameDefType, isFieldBracketedSlot, isFieldStringSlot, LoadedMedia, MediaSlot, MessageDefinitions, OptionalSlotType, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
-import {evaluateSlotType, getAdjacentColourSlotInfos, getFlatNeighbourFieldSlotInfos, getOutmostDisabledAncestorFrameId, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
+import {evaluateSlotType, getFlatNeighbourFieldSlotInfos, getOutmostDisabledAncestorFrameId, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
 import Parser from "@/parser/parser";
 import { cloneDeep, debounce, DebouncedFunc } from "lodash";
 import { BPopover, useToggle } from "bootstrap-vue-next";
@@ -943,33 +943,6 @@ export default defineComponent({
             // like ctrl-space or arrow keys or tab, etc.
             // Any text input is now handled by the input event because that properly
             // handles behaviours such as IME and composition shortcuts (e.g. alt + keys).
-
-            // Pressing plain Space with an active selection opens the slot shortcuts pane (see
-            // Commands.vue's openSlotShortcutsPane/canOpenSlotShortcutsPane) instead of letting the
-            // browser natively replace the selection with a literal space -- this must be
-            // intercepted here, at keydown, before that native replacement happens, so the
-            // selection is still intact when a shortcut letter is later pressed (triggerMediaRecording/
-            // triggerColourPicker below read it via getFocusedEditableSlotTextSelectionStartEnd).
-            // Not offered inside strings or comments, matching the empty-slot case in processInput.
-            const anchorSlotCursorInfos = this.appStore.anchorSlotCursorInfos;
-            const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
-            const hasSelection = !!anchorSlotCursorInfos && !!focusSlotCursorInfos
-                && (!areSlotCoreInfosEqual(anchorSlotCursorInfos.slotInfos, focusSlotCursorInfos.slotInfos) || anchorSlotCursorInfos.cursorPos != focusSlotCursorInfos.cursorPos);
-            // A collapsed caret directly before/after an existing colour literal also opens the
-            // pane, even though this field isn't empty -- otherwise there'd be no way to trigger
-            // "edit that colour in place" (see App.vue's triggerColourPicker) once anything else
-            // shares the field with the swatch (matches the pre-slot-shortcuts-pane Ctrl-Shift-Y
-            // shortcut, which worked from that position too).
-            const isAdjacentToColour = !hasSelection && focusSlotCursorInfos
-                && !!getAdjacentColourSlotInfos(this.coreSlotInfo, focusSlotCursorInfos.cursorPos, this.code.replace(/\u200B/g, "").length);
-            if(event.key === " " && !event.ctrlKey && !event.metaKey && !event.altKey && (hasSelection || isAdjacentToColour)
-                    && this.frameType !== AllFrameTypesIdentifier.comment && this.slotType != SlotType.string){
-                event.preventDefault();
-                event.stopPropagation();
-                event.stopImmediatePropagation();
-                vueComponentsAPIHandler.commandsComponentAPI?.openSlotShortcutsPane();
-                return;
-            }
 
             // We capture the key shortcut for opening the a/c
             if((event.metaKey || event.ctrlKey) && event.key == " "){

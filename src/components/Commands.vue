@@ -165,7 +165,7 @@ import { AddFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, Car
 import $ from "jquery";
 import { defineComponent } from "vue";
 import { mapStores } from "pinia";
-import {computeFrameSnapshot, getAdjacentColourSlotInfos, getAvailableNavigationPositions, getFrameSectionIdFromFrameId} from "@/helpers/storeMethods";
+import {computeFrameSnapshot, getAvailableNavigationPositions, getFrameSectionIdFromFrameId} from "@/helpers/storeMethods";
 import scssVars  from "@/assets/style/_export.module.scss";
 import { isMacOSPlatform } from "@/helpers/common";
 import fsIcon from "@/assets/images/FSicon.png";
@@ -361,42 +361,16 @@ export default defineComponent({
             if(frameType == AllFrameTypesIdentifier.comment){
                 return false;
             }
-            // A non-empty selection (whether within this one slot, or spanning several sibling
-            // slots) also opens the pane -- Space then a shortcut letter replaces the selection
-            // with the new item (LabelSlot.vue's triggerMediaRecording/triggerColourPicker), rather
-            // than Space just typing a literal space over it. See onKeyDown's own matching check
-            // (which is what actually intercepts Space for this case, before it can reach the slot's
-            // native text handling at all -- this getter only re-confirms it for showing the hint).
-            const anchorSlotCursorInfos = this.appStore.anchorSlotCursorInfos;
-            if(anchorSlotCursorInfos && (!areSlotCoreInfosEqual(anchorSlotCursorInfos.slotInfos, focusSlotCursorInfos.slotInfos) || anchorSlotCursorInfos.cursorPos != focusSlotCursorInfos.cursorPos)){
-                return true;
+            if(focusSlotCursorInfos.cursorPos != 0){
+                return false;
             }
             const slotContent = (document.getElementById(getLabelSlotUID(slotInfos)) as HTMLSpanElement | null)?.textContent?.replace(/\u200B/g, "") ?? "";
-            if(focusSlotCursorInfos.cursorPos == 0 && slotContent.length === 0){
-                return true;
-            }
-            // A collapsed caret directly before/after an existing colour literal also opens the
-            // pane (offering only the colour shortcut, see slotShortcutsCommands below), even
-            // though this field isn't empty -- otherwise there'd be no way to trigger "edit that
-            // colour in place" (App.vue's triggerColourPicker) once anything else shares the field
-            // with the swatch. Matches LabelSlot.vue's onKeyDown, which is what actually intercepts
-            // Space for this case.
-            return !!getAdjacentColourSlotInfos(slotInfos, focusSlotCursorInfos.cursorPos, slotContent.length);
+            return slotContent.length === 0;
         },
 
         slotShortcutsCommands(): {key: string; description: string; kind: "image" | "sound" | "colour"}[] {
             if(!this.canOpenSlotShortcutsPane){
                 return [];
-            }
-            const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
-            const anchorSlotCursorInfos = this.appStore.anchorSlotCursorInfos;
-            const hasSelection = !!anchorSlotCursorInfos && !!focusSlotCursorInfos
-                && (!areSlotCoreInfosEqual(anchorSlotCursorInfos.slotInfos, focusSlotCursorInfos.slotInfos) || anchorSlotCursorInfos.cursorPos != focusSlotCursorInfos.cursorPos);
-            const slotContent = focusSlotCursorInfos ? ((document.getElementById(getLabelSlotUID(focusSlotCursorInfos.slotInfos)) as HTMLSpanElement | null)?.textContent?.replace(/\u200B/g, "") ?? "") : "";
-            // Reachable only via the adjacent-colour-literal case above (a non-empty field, no
-            // selection): editing that colour is the only meaningful action here, so only offer it.
-            if(!hasSelection && slotContent.length > 0){
-                return [{key: "c", description: this.$t("autoCompletion.colourPickerShortcut"), kind: "colour"}];
             }
             return [
                 {key: "i", description: this.$t("autoCompletion.recordImageShortcut"), kind: "image"},
@@ -1180,9 +1154,8 @@ export default defineComponent({
         },
 
         // Opens the slot shortcuts pane: moves real DOM focus onto the first command button, mirroring
-        // openFrameCommandsPane() above. Called from LabelSlot.vue's processInput/onKeyDown once it's
-        // determined Space was pressed at a valid position (the start of a completely empty non-string/
-        // comment code slot, a selection, or adjacent to a colour literal -- see canOpenSlotShortcutsPane).
+        // openFrameCommandsPane() above. Called from LabelSlot.vue's processInput once it's determined
+        // Space was pressed at the start of a completely empty non-string/comment code slot.
         openSlotShortcutsPane(): void {
             if(!this.canOpenSlotShortcutsPane){
                 return;

@@ -2,6 +2,18 @@ import { test, expect } from "@playwright/test";
 import { pressFrameShortcut, waitForEditorSettled, doPagePaste } from "../support/editor";
 import { setupStrypeTest } from "../support/general";
 
+// Opens the colour-picker dialog via the slot shortcuts pane -- Space at the start of an empty,
+// non-string slot, then "c" to activate the colour-picker shortcut (see Commands.vue's
+// triggerSlotShortcut). Replaces the old direct Ctrl-Shift-Y shortcut, which no longer does
+// anything (see colour-picker.spec.ts's own copy of this helper).
+async function openColourPickerViaShortcut(page: import("@playwright/test").Page) {
+    await page.keyboard.press(" ");
+    // The pane focuses its first button asynchronously, so wait for that rather than pressing the
+    // shortcut letter immediately -- otherwise it can race and land back on the slot itself.
+    await expect(page.locator("#addSlotShortcutsPanel .frame-cmd-btn").first()).toBeFocused();
+    await page.keyboard.press("c");
+}
+
 // Covers §8 of the plan: copy/paste of a colour literal within Strype. Unlike image/sound
 // literals (structured-expressions-media.spec.ts), a colour literal's underlying code is just a
 // bare quoted string (e.g. "#aabbcc"), not a load_image(...)/load_sound(...) call, so there's no
@@ -44,7 +56,7 @@ function colourSwatch(page: import("@playwright/test").Page) {
 // LabelSlotsStructure.vue), whereas the picker explicitly places the cursor in the empty sibling
 // field right after the swatch, which this test needs a live selection anchor to select from.
 async function insertColourSwatch(page: import("@playwright/test").Page, hex: string) {
-    await page.keyboard.press("ControlOrMeta+Shift+Y");
+    await openColourPickerViaShortcut(page);
     await page.locator("button", {hasText: "Spectrum"}).click();
     // ColourPickerDlg.vue's own hexText seeding (onShownModalDlg) runs on bootstrap-vue's async
     // "shown" modal event, which can fire after the dialog is already interactable -- filling
@@ -88,8 +100,12 @@ test.describe("Pasting a copied colour literal", () => {
         await page.keyboard.press("ControlOrMeta+c");
         await expect.poll(() => page.evaluate("navigator.clipboard.readText()")).toEqual("\"#aabbcc\"");
 
-        // Paste into a second, fresh if-frame's empty slot:
-        await page.keyboard.press("End");
+        // Paste into a second, fresh if-frame's empty slot. Escape (not End) first: the caret is
+        // still in the (still-empty) field right after the swatch, and Space at the start of an
+        // empty slot opens the slot shortcuts pane (see LabelSlot.vue's processInput/
+        // canOpenSlotShortcutsPane) -- so openIfFrame's own Space press would otherwise be caught
+        // by that pane instead of reaching the frame commands pane it actually needs here.
+        await page.keyboard.press("Escape");
         await openIfFrame(page);
         await doPagePaste(page, "\"#aabbcc\"");
 

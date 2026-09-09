@@ -1292,16 +1292,14 @@ export default defineComponent({
             }
             
             if(this.appStore.focusSlotCursorInfos){
-                const forwardedEvent = new KeyboardEvent(event.type, {
-                    key: event.key,
-                    altKey: event.altKey,
-                    shiftKey: event.shiftKey,
-                    ctrlKey: event.ctrlKey,
-                    metaKey: event.metaKey,
-                    cancelable: true,
-                });
                 document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos))
-                    ?.dispatchEvent(forwardedEvent);
+                    ?.dispatchEvent(new KeyboardEvent(event.type, {
+                        key: event.key,
+                        altKey: event.altKey,
+                        shiftKey: event.shiftKey,
+                        ctrlKey: event.ctrlKey,
+                        metaKey: event.metaKey,
+                    }));
 
                 // We want to prevent some events to be handled wrongly twice or at all by the browser and our code.
                 // However, for comments (e.g. frame or documentation slot) and string literals, we need to let some navigation event go through otherwise they're blocked as we rely on the browser for them.
@@ -1326,16 +1324,7 @@ export default defineComponent({
                     || event.key == "PageDown"
                     || event.key == "Tab"
                     || (isMacOSPlatform() && event.metaKey && textHomeEndBehaviourKeys.includes(event.key))
-                    || (event.key == " " && (event.ctrlKey || event.metaKey))
-                    // Plain Space isn't otherwise in this list (it's usually left for the browser to type
-                    // a literal space natively), but if the forwarded copy above was actually consumed --
-                    // LabelSlot.vue's onKeyDown calling preventDefault() on it, to open the slot shortcuts
-                    // pane for a selection or an adjacent colour literal -- this *real* event must stop
-                    // here too. Otherwise it keeps bubbling past this container (its own preventDefault()
-                    // only applies to the synthetic copy) all the way to the window-level keydown listener
-                    // in Commands.vue, whose "pane not focused yet" check (the pane's button focus() is
-                    // still pending in a macrotask) then immediately undoes the pane it was just opened.
-                    || (event.key == " " && forwardedEvent.defaultPrevented)) {
+                    || (event.key == " " && (event.ctrlKey || event.metaKey))) {
                     event.preventDefault();
                     event.stopPropagation();
                     event.stopImmediatePropagation();

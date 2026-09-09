@@ -391,37 +391,6 @@ test.describe("Editing an adjacent colour literal", () => {
         await expect(page.locator("img[data-mediatype='colour']")).toHaveCount(1);
         await expect(page.locator("img[data-mediatype='colour']")).toHaveAttribute("data-code", "\"#112233\"");
     });
-
-    test("Invoking the picker with the caret right before a swatch edits it in place", async ({page}) => {
-        await openIfFrame(page);
-        await insertColourSwatch(page, "#112233");
-        await expect(page.locator("img[data-mediatype='colour']")).toHaveCount(1);
-
-        // Both fields flanking the swatch are empty at this point, so a single ArrowLeft out of
-        // the trailing (focused) one would skip both at once and leave the slot entirely (there's
-        // nothing for the caret to stop at) rather than landing adjacent to the swatch. Clicking
-        // directly into the leading (empty, so zero-width) field is unreliable in Chromium/WebKit
-        // -- their hit-testing can resolve the click to a neighbouring element instead -- so we use
-        // Home to reliably land at the very start of the whole (single-field-before-the-swatch)
-        // structure instead:
-        await page.keyboard.press("Home");
-        await waitForEditorSettled(page);
-        // Typing "1" there makes that field non-empty, but the caret is still directly adjacent
-        // to the swatch, so the slot shortcuts pane still offers (only) the colour shortcut there
-        // (see Commands.vue's canOpenSlotShortcutsPane):
-        await typeIndividually(page, "1");
-        await openColourPickerViaShortcut(page);
-        await expect(page.locator("#colourPickerDlg")).toBeVisible();
-        await expect(page.locator("#ColourPickerDlg-hex-input")).toHaveValue("#112233");
-        await page.locator("#ColourPickerDlg-hex-input").fill("#778899");
-        await visibleOKButton(page).click();
-        await waitForEditorSettled(page);
-
-        await expect(page.locator("img[data-mediatype='colour']")).toHaveCount(1);
-        await expect(page.locator("img[data-mediatype='colour']")).toHaveAttribute("data-code", "\"#778899\"");
-        const text = await getRawFrameHeaderText(page);
-        expect(text).toContain("1");
-    });
 });
 
 test.describe("Hover preview popup and edit round-trip", () => {
