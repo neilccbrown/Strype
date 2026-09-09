@@ -1207,19 +1207,21 @@ export default defineComponent({
             }
         },
 
-        // Escape/Space close the pane and return focus to the slot (closeSlotShortcutsPane()); any
-        // other key is tried as a direct shortcut letter against slotShortcutsCommands.
+        // Escape/Space/Tab close the pane and return focus to the slot (closeSlotShortcutsPane()) --
+        // Tab and Space are what opened it in the first place (see LabelSlotsStructure.vue's
+        // forwardKeyEvent), same as the frame commands pane below; any other key is tried as a direct
+        // shortcut letter against slotShortcutsCommands.
         handleSlotShortcutsPaneKeyDown(event: KeyboardEvent): void {
             this.handlePaneKeyDown(event, {
                 containerSelector: "#addSlotShortcutsPanel",
-                shouldClose: (e) => e.key === "Escape" || e.key === " ",
+                shouldClose: (e) => e.key === "Escape" || e.key === " " || (e.key === "Tab" && !e.shiftKey),
                 onClose: (e) => {
                     if(e.key === "Escape"){
                         this.suppressNextEscapeKeyUp = true;
                     }
                     this.closeSlotShortcutsPane();
                 },
-                shouldCycle: (e) => ["ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft"].includes(e.key),
+                shouldCycle: (e) => ["ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft", "Tab"].includes(e.key),
                 onActivateKey: (key) => {
                     const matchingCommand = this.slotShortcutsCommands.find((command) => command.key === key);
                     if(matchingCommand){
