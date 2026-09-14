@@ -81,7 +81,12 @@
                                                     <span class="frame-cmd-prefix-btn frame-cmd-btn-large frame-cmd-prefix-btn-wide">{{ $t('autoCompletion.spaceKey') }}</span>
                                                     <span>{{ $t('commandsPane.pressSpaceThenSuffix') }}</span>
                                                 </div>
-                                                <p v-if="slotShortcutsCommands.length" id="addSlotShortcutsPanel" class="frame-cmd-row">
+                                                <p
+                                                    v-if="slotShortcutsCommands.length"
+                                                    id="addSlotShortcutsPanel"
+                                                    class="frame-cmd-row"
+                                                    :class="{'frame-commands-pane-active': isSlotShortcutsPaneActive}"
+                                                >
                                                     <div
                                                         v-for="slotShortcutCommand in slotShortcutsCommands"
                                                         :key="slotShortcutCommand.kind"
@@ -1666,8 +1671,9 @@ export default defineComponent({
    position: absolute;
 }
 
-// Shown around #addFramePanel while the frame commands pane is focused for keyboard-driven
-// insertion (entered via Tab/Space at the frame caret), to make the mode change obvious.
+// Shown around #addFramePanel/#addSlotShortcutsPanel while that pane is focused for keyboard-driven
+// insertion (entered via Tab/Space at the frame caret, or Space at a blank slot -- see
+// LabelSlotsStructure.vue's forwardKeyEvent), to make the mode change obvious.
 // Same blue as the frame caret (Caret.vue's .caret background-color: #3467FE).
 // Uses an inset box-shadow rather than outline: an outline is painted outside the element's
 // box, so with this panel flush against the right edge of its container, the outline's right
@@ -1675,12 +1681,12 @@ export default defineComponent({
 // Padding is applied always (not just while active) so the shortcut/label content doesn't
 // shift position when the border appears -- otherwise it would jump inward by the padding
 // amount right as the border is drawn over it.
-#addFramePanel {
+#addFramePanel, #addSlotShortcutsPanel {
     box-sizing: border-box;
     padding: 6px;
 }
 
-#addFramePanel.frame-commands-pane-active {
+#addFramePanel.frame-commands-pane-active, #addSlotShortcutsPanel.frame-commands-pane-active {
     box-shadow: inset 0 0 0 3px rgba(52, 103, 254, 0.9);
 }
 
