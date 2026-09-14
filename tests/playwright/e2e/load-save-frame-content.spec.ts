@@ -26,13 +26,14 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
 type FrameEntry = {
     frameType: string;
     slotContent: string[];
-    // What to actually type for each slot, if different from slotContent -- used when slotContent
-    // itself must remain the canonical, expected DOM content (e.g. a keyword operator like "not"
-    // always ends up surrounded by spaces once recognised, regardless of what was typed), but typing
-    // that exact string would type a space as the very first character of an empty slot, which now
-    // opens the slot shortcuts pane instead of inserting a space (see LabelSlotsStructure.vue's
-    // forwardKeyEvent) -- e.g. "not foo(not bar)" is typed for the canonical/expected
-    // " not foo( not bar)".
+    // What to actually type for each slot, if different from slotContent -- used only when the
+    // very first character typed into a brand new, never-yet-touched slot is itself a space (e.g.
+    // slotContent starting with a stray leading space, testing that it's silently discarded): with
+    // nothing typed anywhere yet, there's nothing for the slot-shortcuts-pane delay to measure
+    // against (see isSlotShortcutsPaneSpaceDueToDelay()/LabelSlotsStructure.vue's forwardKeyEvent),
+    // so that first space is indistinguishable from deliberately opening the pane and needs to be
+    // typed some other way. Once a slot already has other content, a space typed shortly afterwards
+    // (e.g. after a keyword/operator split) is naturally exempted by the delay and doesn't need this.
     typedSlotContent?: string[];
     disabled?: boolean; // If missing, default is false
     // Note that if we are disabled, we should make sure all of body and joint are disabled.
@@ -935,28 +936,25 @@ test.describe("Enters, saves and loads specific frames", () => {
     });
 
     test("Valid nots", async ({page}) => {
-        // Typing the leading space before "not", or the one right after the opening bracket, as the
-        // very first character of an empty slot would now open the slot shortcuts pane instead of
-        // inserting a space (see LabelSlotsStructure.vue's forwardKeyEvent) -- but those spaces end
-        // up in the canonical content regardless, since recognising "not" as a keyword operator
-        // (LabelSlot.vue's processInput) surrounds it with spaces whether or not one was typed. So we
-        // type the space-free form and still expect the canonical, spaced-out result.
+        // The leading space is the very first character typed into a brand new slot -- with nothing
+        // typed anywhere yet, the slot-shortcuts-pane delay (isSlotShortcutsPaneSpaceDueToDelay) has
+        // nothing to measure against, so that space is indistinguishable from deliberately opening
+        // the pane. Type the space-free form instead: "not" is still recognised as a keyword
+        // operator at the very start of a slot either way (LabelSlot.vue's processInput matches on
+        // potentialOutput.startsWith(textualOperator + " ")), and ends up surrounded by spaces in
+        // the canonical content regardless of whether one was typed.
         await testSpecific(page, [[], [], [
             {frameType: "funccall", slotContent: [" not foo( not bar)"], typedSlotContent: ["not foo(not bar)"]},
         ]]);
     });
     test("Valid lambda", async ({page}) => {
-        // See "Valid nots" above.
         await testSpecific(page, [[], [], [
-            {frameType: "funccall", slotContent: ["foo( lambda x:x)"], typedSlotContent: ["foo(lambda x:x)"]},
+            {frameType: "funccall", slotContent: ["foo( lambda x:x)"]},
         ]]);
     });
     test("Valid not after binary operator", async ({page}) => {
-        // Single (not double) space typed between "and" and "not": the second space of a double
-        // space would be typed as the very first character of the new, empty operand slot that
-        // "and " splits off -- see "Valid nots" above.
         await testSpecific(page, [[], [], [
-            {frameType: "if", slotContent: ["foo==0 and  not bar"], typedSlotContent: ["foo==0 and not bar"], body: [], joint: []},
+            {frameType: "if", slotContent: ["foo==0 and  not bar"], body: [], joint: []},
         ]]);
     });
     test("Valid unary minus", async ({page}) => {
@@ -970,11 +968,9 @@ test.describe("Enters, saves and loads specific frames", () => {
         ]]);
     });
     test("Invalid not #3", async ({page}) => {
-        // See "Valid nots"/"Valid not after binary operator" above. The trailing space after "not" is
-        // fine to type as-is: it lands at the end of the (by-then non-empty) "not" operand slot, not
-        // as the very first character of an empty one.
+        // See "Valid nots" above -- the leading space is the very first character typed here too.
         await testSpecific(page, [[], [], [
-            {frameType: "funccall", slotContent: [" and  not "], typedSlotContent: ["and not "]},
+            {frameType: "funccall", slotContent: [" and  not "], typedSlotContent: ["and  not "]},
         ]]);
     });
 
@@ -1073,16 +1069,11 @@ test.describe("Enters, saves and loads specific frames", () => {
     test("Advanced keyword operators", async ({page}) => {
         await testSpecific(page, [[], [], [
             {frameType: "varassign", slotContent: ["expr_alpha", "value_alpha if cond_alpha else alt_alpha"]},
-            // No space typed directly after the closing bracket: after it, the cursor advances into a
-            // new, empty slot for the rest of the expression, and a space typed as its very first
-            // character now opens the slot shortcuts pane instead -- see "Valid nots" above.
-            {frameType: "varassign", slotContent: ["expr_beta", "(x_beta if cond_beta else y_beta) if outer_beta else z_beta"], typedSlotContent: ["expr_beta", "(x_beta if cond_beta else y_beta)if outer_beta else z_beta"]},
+            {frameType: "varassign", slotContent: ["expr_beta", "(x_beta if cond_beta else y_beta) if outer_beta else z_beta"]},
             {frameType: "varassign", slotContent: ["expr_gamma", "[g_gamma for g_gamma in seq_gamma]"]},
             {frameType: "varassign", slotContent: ["expr_delta", "[d_delta for d_delta in seq_delta if d_delta>0]"]},
             {frameType: "varassign", slotContent: ["expr_epsilon", "{e_epsilon for e_epsilon in seq_epsilon if e_epsilon%2==0}"]},
-            // No space typed directly after the closing bracket of "(k_zeta,v_zeta)" -- see the
-            // "expr_beta" comment above.
-            {frameType: "varassign", slotContent: ["expr_zeta", "{k_zeta:v_zeta for (k_zeta,v_zeta) in pairs_zeta}"], typedSlotContent: ["expr_zeta", "{k_zeta:v_zeta for (k_zeta,v_zeta)in pairs_zeta}"]},
+            {frameType: "varassign", slotContent: ["expr_zeta", "{k_zeta:v_zeta for (k_zeta,v_zeta) in pairs_zeta}"]},
             {frameType: "varassign", slotContent: ["expr_eta", "tuple(h_eta for h_eta in seq_eta)"]},
             {frameType: "varassign", slotContent: ["expr_theta", "sum(t_theta for t_theta in seq_theta if t_theta<10)"]},
             {frameType: "varassign", slotContent: ["expr_iota", "[i_iota async for i_iota in aseq_iota]"]},

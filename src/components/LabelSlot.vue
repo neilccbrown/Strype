@@ -78,7 +78,7 @@ import { defineComponent, PropType } from "vue";
 import Cache from "timed-cache";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
-import { bumpCaretRequestSeq, closeBracketCharacters, CustomEventTypes, getACLabelSlotUID, getCaretRequestSeq, getFocusedEditableSlotTextSelectionStartEnd, getFrameHeaderUID, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFrameUID, getLabelSlotUID, getMatchingBracket, getNumPrecedingBackslashes, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, keywordOperatorsWithSurroundSpaces, openBracketCharacters, operators, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, simpleSlotStructureToString, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringDoubleQuoteChar, stringQuoteCharacters, stringSingleQuoteChar, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength } from "@/helpers/editor";
+import { bumpCaretRequestSeq, bumpLastSlotCharacterTypedTimestamp, closeBracketCharacters, CustomEventTypes, getACLabelSlotUID, getCaretRequestSeq, getFocusedEditableSlotTextSelectionStartEnd, getFrameHeaderUID, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFrameUID, getLabelSlotUID, getMatchingBracket, getNumPrecedingBackslashes, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, keywordOperatorsWithSurroundSpaces, openBracketCharacters, operators, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, simpleSlotStructureToString, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringDoubleQuoteChar, stringQuoteCharacters, stringSingleQuoteChar, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength } from "@/helpers/editor";
 import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, CollapsedState, EditImageInDialogFunction, FieldSlot, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, getFrameDefType, isFieldBracketedSlot, isFieldStringSlot, LoadedMedia, MediaSlot, MessageDefinitions, OptionalSlotType, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
@@ -1032,6 +1032,11 @@ export default defineComponent({
             if (!inputString) {
                 return;
             }
+            // Marks "a character was just typed into a slot", so a Space arriving shortly afterwards
+            // at a blank slot (e.g. one just split off by this very character) is recognised as part
+            // of the same typing burst rather than a deliberate pane-opening press -- see
+            // isSlotShortcutsPaneSpaceDueToDelay()/LabelSlotsStructure.vue's forwardKeyEvent.
+            bumpLastSlotCharacterTypedTimestamp();
             // So in general, there's three different ways input occurs:
             // 1. One is a plain key press, e.g. they press "f" on UK layout.  This arrives as a single input event.
             // 2. Another is a one-off key combination, e.g. pressing alt-5 enters "[" on German layout.  This also arrives as a single input event.

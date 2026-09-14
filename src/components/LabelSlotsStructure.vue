@@ -60,7 +60,7 @@ import { computed, defineComponent, ref } from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
-import { bumpCaretRequestSeq, CustomEventTypes, getEditableSelectionText, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFunctionCallDefaultText, getLabelSlotUID, getMatchingBracket, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, openBracketCharacters, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringQuoteCharacters, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength, getFrameHeaderUID, getFlatCodeSlotsInLabelStruct, getCaretContainerUID, closeRenameIdentifierPopups, getImportFrameNameBindings, waitForElementId } from "@/helpers/editor";
+import { bumpCaretRequestSeq, CustomEventTypes, getEditableSelectionText, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFunctionCallDefaultText, getLabelSlotUID, getMatchingBracket, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, isSlotShortcutsPaneSpaceDueToDelay, openBracketCharacters, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringQuoteCharacters, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength, getFrameHeaderUID, getFlatCodeSlotsInLabelStruct, getCaretContainerUID, closeRenameIdentifierPopups, getImportFrameNameBindings, waitForElementId } from "@/helpers/editor";
 import { checkCodeErrors, evaluateSlotType, filterAllowedJointChildrenAfter, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos, getParentId, areSlotStructuresIsomorphic, getAncestorFrameOfTypeId, findSlotsWithIndentifierName, isAncestorGatedFrameTypeAllowed } from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import Parser from "@/parser/parser";
@@ -1300,7 +1300,19 @@ export default defineComponent({
             // synthetic copy has no effect on the browser's native insertion/navigation for the real
             // event, which is why an earlier attempt to do this from LabelSlot.vue's onKeyDown silently
             // failed to stop the space being typed.
-            if(event.type === "keydown" && (event.key === " " || event.key === "Tab") && !event.ctrlKey && !event.metaKey && !event.altKey &&
+            //
+            // Space additionally requires a short delay since the last character was typed into a
+            // slot (isSlotShortcutsPaneSpaceDueToDelay) -- a blank slot isn't only reached by
+            // deliberately navigating/clicking into one that's already empty, it's also what a
+            // keyword/symbolic operator split, a bracket, or a media/colour literal insertion leaves
+            // behind, and a script or fast typist can land a space there as the very next character
+            // of the same typing burst (e.g. "return 5 + 1": the space before "1" is typed into the
+            // fresh blank operand field "+" just split off). Without the delay that space gets
+            // hijacked into opening the pane instead of being silently discarded like any other
+            // leading space -- see e.g. match-statement.spec.ts/keyword-frame-conversion.spec.ts's
+            // regressions this fixed. Tab is never produced as a byproduct of typing, so it isn't at
+            // risk of this and doesn't need the delay.
+            if(event.type === "keydown" && (event.key === "Tab" || (event.key === " " && isSlotShortcutsPaneSpaceDueToDelay())) && !event.ctrlKey && !event.metaKey && !event.altKey &&
                 vueComponentsAPIHandler.commandsComponentAPI?.canOpenSlotShortcutsPane?.()){
                 event.preventDefault();
                 event.stopPropagation();
