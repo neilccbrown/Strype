@@ -1,7 +1,0 @@
-- file: space-rescue.spy
-  image: spaceship.png
-  description: The starting version of the space rescue project
-
-- file: space-rescue-v2.spy
-  image: spaceship.png
-  description: The second version of the space rescue project
