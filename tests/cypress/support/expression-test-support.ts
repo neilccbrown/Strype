@@ -57,7 +57,7 @@ export function testInsert(insertion : string, result : string, canBeTestedWithP
         focusEditor();
         pressFrameShortcut("i");
         assertState("{$}");
-        cy.get("body").type(" " + insertion);
+        cy.get("body").type(insertion);
         assertState(result);
 
         // TODO test caret position mapping?
@@ -83,7 +83,7 @@ export function testInsertMediaThenExp(mediaPath: string, mediaMIME: string, exp
         cy.readFile(mediaPath, null).then((mediaContent) => {
             (cy.focused() as any).paste(mediaContent, mediaMIME);
             cy.wait(1000);
-            cy.get("body").type(" " + exp);
+            cy.get("body").type(exp);
             assertState(result);
         });        
     });
