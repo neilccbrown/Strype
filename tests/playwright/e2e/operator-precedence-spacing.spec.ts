@@ -54,7 +54,7 @@ async function getOperatorTierInfo(page: Page, frameIndex = 0): Promise<OpTierIn
             const classes = Array.from(el.classList);
             const tierClassName = classes.find((c) => c in data.tierClassToName);
             return {
-                code: (el.textContent ?? "").replace(/​/g, ""),
+                code: (el.textContent ?? "").replace(/\u200B/g, ""),
                 tier: tierClassName ? data.tierClassToName[tierClassName] : "<none>",
                 isUnaryPrefix: classes.includes(data.unaryPrefixClassName),
             };

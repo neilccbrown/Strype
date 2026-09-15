@@ -228,12 +228,12 @@ export async function assertFrameCaretPosition(page: Page, frameId: number, posi
 // per-slot structure matters (they're Main-only, hard-coded to the first frame there).
 export async function getFrameHeaderText(page: Page, frameId: number): Promise<string> {
     const text = await page.locator(`#frameHeader_${frameId}`).innerText();
-    return text.replace(/​/g, "");
+    return text.replace(/\u200B/g, "");
 }
 
 export async function getFirstSlotText(page: Page, frameId: number): Promise<string> {
     const text = await page.locator(`#frameHeader_${frameId} .label-slot-input`).first().innerText();
-    return text.replace(/​/g, "");
+    return text.replace(/\u200B/g, "");
 }
 
 // Well-known negative frame IDs for the three top-level containers (see

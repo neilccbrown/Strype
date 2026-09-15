@@ -226,6 +226,11 @@ export const useStore = defineStore("app", {
             // (entered via Tab/Space at the frame caret, see Commands.vue's keydown handler)
             isFrameCommandsPaneActive: false,
 
+            // Whether the slot shortcuts pane (record image/sound, colour picker) is currently focused
+            // for keyboard-driven insertion (entered via Space at the start of an empty non-string code
+            // slot, see Commands.vue's keydown handler)
+            isSlotShortcutsPaneActive: false,
+
             isModalDlgShown: false,
 
             currentModalDlgId: "",
@@ -1355,6 +1360,7 @@ export const useStore = defineStore("app", {
             this.currentModalDlgId = "";
             this.isAppMenuOpened = false;
             this.isFrameCommandsPaneActive = false;
+            this.isSlotShortcutsPaneActive = false;
             this.bypassEditableSlotBlurErrorCheck = false;
 
             // Should show editing mode

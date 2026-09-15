@@ -34,6 +34,26 @@ export function getCaretRequestSeq(): number {
     return caretRequestSeq;
 }
 
+// Timestamp (Date.now()) of the last character actually typed into a slot (LabelSlot.vue's
+// processInput, called on every native "input" event). Used to tell a deliberate Space press at a
+// blank slot (opens the slot shortcuts pane -- see LabelSlotsStructure.vue's forwardKeyEvent) apart
+// from a space that's merely the next character of an in-flight typing burst landing in a slot that
+// just became blank (e.g. right after a keyword/symbolic operator split, or after a bracket/media
+// literal insertion) -- those must fall through to being silently discarded like any other leading
+// space, not hijacked into opening the pane. Only Space is gated on this; Tab is a deliberate,
+// distinct keypress that's never produced as a byproduct of typing, so it isn't at risk of this
+// collision and doesn't need the delay.
+let lastSlotCharacterTypedTimestamp = 0;
+export function bumpLastSlotCharacterTypedTimestamp(): void {
+    lastSlotCharacterTypedTimestamp = Date.now();
+}
+// How long, in milliseconds, must have passed since the last character was typed into a slot before
+// a Space at a blank slot is treated as deliberately opening the slot shortcuts pane.
+export const SLOT_SHORTCUTS_PANE_SPACE_DELAY_MS = 500;
+export function isSlotShortcutsPaneSpaceDueToDelay(): boolean {
+    return (Date.now() - lastSlotCharacterTypedTimestamp) >= SLOT_SHORTCUTS_PANE_SPACE_DELAY_MS;
+}
+
 // Constants used for query parameters parsing
 // The target to fetch the project (for now, we only support Google Drive. We use the enum StrypeSyncTarget for values)
 export const sharedStrypeProjectTargetKey = "shared_proj_targ"; 

@@ -60,7 +60,7 @@ import { computed, defineComponent, ref } from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
-import { bumpCaretRequestSeq, CustomEventTypes, getEditableSelectionText, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFunctionCallDefaultText, getLabelSlotUID, getMatchingBracket, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, openBracketCharacters, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringQuoteCharacters, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength, getFrameHeaderUID, getFlatCodeSlotsInLabelStruct, getCaretContainerUID, closeRenameIdentifierPopups, getImportFrameNameBindings, waitForElementId } from "@/helpers/editor";
+import { bumpCaretRequestSeq, CustomEventTypes, getEditableSelectionText, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFunctionCallDefaultText, getLabelSlotUID, getMatchingBracket, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, isSlotShortcutsPaneSpaceDueToDelay, openBracketCharacters, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringQuoteCharacters, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength, getFrameHeaderUID, getFlatCodeSlotsInLabelStruct, getCaretContainerUID, closeRenameIdentifierPopups, getImportFrameNameBindings, waitForElementId } from "@/helpers/editor";
 import { checkCodeErrors, evaluateSlotType, filterAllowedJointChildrenAfter, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos, getParentId, areSlotStructuresIsomorphic, getAncestorFrameOfTypeId, findSlotsWithIndentifierName, isAncestorGatedFrameTypeAllowed } from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import Parser from "@/parser/parser";
@@ -1291,6 +1291,36 @@ export default defineComponent({
                 return;
             }
             
+            // Plain Space or Tab (no ctrl/meta/alt -- Shift+Tab is allowed, mirroring the frame
+            // commands pane below) at the start of a genuinely blank, non-string/comment slot opens
+            // the slot shortcuts pane (record image/sound, colour picker) -- see Commands.vue's
+            // canOpenSlotShortcutsPane/openSlotShortcutsPane. This must be intercepted here, on the real
+            // keydown event (this container div is the actual contenteditable focus target), not on the
+            // synthetic copy dispatched to the slot's own span below: calling preventDefault() on that
+            // synthetic copy has no effect on the browser's native insertion/navigation for the real
+            // event, which is why an earlier attempt to do this from LabelSlot.vue's onKeyDown silently
+            // failed to stop the space being typed.
+            //
+            // Space additionally requires a short delay since the last character was typed into a
+            // slot (isSlotShortcutsPaneSpaceDueToDelay) -- a blank slot isn't only reached by
+            // deliberately navigating/clicking into one that's already empty, it's also what a
+            // keyword/symbolic operator split, a bracket, or a media/colour literal insertion leaves
+            // behind, and a script or fast typist can land a space there as the very next character
+            // of the same typing burst (e.g. "return 5 + 1": the space before "1" is typed into the
+            // fresh blank operand field "+" just split off). Without the delay that space gets
+            // hijacked into opening the pane instead of being silently discarded like any other
+            // leading space -- see e.g. match-statement.spec.ts/keyword-frame-conversion.spec.ts's
+            // regressions this fixed. Tab is never produced as a byproduct of typing, so it isn't at
+            // risk of this and doesn't need the delay.
+            if(event.type === "keydown" && (event.key === "Tab" || (event.key === " " && isSlotShortcutsPaneSpaceDueToDelay())) && !event.ctrlKey && !event.metaKey && !event.altKey &&
+                vueComponentsAPIHandler.commandsComponentAPI?.canOpenSlotShortcutsPane?.()){
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+                vueComponentsAPIHandler.commandsComponentAPI?.openSlotShortcutsPane();
+                return;
+            }
+
             if(this.appStore.focusSlotCursorInfos){
                 document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos))
                     ?.dispatchEvent(new KeyboardEvent(event.type, {
@@ -1300,12 +1330,12 @@ export default defineComponent({
                         ctrlKey: event.ctrlKey,
                         metaKey: event.metaKey,
                     }));
-                
+
                 // We want to prevent some events to be handled wrongly twice or at all by the browser and our code.
                 // However, for comments (e.g. frame or documentation slot) and string literals, we need to let some navigation event go through otherwise they're blocked as we rely on the browser for them.
                 // For macOS we have a specific behaviour to consider: see LabelSlot.vue handleFastUDNavKeys for explanations
                 const textHomeEndBehaviourKeys = (isMacOSPlatform() && event.metaKey) ? ["ArrowLeft", "ArrowRight"] : ((!isMacOSPlatform()) ? ["Home", "End"] : []);
-                if(this.appStore.allowsKeyEventThroughInLabelSlotStructure || 
+                if(this.appStore.allowsKeyEventThroughInLabelSlotStructure ||
                     (textHomeEndBehaviourKeys.includes(event.key) && (this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.comment || this.focusSlotCursorInfos?.slotInfos.slotType == SlotType.comment || this.focusSlotCursorInfos?.slotInfos.slotType == SlotType.string))){
                     // A few events need to be handled by the brower solely.
                     // That is, for comments: "PageUp", "PageDown", "Home", "End" (these last 2 for Windows only)

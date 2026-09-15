@@ -26,6 +26,15 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
 type FrameEntry = {
     frameType: string;
     slotContent: string[];
+    // What to actually type for each slot, if different from slotContent -- used only when the
+    // very first character typed into a brand new, never-yet-touched slot is itself a space (e.g.
+    // slotContent starting with a stray leading space, testing that it's silently discarded): with
+    // nothing typed anywhere yet, there's nothing for the slot-shortcuts-pane delay to measure
+    // against (see isSlotShortcutsPaneSpaceDueToDelay()/LabelSlotsStructure.vue's forwardKeyEvent),
+    // so that first space is indistinguishable from deliberately opening the pane and needs to be
+    // typed some other way. Once a slot already has other content, a space typed shortly afterwards
+    // (e.g. after a keyword/operator split) is naturally exempted by the delay and doesn't need this.
+    typedSlotContent?: string[];
     disabled?: boolean; // If missing, default is false
     // Note that if we are disabled, we should make sure all of body and joint are disabled.
     body?: FrameEntry[];
@@ -105,7 +114,7 @@ async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolea
 
     for (let i = 0; i < frame.slotContent.length; i++){
         const slotType = getFrameDefType(frame.frameType).labels.filter((l) => l.showSlots ?? true)[i].allowedSlotContent ?? AllowedSlotContent.TERMINAL_EXPRESSION;
-        const s = frame.slotContent[i];
+        const s = frame.typedSlotContent?.[i] ?? frame.slotContent[i];
         console.log("Entering slot:   <<<" + s + ">>> into " + frame.frameType);
         await checkFrameXorTextCursor(page, false, "Slot of frame " + frame.frameType);
         const enterable = slotType == AllowedSlotContent.FREE_TEXT_DOCUMENTATION || slotType == AllowedSlotContent.LIBRARY_ADDRESS ? s : s.replaceAll(/[“”]/g, "\"").replaceAll(/[‘’]/g, "'");
@@ -276,7 +285,22 @@ async function newProject(page: Page) : Promise<void> {
     await expect(page.locator(".frame-div")).toHaveCount(DEFAULT_STARTING_FRAME_COUNT, {timeout: 20000});
 }
 
+// typedSlotContent only steers what's typed (see FrameEntry) -- it's not part of the resulting DOM
+// shape, so it must be stripped before comparing against getFramesFromDOM()'s output.
+function stripTypedSlotContent(entries: FrameEntry[]): FrameEntry[] {
+    return entries.map((entry) => {
+        const rest = {...entry};
+        delete rest.typedSlotContent;
+        return {
+            ...rest,
+            ...(entry.body !== undefined ? {body: stripTypedSlotContent(entry.body)} : {}),
+            ...(entry.joint !== undefined ? {joint: stripTypedSlotContent(entry.joint)} : {}),
+        };
+    });
+}
+
 async function testSpecific(page: Page, sections: FrameEntry[][], projectDoc?: string) : Promise<void> {
+    const expectedSections = sections.map(stripTypedSlotContent);
     // Clears every default frame (Imports and Main), leaving the caret at the top of Imports --
     // exactly where the section-by-section loop below needs to start:
     await clearDefaultProject(page);
@@ -304,7 +328,7 @@ async function testSpecific(page: Page, sections: FrameEntry[][], projectDoc?: s
         await waitForEditorSettled(page);
     }
     const dom = await getFramesFromDOM(page);
-    expect(dom).toEqual(sections);
+    expect(dom).toEqual(expectedSections);
     const savePath = await save(page);
     await newProject(page);
 
@@ -322,7 +346,7 @@ async function testSpecific(page: Page, sections: FrameEntry[][], projectDoc?: s
     await load(page, savePath + ".spy");
     const dom2 = await getFramesFromDOM(page);
     // Just one should be needed, but why not both just in case:
-    expect(dom2).toEqual(sections);
+    expect(dom2).toEqual(expectedSections);
     expect(dom2).toEqual(dom);
 }
 
@@ -912,8 +936,15 @@ test.describe("Enters, saves and loads specific frames", () => {
     });
 
     test("Valid nots", async ({page}) => {
+        // The leading space is the very first character typed into a brand new slot -- with nothing
+        // typed anywhere yet, the slot-shortcuts-pane delay (isSlotShortcutsPaneSpaceDueToDelay) has
+        // nothing to measure against, so that space is indistinguishable from deliberately opening
+        // the pane. Type the space-free form instead: "not" is still recognised as a keyword
+        // operator at the very start of a slot either way (LabelSlot.vue's processInput matches on
+        // potentialOutput.startsWith(textualOperator + " ")), and ends up surrounded by spaces in
+        // the canonical content regardless of whether one was typed.
         await testSpecific(page, [[], [], [
-            {frameType: "funccall", slotContent: [" not foo( not bar)"]},
+            {frameType: "funccall", slotContent: [" not foo( not bar)"], typedSlotContent: ["not foo(not bar)"]},
         ]]);
     });
     test("Valid lambda", async ({page}) => {
@@ -937,8 +968,9 @@ test.describe("Enters, saves and loads specific frames", () => {
         ]]);
     });
     test("Invalid not #3", async ({page}) => {
+        // See "Valid nots" above -- the leading space is the very first character typed here too.
         await testSpecific(page, [[], [], [
-            {frameType: "funccall", slotContent: [" and  not "]},
+            {frameType: "funccall", slotContent: [" and  not "], typedSlotContent: ["and  not "]},
         ]]);
     });
 
