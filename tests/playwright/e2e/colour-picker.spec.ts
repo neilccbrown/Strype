@@ -284,6 +284,15 @@ test.describe("Inserting and editing colour string literals", () => {
         await page.keyboard.type("print(");
         await waitForEditorSettled(page);
 
+        // The "(" just typed bumps LabelSlot.vue's last-slot-keystroke timestamp, so a Space
+        // arriving within SLOT_SHORTCUTS_PANE_SPACE_DELAY_MS (500ms -- see editor.ts's
+        // isSlotShortcutsPaneSpaceDueToDelay()) is deliberately treated as part of the same typing
+        // burst and discarded rather than opening the pane -- unlike openIfFrame() elsewhere in this
+        // file, which reaches the blank slot via a frame shortcut, not a real keystroke, so never
+        // needs this. waitForEditorSettled() above resolves in well under 500ms, so without this
+        // wait the Space below can race the debounce and get silently swallowed:
+        await page.waitForTimeout(500);
+
         await openColourPickerViaShortcut(page);
         await expect(page.locator("#colourPickerDlg")).toBeVisible();
         await page.locator(".ColourPickerDlg-family-btn", {hasText: "Blue"}).click();
