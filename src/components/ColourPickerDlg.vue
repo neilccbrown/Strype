@@ -205,7 +205,7 @@ export default defineComponent({
             hexText: DEFAULT_HEX,
             // The colour (and alpha) the string held before this edit, for the "Previous:" swatch next
             // to the prospective-colour swatch -- null when there's nothing to show it against, i.e.
-            // when inserting a fresh colour rather than editing an existing valid one (see onShownModalDlg).
+            // when inserting a fresh colour rather than editing an existing valid one (see onShowModalDlg).
             previousHex: null as string | null,
             previousAlpha: null as number | null,
             // Whether the dialog is currently visible; gates the graphics-area colour preview so we
@@ -226,12 +226,12 @@ export default defineComponent({
             getHexValue: () => (this.view !== "classic" || this.isClassicHexValid) ? this.currentHexWithAlpha : null,
         };
 
-        eventBus.on(CustomEventTypes.strypeModalShown, this.onShownModalDlg);
+        eventBus.on(CustomEventTypes.strypeModalShow, this.onShowModalDlg);
         eventBus.on(CustomEventTypes.strypeModalHidden, this.onHiddenModalDlg);
     },
 
     beforeUnmount() {
-        eventBus.off(CustomEventTypes.strypeModalShown, this.onShownModalDlg);
+        eventBus.off(CustomEventTypes.strypeModalShow, this.onShowModalDlg);
         eventBus.off(CustomEventTypes.strypeModalHidden, this.onHiddenModalDlg);
     },
 
@@ -483,7 +483,7 @@ export default defineComponent({
 
         // If the given colour lands exactly on a tile swatch, jump to that tile selected in the
         // tinker view; otherwise fall through to the fine-grained selector with the colour in
-        // place. Used both for user edits to the hex text field and, in onShownModalDlg below,
+        // place. Used both for user edits to the hex text field and, in onShowModalDlg below,
         // when the dialog is first opened with an existing colour.
         applyHexColour(hex: string) {
             const match = this.findExactSwatchMatch(hex);
@@ -637,7 +637,16 @@ export default defineComponent({
             return null;
         },
 
-        onShownModalDlg(event: BvTriggerableEvent) {
+        // Seeds all the dialog's state (alpha, hex text, previous-colour panel, view) fresh for this
+        // opening. Deliberately wired to strypeModalShow ("show", fired before the modal's content is
+        // interactable -- see CustomEventTypes.strypeModalShow) rather than strypeModalShown ("shown",
+        // fired only once Bootstrap's own show sequence has finished): the dialog's content isn't
+        // gated behind isShown in the template, so on strypeModalShown a fast typist (or a Playwright
+        // test) could already have typed into the hex field before this ran, and have that input
+        // silently clobbered by the seeding below landing right afterwards -- observed as the alpha
+        // slider visibly snapping back to opaque right after being moved (see colour-picker.spec.ts's
+        // "Alpha slider" tests, which raced this on CI).
+        onShowModalDlg(event: BvTriggerableEvent) {
             if (event.componentId != DLG_ID) {
                 return;
             }

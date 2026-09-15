@@ -1988,9 +1988,14 @@ export default defineComponent({
         // appStore.isModalDlgShown (checked by the caller in LabelSlot.vue) rather than a dedicated
         // flag, since -- unlike the record-then-edit media flows above -- this is a single dialog
         // with no follow-on modal to chain into.
-        openColourPickerInDialog(initialColour: string | null, callback: (hex: string) => void, onCancelled: () => void) {
+        async openColourPickerInDialog(initialColour: string | null, callback: (hex: string) => void, onCancelled: () => void) {
             const colourPickerDlgComponentAPI = vueComponentsAPIHandler.colourPickerDlgComponentAPI;
             this.colourPickerInitialColour = initialColour;
+            // ColourPickerDlg.vue's own seeding (onShowModalDlg) reads its initialColour *prop* on the
+            // modal's "show" event, which -- unlike "shown" -- can fire before Vue has flushed the
+            // reactive update above out to the child, seeing the previous (often null) value instead.
+            // Wait a tick so the prop is definitely current before triggering the modal at all:
+            await this.$nextTick();
 
             const picked = (event: BvTriggerableEvent) => {
                 if (event.componentId != "colourPickerDlg") {
