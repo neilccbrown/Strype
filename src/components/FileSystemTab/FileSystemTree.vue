@@ -19,6 +19,7 @@
                     v-if="allowUpload"
                     ref="uploadInput"
                     type="file"
+                    class="file-system-tree-upload-input"
                     style="display:none"
                     @change="onFileSelected"
                 />

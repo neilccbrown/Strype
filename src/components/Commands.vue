@@ -20,7 +20,7 @@
                         <!-- no-fade for the same reason as the micro:bit BTabs below: opening the frame commands
                              pane (Tab/Space at a frame caret) must not be delayed by a fade transition. -->
                         <BTabs id="commandsTabsStandard" content-class="mt-2" v-model:index="standardCommandsTabIndex" no-fade>
-                            <BTab :title="$t('commandTabs.0')" active :disabled="isEditing">
+                            <BTab button-id="addFramePEATab" :title="$t('commandTabs.0')" active :disabled="isEditing">
                         <!-- #v-endif -->
                         <div @mousedown.prevent.stop @mouseup.prevent.stop>
                             <!-- #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE -->
@@ -134,7 +134,7 @@
                         </div>
                         <!-- #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE -->
                             </BTab>
-                            <BTab :title="$t('PEA.fileSystem')">
+                            <BTab button-id="filesPEATab" :title="$t('PEA.fileSystem')">
                                 <FileSystemPane class="command-tab-content" />
                             </BTab>
                         </BTabs>
