@@ -10,4 +10,10 @@ export interface FsTreeNode {
     size?: number,
     // Only populated for directories.
     children?: FsTreeNode[],
+    // Only set for nodes read from the cloud drive (see fileSystemTabIO.ts's listCloudTree()) --
+    // the id used to address this file/folder via CloudDriveHandlerComponentAPI/cloudFileIO.ts,
+    // since cloud files aren't addressed by a real filesystem path the way /data and /local are.
+    // "path" is still populated for cloud nodes too (a virtual "/cloud/..." path, matching what a
+    // real Python run's mounted /cloud would resolve it to), for display and as a stable v-for key.
+    cloudFileId?: string,
 }

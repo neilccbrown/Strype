@@ -1,8 +1,7 @@
-// Orchestration for the "File system" tab (see FileSystemPane.vue): listing, downloading and (for
-// "/local") uploading files from the internal Pyodide filesystem's "/data" (read-only bundled
-// assets) and "/local" (writeable scratch area) roots. "/cloud" is deliberately not handled here
-// yet -- it will be read directly via cloudFileIO.ts in a later phase, without going through the
-// worker at all.
+// Orchestration for the "File system" tab (see FileSystemPane.vue): listing, downloading and
+// uploading files from the internal Pyodide filesystem's "/data" (read-only bundled assets),
+// "/local" (writeable scratch area) and "/cloud" (the connected cloud drive, when the project is
+// saved to one) roots.
 import { saveAs } from "file-saver";
 import * as Comlink from "comlink";
 import { getPythonClient } from "@/stryperuntime/main_thread_python_handler";
@@ -12,15 +11,31 @@ import { encodeUint8ToString } from "@/stryperuntime/worker_bridge_type";
 import { isServiceWorkerChannelResponsive, serviceWorkerReadyAndInControl } from "@/workers/shared_helpers";
 import { serviceWorkerChannel } from "@/stryperuntime/main_thread_python_handler";
 import * as localFsCache from "@/helpers/localFsCache";
+import { cloudCloseFile, cloudCreate, cloudListDir, cloudReadFile, cloudWriteFile } from "@/helpers/cloudFileIO";
+import { useStore } from "@/store/store";
+
+export type FsRoot = "/data" | "/local" | "/cloud";
+
+// Whether the project is currently saved to a cloud drive -- the same condition
+// PythonExecutionArea.vue uses to decide whether a run mounts "/cloud" at all
+// (startInSlashCloud). Used by FileSystemPane.vue to decide whether to show the "/cloud" section.
+export function isCloudMounted(): boolean {
+    return typeof useStore().strypeProjectLocation === "string";
+}
 
 // isPythonWorkerReady only reflects whether a worker is up and its service worker channel is
 // confirmed responsive -- listFsTree just needs a live worker to talk to, so we don't gate on it
 // here; getPythonClient() returning null (e.g. "TestingNoPyodide") is the only case we need to
 // guard against. "/local" never asks the worker at all -- see localFsCache.ts's own comment for
-// why it, not a live worker, is the single source of truth for what's shown here.
-export async function listFsRootTree(root: "/data" | "/local"): Promise<FsTreeNode | null> {
+// why it, not a live worker, is the single source of truth for what's shown here. "/cloud" never
+// asks the worker either -- cloudFileIO.ts's functions are plain main-thread async functions, so
+// there's no need to go via the worker just to browse it.
+export async function listFsRootTree(root: FsRoot): Promise<FsTreeNode | null> {
     if (root === "/local") {
         return localFsCache.listTree();
+    }
+    if (root === "/cloud") {
+        return await listCloudTree();
     }
     const client = getPythonClient();
     if (client == null) {
@@ -29,12 +44,42 @@ export async function listFsRootTree(root: "/data" | "/local"): Promise<FsTreeNo
     return await client.workerProxy.listFsTree(root);
 }
 
-export async function downloadFsFile(path: string, fileName: string, root: "/data" | "/local"): Promise<void> {
-    if (root === "/local") {
-        const bytes = localFsCache.readFile(path);
-        if (bytes != null) {
-            saveAs(new Blob([bytes as BlobPart], {type: "application/octet-stream"}), fileName);
+async function buildCloudTree(cloudFileId: string, virtualPath: string, name: string): Promise<FsTreeNode> {
+    const children = await cloudListDir({cloudFileId});
+    const childNodes = await Promise.all(children.map(async (child) => {
+        const childPath = `${virtualPath}/${child.name}`;
+        if (child.isDir) {
+            return await buildCloudTree(child.fileId.cloudFileId, childPath, child.name);
         }
+        return {name: child.name, path: childPath, isDir: false, size: child.fileSize, cloudFileId: child.fileId.cloudFileId} as FsTreeNode;
+    }));
+    return {name, path: virtualPath, isDir: true, children: childNodes, cloudFileId};
+}
+
+async function listCloudTree(): Promise<FsTreeNode | null> {
+    const loc = useStore().strypeProjectLocation;
+    if (typeof loc !== "string") {
+        return null;
+    }
+    // Mirrors file_getRoot's handling in main_bridge_handler.ts exactly (the project's own file id
+    // is used as the root folder id for cloud file lookups) -- see that file's comment for why.
+    return await buildCloudTree(loc, "/cloud", "cloud");
+}
+
+export async function downloadFsFile(node: FsTreeNode, root: FsRoot): Promise<void> {
+    if (root === "/local") {
+        const bytes = localFsCache.readFile(node.path);
+        if (bytes != null) {
+            saveAs(new Blob([bytes as BlobPart], {type: "application/octet-stream"}), node.name);
+        }
+        return;
+    }
+    if (root === "/cloud") {
+        if (node.cloudFileId == null || node.size == null) {
+            return;
+        }
+        const bytes = await cloudReadFile({cloudFileId: node.cloudFileId}, 0, node.size, node.path);
+        saveAs(new Blob([bytes as BlobPart], {type: "application/octet-stream"}), node.name);
         return;
     }
 
@@ -53,7 +98,7 @@ export async function downloadFsFile(path: string, fileName: string, root: "/dat
     }
     const bytes: Uint8Array = await client.call(
         client.workerProxy.readFsFile,
-        path,
+        node.path,
         Comlink.proxy((asreq: SyncOrAsyncStrypePyodideWorkerRequest) => {
             if (asreq.kind !== "sync" || asreq.request.request !== "assetFile_fetch") {
                 console.error("Unexpected request while reading a file for the File system tab: " + JSON.stringify(asreq));
@@ -71,16 +116,32 @@ export async function downloadFsFile(path: string, fileName: string, root: "/dat
                 });
         })
     );
-    saveAs(new Blob([bytes as BlobPart], {type: "application/octet-stream"}), fileName);
+    saveAs(new Blob([bytes as BlobPart], {type: "application/octet-stream"}), node.name);
 }
 
-// Uploads a file into "/local" at the given directory path (e.g. "/local" itself, or a subfolder).
-// Writes straight into the main-thread cache -- callers must not allow this while Python is
-// executing (see FileSystemPane.vue): the cache is only resynced with a running worker at the
-// start/end of a run (see terminateAndRestartPyodide(), main_thread_python_handler.ts), so a write
-// made mid-run here would silently be lost when that run's own snapshot is taken at the end.
-export async function uploadToLocal(dirPath: string, file: File): Promise<void> {
+// Uploads a file into "/local" at the given directory node's path (e.g. "/local" itself, or a
+// subfolder). Writes straight into the main-thread cache -- callers must not allow this while
+// Python is executing (see FileSystemPane.vue): the cache is only resynced with a running worker
+// at the start/end of a run (see terminateAndRestartPyodide(), main_thread_python_handler.ts), so
+// a write made mid-run here would silently be lost when that run's own snapshot is taken at the end.
+export async function uploadToLocal(dirNode: FsTreeNode, file: File): Promise<void> {
     const data = new Uint8Array(await file.arrayBuffer());
-    const path = dirPath === "/local" ? `/local/${file.name}` : `${dirPath}/${file.name}`;
+    const path = dirNode.path === "/local" ? `/local/${file.name}` : `${dirNode.path}/${file.name}`;
     localFsCache.writeFile(path, data);
+}
+
+// Uploads a file into "/cloud" at the given directory node (its cloudFileId is the parent folder
+// to create the new file in). Goes straight through cloudFileIO.ts's main-thread functions --
+// create, write the actual content, then close (which awaits the write actually landing, the same
+// way a Python open()/write()/close() would via the worker's sync bridge -- see cloudCloseFile's
+// own comment for why closing is what forces/awaits the flush).
+export async function uploadToCloud(dirNode: FsTreeNode, file: File): Promise<void> {
+    if (dirNode.cloudFileId == null) {
+        return;
+    }
+    const data = new Uint8Array(await file.arrayBuffer());
+    const filePath = `${dirNode.path}/${file.name}`;
+    const newFileId = await cloudCreate({cloudFileId: dirNode.cloudFileId}, file.name, false, filePath);
+    await cloudWriteFile(newFileId, data, 0, filePath, true);
+    await cloudCloseFile(newFileId);
 }

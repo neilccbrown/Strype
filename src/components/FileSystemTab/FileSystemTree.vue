@@ -41,7 +41,7 @@
                     :allow-upload="allowUpload"
                     :upload-disabled="uploadDisabled"
                     @download="(n) => $emit('download', n)"
-                    @uploaded="$emit('uploaded')"
+                    @upload="(n, file) => $emit('upload', n, file)"
                 />
             </ul>
         </li>
@@ -51,25 +51,25 @@
 <script lang="ts">
 import { defineComponent, PropType } from "vue";
 import { FsTreeNode } from "@/stryperuntime/file_system_tree_types";
-import { uploadToLocal } from "@/helpers/fileSystemTabIO";
 
 export default defineComponent({
     name: "FileSystemTree",
 
     props: {
         node: { type: Object as PropType<FsTreeNode>, required: true },
-        // FileSystemPane passes true for the top-level /data and /local roots so they open
-        // immediately; nested directories always start collapsed.
+        // FileSystemPane passes true for the top-level /data, /local and /cloud roots so they
+        // open immediately; nested directories always start collapsed.
         startExpanded: { type: Boolean, default: false },
-        // Whether directories in this subtree get an upload button -- true only under /local.
+        // Whether directories in this subtree get an upload button -- true under /local and /cloud,
+        // false under the read-only /data.
         allowUpload: { type: Boolean, default: false },
-        // Uploads are disabled while Python is executing (see FileSystemPane.vue): the main-thread
-        // cache backing /local is only resynced with the worker at the start/end of a run, so a
-        // write made mid-run would silently be lost once that run's own snapshot is taken.
+        // Uploads are disabled while Python is executing (see FileSystemPane.vue): both /local's
+        // main-thread cache and /cloud's cache (cloudFileIO.ts) are only meant to be touched
+        // between runs, not while a run might also be reading/writing the same files.
         uploadDisabled: { type: Boolean, default: false },
     },
 
-    emits: ["download", "uploaded"],
+    emits: ["download", "upload"],
 
     data() {
         return {
@@ -82,16 +82,15 @@ export default defineComponent({
             (this.$refs.uploadInput as HTMLInputElement).click();
         },
 
-        async onFileSelected(event: Event): Promise<void> {
+        onFileSelected(event: Event): void {
             const input = event.target as HTMLInputElement;
             const file = input.files?.[0];
             input.value = "";
             if (!file) {
                 return;
             }
-            await uploadToLocal(this.node.path, file);
             this.expanded = true;
-            this.$emit("uploaded");
+            this.$emit("upload", this.node, file);
         },
     },
 });

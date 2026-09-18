@@ -124,6 +124,18 @@ test.describe("File system tab -- /local (writeable scratch area)", () => {
     });
 });
 
+test.describe("File system tab -- /cloud", () => {
+    // Uploading/downloading through a real connected Google Drive/OneDrive needs live OAuth, which
+    // isn't available in this test environment (no existing suite mocks cloudDriveHandlerComponentAPI
+    // either -- see cloudFileIO.ts) -- so this only covers the part that's genuinely testable without
+    // one: a fresh, unsaved project has no cloud drive connected, and the section must not appear at
+    // all in that state (see FileSystemPane.vue's isCloudMounted() check).
+    test("is not shown when the project isn't saved to a cloud drive", async ({ page }) => {
+        await openFilesTab(page);
+        await expect(page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.cloud })).toHaveCount(0);
+    });
+});
+
 // Writes fixture content to a fresh file under outputDir and returns its path, for use with
 // locator.setInputFiles() (which needs a real file on disk).
 function testFixturePath(outputDir: string, fileName: string, content: string): string {
