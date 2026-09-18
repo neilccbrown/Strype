@@ -282,7 +282,17 @@
     "PEA-layout-tabs-collapsed": "Collapsed and tabs layout",
     "PEA-layout-tabs-expanded":"Expanded and tabs layout",
     "PEA-layout-split-collapsed": "Collapsed and split layout",
-    "PEA-layout-split-expanded": "Expanded and split layout"
+    "PEA-layout-split-expanded": "Expanded and split layout",
+    "fileSystem": "Files"
+  },
+  "fileSystemTab": {
+    "data": "Data (read-only)",
+    "cloud": "Cloud",
+    "local": "Local files",
+    "download": "Download",
+    "upload": "Upload",
+    "loading": "Loading...",
+    "emptyFolder": "(empty)"
   },
   "media": {
     "edit": "Edit",

@@ -87,6 +87,7 @@ import { assetsFilePrefixes, createLazyFetchAssetsFS } from "@/stryperuntime/pyo
 import {isServiceWorkerChannelResponsive, PyodideErrorDetails} from "@/workers/shared_helpers";
 import {makeServiceWorkerChannel} from "sync-message";
 import {createLazyFetchFS} from "@/stryperuntime/pyodide-emscript-fetch-fs";
+import {FsTreeNode} from "@/stryperuntime/file_system_tree_types";
 
 // We only specify updatePort here as we don't want other files using it directly:
 declare const self: PyodideWorkerGlobalScope & { updatePort: MessagePort };
@@ -117,6 +118,84 @@ async function loadOnly() : Promise<PyodideInterface> {
     return pyodide;
 }
 const reloader = new PyodideFatalErrorReloader(loadOnly);
+
+// Builds the tree for one root ("/data" or "/local") for the File system tab. Unlike executePython,
+// this does not run any Python code -- it just needs the FS mounted, so it can be (and is) called
+// from the main thread at any time, including before the user has ever pressed Run. Mounting /data
+// and /local here uses the same guarded mkdir/mount pattern as executePython's own setup (see the
+// comment there) so the two don't conflict if a real run subsequently starts on this same worker.
+function ensureFsRootMounted(pyodide: PyodideInterface, root: "/data" | "/local"): void {
+    try {
+        pyodide.FS.mkdir(root);
+    }
+    catch {
+        // Ignore errors because they will come from the dir already existing
+    }
+    if (root === "/data") {
+        try {
+            pyodide.FS.mount(pyodide.FS.filesystems.ASSETSFS, {root: "data"}, "/data");
+        }
+        catch {
+            // Ignore errors because they will come from it already being mounted
+        }
+    }
+}
+
+function buildFsTree(pyodide: PyodideInterface, path: string, name: string): FsTreeNode {
+    const stat = pyodide.FS.stat(path);
+    if (!pyodide.FS.isDir(stat.mode)) {
+        return {name, path, isDir: false, size: stat.size};
+    }
+    const children = pyodide.FS.readdir(path)
+        .filter((entry: string) => entry !== "." && entry !== "..")
+        .map((entry: string) => buildFsTree(pyodide, path === "/" ? `/${entry}` : `${path}/${entry}`, entry));
+    return {name, path, isDir: true, children};
+}
+
+// Exposed to the main thread (see Comlink.expose below) for the File system tab. Only ever reads
+// "/data" and "/local" -- "/cloud" is browsed directly from the main thread via cloudFileIO.ts,
+// with no need to go via the worker/Pyodide FS at all.
+async function listFsTree(root: "/data" | "/local"): Promise<FsTreeNode> {
+    return await reloader.withPyodide(async (pyodide: PyodideInterface) => {
+        ensureFsRootMounted(pyodide, root);
+        return buildFsTree(pyodide, root, root.slice(1));
+    });
+}
+
+// Exposed to the main thread for downloading a single file shown in the File system tab. Unlike
+// listFsTree, this has to be pyodideExpose'd (and so, unlike listFsTree, called via client.call()
+// rather than directly): reading an actual /data file's bytes (as opposed to just its directory
+// listing/stat, which listFsTree only ever does) goes through LazyFetchFS's open() -- see
+// pyodide-emscript-fetch-fs.ts -- which fetches the file via self.syncStrypePyodideWorkerBridge,
+// the same synchronous main-thread round trip executePython sets up as "bridgeSync" below. That
+// global is otherwise only ever set while a real Python run is in progress, so without setting it
+// up here too, downloading a /data file before ever pressing Run would throw
+// "self.syncStrypePyodideWorkerBridge is not a function". /local files need no such thing (they're
+// plain MEMFS, no lazy fetch), but there's no harm setting the bridge up unconditionally here.
+const readFsFile = pyodideExpose(async (
+    extras: PyodideExtras,
+    path: string,
+    makeRawRequest: Comlink.Remote<(req: SyncOrAsyncStrypePyodideWorkerRequest) => void>
+): Promise<Uint8Array> => {
+    return await reloader.withPyodide(async (pyodide: PyodideInterface) => {
+        const bridgeSync: SyncStrypePyodideHandlerFunction = <R extends SyncStrypePyodideWorkerRequest> (req : R) : ResponseFor<R> => {
+            makeRawRequest({kind: "sync", request: req});
+            const reply = extras.readMessage() as (SyncStrypePyodideWorkerResponse | {request: string, error: string});
+            if (reply.request != req.request) {
+                throw new Error(`Internal error: Pyodide worker received ${reply.request} but had asked for ${req.request}`);
+            }
+            else if ("error" in reply) {
+                throw (req.request.startsWith("file_") ? new pyodide.FS.ErrnoError(63, "Cloud file error:" + reply.error) : new Error("Internal error:" + reply.error));
+            }
+            else {
+                return reply as ResponseFor<R>;
+            }
+        };
+        self.syncStrypePyodideWorkerBridge = bridgeSync;
+        self.asyncStrypePyodideWorkerBridge = (r) => makeRawRequest({kind: "async", request: r});
+        return pyodide.FS.readFile(path, {encoding: "binary"});
+    });
+});
 
 async function urlToDirName(url: string): Promise<string> {
     const encoder = new TextEncoder();
@@ -476,10 +555,23 @@ runner`);
                 
         }
         
-        // We mount the "books" assets at /books, "images" at /images, etc:
+        // We mount the "books" assets at /books, "images" at /images, etc. Guarded the same way as
+        // /cloud and /local above (rather than the unguarded mkdir+mount this used to be): the File
+        // system tab (see listFsTree()) can mount /data on this same worker instance before any run
+        // ever starts, so by the time a run gets here /data may already exist and be mounted.
         for (const dir of assetsFilePrefixes) {
-            pyodide.FS.mkdir("/" + dir);
-            pyodide.FS.mount(pyodide.FS.filesystems.ASSETSFS, {root: dir}, "/" + dir);
+            try {
+                pyodide.FS.mkdir("/" + dir);
+            }
+            catch {
+                // Ignore errors because they will come from the dir already existing
+            }
+            try {
+                pyodide.FS.mount(pyodide.FS.filesystems.ASSETSFS, {root: dir}, "/" + dir);
+            }
+            catch {
+                // Ignore errors because they will come from it already being mounted
+            }
         }
         
         let error : PyodideErrorDetails | null = null;
@@ -556,6 +648,8 @@ const onReady = pyodideExpose(async (extras: PyodideExtras, callOnceReady:  Coml
 Comlink.expose({
     executePython,
     onReady,
+    listFsTree,
+    readFsFile,
 });
 
 // We receive one message early on with the updatePort which we must store in a global:
