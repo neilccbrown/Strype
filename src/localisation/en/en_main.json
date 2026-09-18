@@ -293,7 +293,11 @@
     "download": "Download",
     "upload": "Upload",
     "loading": "Loading...",
-    "emptyFolder": "(empty)"
+    "emptyFolder": "(empty)",
+    "archiveDialogTitle": "Upload archive",
+    "archiveDialogMessage": "\"{name}\" is a zip archive. Do you want to keep it as a single zip file, or unzip its contents?",
+    "keepAsZip": "Keep as zip",
+    "unzipContents": "Unzip contents"
   },
   "media": {
     "edit": "Edit",

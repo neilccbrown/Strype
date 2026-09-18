@@ -13,6 +13,7 @@ import { serviceWorkerChannel } from "@/stryperuntime/main_thread_python_handler
 import * as localFsCache from "@/helpers/localFsCache";
 import { cloudCloseFile, cloudCreate, cloudListDir, cloudReadFile, cloudWriteFile } from "@/helpers/cloudFileIO";
 import { useStore } from "@/store/store";
+import { ArchiveEntry } from "@/helpers/archive";
 
 export type FsRoot = "/data" | "/local" | "/cloud";
 
@@ -144,4 +145,33 @@ export async function uploadToCloud(dirNode: FsTreeNode, file: File): Promise<vo
     const newFileId = await cloudCreate({cloudFileId: dirNode.cloudFileId}, file.name, false, filePath);
     await cloudWriteFile(newFileId, data, 0, filePath, true);
     await cloudCloseFile(newFileId);
+}
+
+// Uploads a set of extracted archive entries (see archive.ts's unzipEntries()) into "/local",
+// preserving each entry's subfolder structure -- localFsCache.listTree() already builds nested
+// directories from flat paths, so no special-casing is needed here beyond joining the path.
+export async function uploadEntriesToLocal(dirNode: FsTreeNode, entries: ArchiveEntry[]): Promise<void> {
+    for (const entry of entries) {
+        const path = dirNode.path === "/local" ? `/local/${entry.path}` : `${dirNode.path}/${entry.path}`;
+        localFsCache.writeFile(path, entry.data);
+    }
+}
+
+// Uploads a set of extracted archive entries into "/cloud". Unlike /local, entries are flattened
+// into the target folder using just their base file name: cloudCreate() (cloudFileIO.ts) can't
+// create directories at all (Strype's cloud file IO only ever creates files, never folders), so
+// there's no way to recreate an archive's subfolder structure in the cloud drive. Sequential
+// (not parallelised) to keep this simple and avoid hammering the cloud API with a burst of
+// concurrent create+write+close calls for a large archive.
+export async function uploadEntriesToCloud(dirNode: FsTreeNode, entries: ArchiveEntry[]): Promise<void> {
+    if (dirNode.cloudFileId == null) {
+        return;
+    }
+    for (const entry of entries) {
+        const name = entry.path.split("/").pop() as string;
+        const filePath = `${dirNode.path}/${name}`;
+        const newFileId = await cloudCreate({cloudFileId: dirNode.cloudFileId}, name, false, filePath);
+        await cloudWriteFile(newFileId, entry.data, 0, filePath, true);
+        await cloudCloseFile(newFileId);
+    }
 }

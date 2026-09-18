@@ -1,6 +1,7 @@
 import { test, expect, Page } from "@playwright/test";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import JSZip from "jszip";
 import en from "../../../src/localisation/en/en_main.json";
 import { setupStrypeTest } from "../support/general";
 import { startRunning, runButtonShowsRun, runToFinish } from "../support/execution";
@@ -124,6 +125,91 @@ test.describe("File system tab -- /local (writeable scratch area)", () => {
     });
 });
 
+test.describe("File system tab -- uploading an archive to /local", () => {
+    test("shows the keep-as-zip/unzip dialog, naming the uploaded file", async ({ page }) => {
+        await openFilesTab(page);
+        const zipPath = await testZipFixturePath(test.info().outputDir, "archive-test.zip", {
+            "root.txt": "root content\n",
+        });
+        await localUploadInput(page).setInputFiles(zipPath);
+
+        await expect(page.getByRole("heading", { name: en.fileSystemTab.archiveDialogTitle })).toBeVisible();
+        // ModalDlg.vue (see its own template) ids the body "<dlgId>-body" -- every other modal in
+        // the app is also permanently mounted (just hidden) alongside this one, so a plain
+        // ".modal-body" locator matches all of them; scope to this dialog specifically:
+        await expect(page.locator("#fileSystemArchiveImportDlg-body")).toContainText("archive-test.zip");
+    });
+
+    test("Cancel uploads nothing", async ({ page }) => {
+        await openFilesTab(page);
+        const zipPath = await testZipFixturePath(test.info().outputDir, "cancelled.zip", {
+            "root.txt": "root content\n",
+        });
+        await localUploadInput(page).setInputFiles(zipPath);
+        await page.getByRole("button", { name: en.buttonLabel.cancel, exact: true }).click();
+
+        const localSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.local });
+        await expect(localSection).toContainText(en.fileSystemTab.emptyFolder);
+        await expect(localSection).not.toContainText("cancelled.zip");
+    });
+
+    test("\"Keep as zip\" stores the archive itself, byte-identical", async ({ page }) => {
+        await openFilesTab(page);
+        const zipPath = await testZipFixturePath(test.info().outputDir, "keep-me.zip", {
+            "root.txt": "root content\n",
+        });
+        await localUploadInput(page).setInputFiles(zipPath);
+        await page.getByRole("button", { name: en.fileSystemTab.keepAsZip }).click();
+
+        const localSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.local });
+        await expect(localSection).toContainText("keep-me.zip");
+        // The unzipped entry must NOT also appear -- this upload chose to keep the archive as-is:
+        await expect(localSection).not.toContainText("root.txt");
+
+        const row = page.locator(".file-system-tree-file", { hasText: "keep-me.zip" });
+        const [download] = await Promise.all([
+            page.waitForEvent("download"),
+            row.locator(".file-system-tree-download-btn").click(),
+        ]);
+        const downloadedPath = await download.path();
+        expect(downloadedPath).not.toBeNull();
+        expect(readFileSync(downloadedPath as string)).toEqual(readFileSync(zipPath));
+    });
+
+    test("\"Unzip contents\" extracts every entry, preserving subfolder structure", async ({ page }) => {
+        await openFilesTab(page);
+        const zipPath = await testZipFixturePath(test.info().outputDir, "unzip-me.zip", {
+            "root.txt": "root content\n",
+            "sub/nested.txt": "nested content\n",
+        });
+        await localUploadInput(page).setInputFiles(zipPath);
+        await page.getByRole("button", { name: en.fileSystemTab.unzipContents }).click();
+
+        const localSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.local });
+        // The archive itself must NOT appear -- this upload chose to unzip, not keep it:
+        await expect(localSection).not.toContainText("unzip-me.zip");
+        await expect(localSection).toContainText("root.txt");
+        await expect(localSection).toContainText("sub");
+        // "sub" is a nested directory, collapsed by default -- expand it to reveal nested.txt:
+        await localSection.locator(".file-system-tree-label", { hasText: "sub" }).click();
+        await expect(localSection).toContainText("nested.txt");
+
+        const rootRow = page.locator(".file-system-tree-file", { hasText: "root.txt" });
+        const [rootDownload] = await Promise.all([
+            page.waitForEvent("download"),
+            rootRow.locator(".file-system-tree-download-btn").click(),
+        ]);
+        expect(readFileSync((await rootDownload.path()) as string, "utf8")).toEqual("root content\n");
+
+        const nestedRow = page.locator(".file-system-tree-file", { hasText: "nested.txt" });
+        const [nestedDownload] = await Promise.all([
+            page.waitForEvent("download"),
+            nestedRow.locator(".file-system-tree-download-btn").click(),
+        ]);
+        expect(readFileSync((await nestedDownload.path()) as string, "utf8")).toEqual("nested content\n");
+    });
+});
+
 test.describe("File system tab -- /cloud", () => {
     // Uploading/downloading through a real connected Google Drive/OneDrive needs live OAuth, which
     // isn't available in this test environment (no existing suite mocks cloudDriveHandlerComponentAPI
@@ -142,5 +228,19 @@ function testFixturePath(outputDir: string, fileName: string, content: string): 
     mkdirSync(outputDir, { recursive: true });
     const filePath = path.join(outputDir, fileName);
     writeFileSync(filePath, content);
+    return filePath;
+}
+
+// Builds a real .zip fixture (using the same "jszip" package the app itself uses -- see
+// archive.ts) from a {entryPath: content} map, writes it under outputDir, and returns its path.
+async function testZipFixturePath(outputDir: string, fileName: string, entries: Record<string, string>): Promise<string> {
+    const zip = new JSZip();
+    for (const [entryPath, content] of Object.entries(entries)) {
+        zip.file(entryPath, content);
+    }
+    const data = await zip.generateAsync({ type: "nodebuffer" });
+    mkdirSync(outputDir, { recursive: true });
+    const filePath = path.join(outputDir, fileName);
+    writeFileSync(filePath, data);
     return filePath;
 }

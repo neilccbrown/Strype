@@ -32,6 +32,13 @@
                 />
             </div>
         </template>
+        <ArchiveImportDialog
+            :dlgId="archiveImportDlgId"
+            :fileName="pendingUpload?.file.name ?? ''"
+            @keep-zip="onKeepAsZip"
+            @unzip="onUnzipContents"
+            @cancelled="pendingUpload = null"
+        />
     </div>
 </template>
 
@@ -41,14 +48,34 @@ import { mapStores } from "pinia";
 import { useStore } from "@/store/store";
 import { PythonExecRunningState } from "@/types/types";
 import FileSystemTree from "@/components/FileSystemTab/FileSystemTree.vue";
-import { downloadFsFile, FsRoot, isCloudMounted, listFsRootTree, uploadToCloud, uploadToLocal } from "@/helpers/fileSystemTabIO";
+import ArchiveImportDialog from "@/components/FileSystemTab/ArchiveImportDialog.vue";
+import {
+    downloadFsFile,
+    FsRoot,
+    isCloudMounted,
+    listFsRootTree,
+    uploadEntriesToCloud,
+    uploadEntriesToLocal,
+    uploadToCloud,
+    uploadToLocal,
+} from "@/helpers/fileSystemTabIO";
 import { FsTreeNode } from "@/stryperuntime/file_system_tree_types";
+import { isZipFile, unzipEntries } from "@/helpers/archive";
+import { eventBus } from "@/helpers/appContext";
+import { CustomEventTypes } from "@/helpers/editor";
+
+interface PendingUpload {
+    dirNode: FsTreeNode,
+    file: File,
+    root: "/local" | "/cloud",
+}
 
 export default defineComponent({
     name: "FileSystemPane",
 
     components: {
         FileSystemTree,
+        ArchiveImportDialog,
     },
 
     data() {
@@ -57,6 +84,9 @@ export default defineComponent({
             dataRoot: null as FsTreeNode | null,
             localRoot: null as FsTreeNode | null,
             cloudRoot: null as FsTreeNode | null,
+            // Set while the "keep as zip / unzip contents" dialog is open for a .zip upload --
+            // see onUpload()/ArchiveImportDialog.vue.
+            pendingUpload: null as PendingUpload | null,
         };
     },
 
@@ -65,6 +95,10 @@ export default defineComponent({
 
         isPythonExecuting(): boolean {
             return this.appStore.pythonExecRunningState != PythonExecRunningState.NotRunning;
+        },
+
+        archiveImportDlgId(): string {
+            return "fileSystemArchiveImportDlg";
         },
     },
 
@@ -98,13 +132,49 @@ export default defineComponent({
             void downloadFsFile(node, root);
         },
 
-        async onUpload(dirNode: FsTreeNode, file: File, root: "/local" | "/cloud"): Promise<void> {
+        onUpload(dirNode: FsTreeNode, file: File, root: "/local" | "/cloud"): void {
+            if (isZipFile(file)) {
+                // Ask the user whether to keep the archive as-is or unzip its contents -- see
+                // onKeepAsZip()/onUnzipContents() below, triggered from ArchiveImportDialog.vue.
+                this.pendingUpload = {dirNode, file, root};
+                eventBus.emit(CustomEventTypes.showStrypeModal, this.archiveImportDlgId);
+                return;
+            }
+            void this.uploadPlainFile(dirNode, file, root);
+        },
+
+        async uploadPlainFile(dirNode: FsTreeNode, file: File, root: "/local" | "/cloud"): Promise<void> {
             if (root === "/local") {
                 await uploadToLocal(dirNode, file);
                 await this.refreshLocal();
             }
             else {
                 await uploadToCloud(dirNode, file);
+                await this.refreshCloud();
+            }
+        },
+
+        async onKeepAsZip(): Promise<void> {
+            const pending = this.pendingUpload;
+            this.pendingUpload = null;
+            if (pending) {
+                await this.uploadPlainFile(pending.dirNode, pending.file, pending.root);
+            }
+        },
+
+        async onUnzipContents(): Promise<void> {
+            const pending = this.pendingUpload;
+            this.pendingUpload = null;
+            if (!pending) {
+                return;
+            }
+            const entries = await unzipEntries(pending.file);
+            if (pending.root === "/local") {
+                await uploadEntriesToLocal(pending.dirNode, entries);
+                await this.refreshLocal();
+            }
+            else {
+                await uploadEntriesToCloud(pending.dirNode, entries);
                 await this.refreshCloud();
             }
         },
