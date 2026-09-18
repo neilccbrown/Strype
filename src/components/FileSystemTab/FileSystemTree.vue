@@ -1,9 +1,27 @@
 <template>
     <ul class="file-system-tree-node">
         <li>
-            <span v-if="node.isDir" class="file-system-tree-dir" @click="expanded = !expanded">
-                <span class="file-system-tree-chevron">{{ expanded ? "▾" : "▸" }}</span>
-                {{ node.name }}
+            <span v-if="node.isDir" class="file-system-tree-dir">
+                <span class="file-system-tree-label" @click="expanded = !expanded">
+                    <span class="file-system-tree-chevron">{{ expanded ? "▾" : "▸" }}</span>
+                    {{ node.name }}
+                </span>
+                <button
+                    v-if="allowUpload"
+                    class="file-system-tree-upload-btn"
+                    :disabled="uploadDisabled"
+                    :title="$t('fileSystemTab.upload')"
+                    @click="clickUploadInput"
+                >
+                    {{ $t("fileSystemTab.upload") }}
+                </button>
+                <input
+                    v-if="allowUpload"
+                    ref="uploadInput"
+                    type="file"
+                    style="display:none"
+                    @change="onFileSelected"
+                />
             </span>
             <span v-else class="file-system-tree-file">
                 {{ node.name }}
@@ -19,7 +37,10 @@
                     v-for="child in node.children"
                     :key="child.path"
                     :node="child"
+                    :allow-upload="allowUpload"
+                    :upload-disabled="uploadDisabled"
                     @download="(n) => $emit('download', n)"
+                    @uploaded="$emit('uploaded')"
                 />
             </ul>
         </li>
@@ -29,6 +50,7 @@
 <script lang="ts">
 import { defineComponent, PropType } from "vue";
 import { FsTreeNode } from "@/stryperuntime/file_system_tree_types";
+import { uploadToLocal } from "@/helpers/fileSystemTabIO";
 
 export default defineComponent({
     name: "FileSystemTree",
@@ -38,14 +60,38 @@ export default defineComponent({
         // FileSystemPane passes true for the top-level /data and /local roots so they open
         // immediately; nested directories always start collapsed.
         startExpanded: { type: Boolean, default: false },
+        // Whether directories in this subtree get an upload button -- true only under /local.
+        allowUpload: { type: Boolean, default: false },
+        // Uploads are disabled while Python is executing (see FileSystemPane.vue): the main-thread
+        // cache backing /local is only resynced with the worker at the start/end of a run, so a
+        // write made mid-run would silently be lost once that run's own snapshot is taken.
+        uploadDisabled: { type: Boolean, default: false },
     },
 
-    emits: ["download"],
+    emits: ["download", "uploaded"],
 
     data() {
         return {
             expanded: this.startExpanded,
         };
+    },
+
+    methods: {
+        clickUploadInput(): void {
+            (this.$refs.uploadInput as HTMLInputElement).click();
+        },
+
+        async onFileSelected(event: Event): Promise<void> {
+            const input = event.target as HTMLInputElement;
+            const file = input.files?.[0];
+            input.value = "";
+            if (!file) {
+                return;
+            }
+            await uploadToLocal(this.node.path, file);
+            this.expanded = true;
+            this.$emit("uploaded");
+        },
     },
 });
 </script>
@@ -58,6 +104,11 @@ export default defineComponent({
 }
 
 .file-system-tree-dir {
+    display: flex;
+    align-items: center;
+}
+
+.file-system-tree-label {
     cursor: pointer;
     user-select: none;
 }
@@ -67,7 +118,8 @@ export default defineComponent({
     width: 1em;
 }
 
-.file-system-tree-download-btn {
+.file-system-tree-download-btn,
+.file-system-tree-upload-btn {
     margin-left: 0.5em;
 }
 

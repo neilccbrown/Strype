@@ -17,6 +17,7 @@ import {PyodideClient} from "pyodide-worker-runner";
 import * as Comlink from "comlink";
 import {makeServiceWorkerChannel} from "sync-message";
 import {ref} from "vue";
+import {listEntries, mergeSnapshot} from "@/helpers/localFsCache";
 
 // Can be re-used. Exported so PythonExecutionArea can health-check it before a run (see
 // isServiceWorkerChannelResponsive in shared_helpers.ts) -- Safari in particular is known to
@@ -252,6 +253,26 @@ export async function terminateAndRestartPyodide() : Promise<void> {
             console.error("Error interrupting Pyodide worker before terminating it: ", e);
         }
     }
+    // Snapshot "/local" from the outgoing worker before killing it, so its contents survive into
+    // the next run -- see localFsCache.ts for why this main-thread cache is what actually persists
+    // "/local" across runs, given the worker itself is fully discarded just below. Bounded the same
+    // way as the interrupt above: this worker could in principle still be stuck/unresponsive even
+    // after that, and we'd rather lose this one snapshot than hang the whole restart:
+    if (client != null) {
+        try {
+            const snapshot = await Promise.race([
+                client.workerProxy.snapshotLocalFs() as Promise<Record<string, Uint8Array>>,
+                new Promise<null>((resolve) => setTimeout(() => resolve(null), 1000)),
+            ]);
+            if (snapshot != null) {
+                mergeSnapshot(snapshot);
+            }
+        }
+        catch (e) {
+            console.error("Error snapshotting /local before restarting Pyodide: ", e);
+        }
+    }
+
     // This is apparently instant on most browsers, so we can immediately assume Pyodide has
     // stopped; the interrupt above is what makes that assumption hold on WebKit too:
     activeSlot?.worker.terminate();
@@ -260,8 +281,9 @@ export async function terminateAndRestartPyodide() : Promise<void> {
     // further along than a brand new worker would be), swap straight to it so the next run
     // doesn't have to wait for a full Pyodide initialisation. Otherwise fall back to creating
     // a fresh slot synchronously, exactly as before:
+    let nextSlot : PyodideSlot | null;
     if (spareSlot != null) {
-        const promoted = spareSlot;
+        nextSlot = spareSlot;
         spareSlot = null;
         // Logged (temporarily -- see isServiceWorkerChannelResponsive() in shared_helpers.ts) to
         // correlate against the worker-side "[Worker first sync read]" log in python-execution.ts:
@@ -270,12 +292,21 @@ export async function terminateAndRestartPyodide() : Promise<void> {
         // expected 408 long-poll response), and want to know precisely how long this promoted
         // worker had existed before it made its first blocking request:
         console.info(`[Pyodide slot swap ${new Date().toISOString()}] promoted pre-warmed spare worker`);
-        activateSlot(promoted);
     }
     else {
         console.info(`[Pyodide slot swap ${new Date().toISOString()}] no spare available -- creating a fresh worker synchronously`);
-        activateSlot(createPyodideSlot());
+        nextSlot = createPyodideSlot();
     }
+    // Push this cache's contents into the new worker's fresh "/local" -- restoreLocalFs() internally
+    // awaits that worker's own Pyodide load via withPyodide(), so this doesn't need to wait for
+    // onReady itself. Deliberately done here (at promotion time), not inside createPyodideSlot()'s
+    // onReady: a spare slot is created well before it's promoted, so restoring at its own creation
+    // time would miss any snapshot merged in after that (e.g. from the very run this function is
+    // handling right now):
+    if (nextSlot != null) {
+        void nextSlot.client.workerProxy.restoreLocalFs(listEntries());
+    }
+    activateSlot(nextSlot);
     // Line up the next spare in the background (a no-op if the device isn't deemed capable of one):
     maybeCreateSpareSlot();
 }

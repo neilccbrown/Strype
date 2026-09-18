@@ -197,6 +197,59 @@ const readFsFile = pyodideExpose(async (
     });
 });
 
+function collectFlatFiles(pyodide: PyodideInterface, path: string, out: Record<string, Uint8Array>): void {
+    const stat = pyodide.FS.stat(path);
+    if (!pyodide.FS.isDir(stat.mode)) {
+        out[path] = pyodide.FS.readFile(path, {encoding: "binary"});
+        return;
+    }
+    for (const entry of pyodide.FS.readdir(path)) {
+        if (entry === "." || entry === "..") {
+            continue;
+        }
+        collectFlatFiles(pyodide, path === "/" ? `/${entry}` : `${path}/${entry}`, out);
+    }
+}
+
+// Exposed to the main thread (see main_thread_python_handler.ts's terminateAndRestartPyodide()):
+// takes a full snapshot of "/local" as a flat {path: bytes} map, right before this worker is
+// discarded, so the main-thread cache (localFsCache.ts) can carry its contents over to the next
+// run's worker (see restoreLocalFs below). Plain MEMFS, no lazy fetch involved, so -- unlike
+// readFsFile -- this needs no pyodideExpose/sync bridge, same as listFsTree.
+async function snapshotLocalFs(): Promise<Record<string, Uint8Array>> {
+    return await reloader.withPyodide(async (pyodide: PyodideInterface) => {
+        const out: Record<string, Uint8Array> = {};
+        try {
+            collectFlatFiles(pyodide, "/local", out);
+        }
+        catch {
+            // "/local" doesn't exist -- this run was in /cloud mode, so there's nothing to snapshot
+        }
+        return out;
+    });
+}
+
+// Exposed to the main thread: writes a flat {path: bytes} map (as previously captured by
+// snapshotLocalFs) into this worker's fresh "/local", restoring the main-thread cache's contents
+// at the start of a new run.
+async function restoreLocalFs(entries: Record<string, Uint8Array>): Promise<void> {
+    return await reloader.withPyodide(async (pyodide: PyodideInterface) => {
+        try {
+            pyodide.FS.mkdir("/local");
+        }
+        catch {
+            // Ignore errors because they will come from the dir already existing
+        }
+        for (const [path, data] of Object.entries(entries)) {
+            const dir = path.slice(0, path.lastIndexOf("/"));
+            if (dir && dir !== "/local") {
+                pyodide.FS.mkdirTree(dir);
+            }
+            pyodide.FS.writeFile(path, data);
+        }
+    });
+}
+
 async function urlToDirName(url: string): Promise<string> {
     const encoder = new TextEncoder();
     const data = encoder.encode(url);
@@ -650,6 +703,8 @@ Comlink.expose({
     onReady,
     listFsTree,
     readFsFile,
+    snapshotLocalFs,
+    restoreLocalFs,
 });
 
 // We receive one message early on with the updatePort which we must store in a global:
