@@ -2144,57 +2144,48 @@ export function setPythonExecAreaLayoutButtonPos(): void{
 }
 
 /**
- * These methods are used to control the height of the "Add frame" commands,
- * to allow the commands to be displayed in columns when they can't be shown as one column.
- * See Commands.vue for the HTML template logics.
+ * In the ordinary (non-expanded PEA) case, the add-frame-commands list sizes and wraps itself
+ * purely via CSS -- see Commands.vue's ".add-frame-commands-list" grid rules, and the flex-grow
+ * chain feeding it a real height ("min-height: 0" all the way down from the pane that already has
+ * one). That replaced an earlier JS-measured, explicitly-pinned pixel height that was only ever
+ * recomputed on splitter-resize/PEA-expand-collapse events -- and so went stale the moment the
+ * *content* changed instead (e.g. moving the frame cursor to a section with a different number of
+ * available commands), which is what let the list overflow into a column count too wide for the
+ * pane and cut off its right edge.
+ *
+ * The expanded-PEA case still needs computing here: that view pulls the list out of normal flow
+ * (position: absolute, so it can overlay the collapsed commands/PEA splitter) and sizes it against
+ * the editor's "cropped" height, which depends on manuallyResizedEditorHeight -- a runtime value
+ * CSS has no access to.
  */
 export const debounceComputeAddFrameCommandContainerSize = debounce(computeAddFrameCommandContainerSize, 100);
 
 export function computeAddFrameCommandContainerSize(isExpandedPEA?: boolean): void{
-    // Two situations can happen: being or not in expanded PEA view.
-    // If we are in expanded PEA view, the height of the frame commands panel is aligned with the editor's "cropped" size.
-    // If we are in collapsed PEA view, the height of the frame commands is aligned with the commands/PEA splitter pane's size.
+    const addFrameCommandsP = document.querySelector("." + scssVars.addFrameCommandsContainerClassName + " p") as HTMLParagraphElement | null;
     if(isExpandedPEA){
-        const projectNameContainerH = (document.getElementsByClassName(scssVars.strypeProjectNameContainerClassName)[0] as HTMLDivElement).clientHeight;
-        const croppedEditorH = (manuallyResizedEditorHeight) ? manuallyResizedEditorHeight : (document.getElementsByTagName("body")[0].clientHeight / 2);
-        (document.querySelector("." + scssVars.addFrameCommandsContainerClassName + " p") as HTMLParagraphElement).style.height = (croppedEditorH - projectNameContainerH) + "px";
-        // In expanded view, we need to set the frame commmands container to "position: absolute" for the content to overlay the commands/PEA splitter.
-        // However, the width won't align properly, we need to set that width manually.
-        const frameCmdsParagraphContainer =  document.querySelector("." + scssVars.addFrameCommandsContainerClassName) as HTMLDivElement;
-        (document.querySelector("." + scssVars.addFrameCommandsContainerClassName + " p") as HTMLParagraphElement).style.width = frameCmdsParagraphContainer.clientWidth + "px";
+        if(addFrameCommandsP){
+            const projectNameContainerH = (document.getElementsByClassName(scssVars.strypeProjectNameContainerClassName)[0] as HTMLDivElement).clientHeight;
+            const croppedEditorH = (manuallyResizedEditorHeight) ? manuallyResizedEditorHeight : (document.getElementsByTagName("body")[0].clientHeight / 2);
+            addFrameCommandsP.style.height = (croppedEditorH - projectNameContainerH) + "px";
+            // In expanded view, we need to set the frame commmands container to "position: absolute" for the content to overlay the commands/PEA splitter.
+            // However, the width won't align properly, we need to set that width manually.
+            const frameCmdsParagraphContainer = document.querySelector("." + scssVars.addFrameCommandsContainerClassName) as HTMLDivElement;
+            addFrameCommandsP.style.width = frameCmdsParagraphContainer.clientWidth + "px";
+        }
     }
-    else {
-        // Reset the frame commands container's width to natural behaviour (see case above)
-        (document.querySelector("." + scssVars.addFrameCommandsContainerClassName + " p") as HTMLParagraphElement).style.width = "";
+    else if(addFrameCommandsP){
+        // Leaving expanded view (or never having entered it): clear any inline height/width the
+        // branch above may have left behind, so CSS is back in full control of sizing.
+        addFrameCommandsP.style.height = "";
+        addFrameCommandsP.style.width = "";
+    }
 
-        // When the container div overflows, we remove the overflow extra height to the p element containing the commands
-        // so that we can shorten the p height to trigger the commands to be displayed in columns.
-        const scrollContainerH = document.getElementsByClassName(scssVars.noPEACommandsClassName)[0].scrollHeight;
-        const noPEACommandsH =  document.getElementsByClassName(scssVars.noPEACommandsClassName)[0].getBoundingClientRect().height;
-        const addFrameCmdsPH = (document.querySelector("." + scssVars.addFrameCommandsContainerClassName + " p") as HTMLParagraphElement).getBoundingClientRect().height;
-        const commandsFlexContainer = (document.querySelector("." + scssVars.addFrameCommandsContainerClassName + " p") as HTMLParagraphElement);
-        if(noPEACommandsH < scrollContainerH){
-            commandsFlexContainer.style.height = (addFrameCmdsPH - (scrollContainerH - noPEACommandsH)) + "px";
-        }
-        else{
-            // The commands panel is not overflowing, but it could be because it is already collapsed (elements are wrapped) and now we have more space for it to expand:
-            // in the case, we want to increase the commands panel size.
-            if(commandsFlexContainer.childElementCount > 0){
-                const firstCommandLeft = commandsFlexContainer.children[0].getBoundingClientRect().left;
-                const lastCommandLeft =  commandsFlexContainer.children[commandsFlexContainer.childElementCount - 1].getBoundingClientRect().left;
-                if(firstCommandLeft != lastCommandLeft){
-                    const projectNameContainerH = document.getElementsByClassName(scssVars.strypeProjectNameContainerClassName)[0].getBoundingClientRect().height;
-                    (document.querySelector("." + scssVars.addFrameCommandsContainerClassName + " p") as HTMLParagraphElement).style.height = (noPEACommandsH - projectNameContainerH) + "px";
-                }
-            }
-        }
-            
-        // When we are done, we need to check again the min size of the commands/PEA splitter pane 1, since scroll bars
-        // could have been added with the new change (need to wait for it to be effective though).
-        setTimeout(() => {
-            vueComponentsAPIHandler.commandsComponentAPI?.setPEACommandsSplitterPanesMinSize(true);    
-        }, 100);    
-    }
+    // The commands/PEA splitter's minimum pane sizes depend on the frame commands' rendered
+    // height (e.g. whether a horizontal scrollbar has appeared), so they need recomputing whenever
+    // the layout that feeds them might have changed (need to wait for it to be effective though).
+    setTimeout(() => {
+        vueComponentsAPIHandler.commandsComponentAPI?.setPEACommandsSplitterPanesMinSize(true);
+    }, 100);
 }
 // #v-endif
 
