@@ -63,28 +63,123 @@ test.describe("Commands pane -- code completion shortcut", () => {
     });
 });
 
-test.describe("Commands pane -- stale add-frame-commands height doesn't hide the editing hints", () => {
-    // Regression test for a bug where the code-completion/record-media hints were rendered but
-    // effectively invisible: computeAddFrameCommandContainerSize() (helpers/editor.ts) pins an
-    // explicit inline height on the add-frame-commands <p> (the one holding the "space"/"="/"if"/
-    // etc. buttons) so they can wrap into columns when a row doesn't fit -- but nothing ever reset
-    // that height when isEditing toggled, even though addFrameCommands is deliberately emptied
-    // while editing a slot (see Commands.vue). A big enough leftover height pushed the following
-    // hints down far enough to land behind the PEA pane below (worse the more indented the caret,
-    // since less available width means more column-wrapping and so a taller pinned height to start
-    // with) -- even though the hints were still in the DOM the whole time (so a plain toContainText
-    // check, like the other tests in this file, never caught it) and their keyboard shortcuts kept
-    // working.
+test.describe("Commands pane -- add-frame-commands column wrapping", () => {
+    // Regression tests for a bug where the add-frame-commands list (the "space"/"="/"if"/etc.
+    // buttons shown at a blank frame-insert caret) wrapped into more columns than the pane was
+    // wide enough for, cutting off the rightmost one(s). The list wraps into columns via CSS
+    // (Commands.vue's ".add-frame-commands-list" grid rules) once it doesn't have room to show
+    // everything in one column; that in turn needs the list to have an actual, non-auto CSS
+    // height to wrap against, which now comes from an ordinary flex-grow chain rather than a
+    // JS-measured pixel height pinned only on splitter-resize/PEA-expand-collapse events. The old
+    // JS approach went stale the moment the *content* changed instead -- e.g. moving the frame
+    // cursor from the imports section (few commands) to "My code" (many) -- reusing a height sized
+    // for the old, shorter list and wrapping the new, longer one into far more columns than the
+    // pane was wide enough for.
     //
-    // Rather than depend on exact column-wrap arithmetic (font metrics and viewport size vary
-    // across browsers and would make a "natural" repro flaky), we pin an exaggerated height here
-    // directly -- that's exactly the precondition the real bug left behind, just produced
-    // deterministically.
-    test("code completion hint stays visible above the PEA pane after a large height was pinned", async ({page}) => {
-        const addFrameCommandsParagraph = page.locator("#addFramePanel p").first();
-        await addFrameCommandsParagraph.evaluate((el: HTMLElement) => {
-            el.style.height = "2000px";
+    // A short viewport is used throughout so the list only has room for a couple of rows,
+    // deterministically forcing it to wrap into several columns regardless of font metrics.
+
+    // Fixed frame IDs from the default starter project (src/store/initial-states/initial-python-state.ts):
+    // 2 is the second import frame ("from strype.sound import *"), 4 is the last "My code" frame
+    // (the "print(myString)" call). Clicking a caret container directly (rather than clicking into
+    // a slot and pressing Escape) is the same reliable technique paste-joint-frames.spec.ts uses --
+    // it sidesteps any browser-specific differences in what a slot click selects/focuses.
+    const SECOND_IMPORT_FRAME_ID = 2;
+    const LAST_MY_CODE_FRAME_ID = 4;
+
+    async function clickBelowCaret(page: import("@playwright/test").Page, frameId: number): Promise<void> {
+        const id = "caret_caretBelow_of_frame_" + frameId;
+        await page.evaluate((id) => {
+            document.getElementById(id)?.dispatchEvent(new MouseEvent("click", {bubbles: true, cancelable: true}));
+        }, id);
+        await waitForEditorSettled(page);
+    }
+
+    async function moveCaretToEndOfSecondImportFrame(page: import("@playwright/test").Page) {
+        await clickBelowCaret(page, SECOND_IMPORT_FRAME_ID);
+    }
+
+    async function moveCaretToEndOfMyCode(page: import("@playwright/test").Page) {
+        await clickBelowCaret(page, LAST_MY_CODE_FRAME_ID);
+    }
+
+    test("wrapping into more columns after navigating to a section with more commands doesn't cut any of them off", async ({page}) => {
+        await page.setViewportSize({width: 1000, height: 320});
+
+        // Insert a frame in the (short) imports section, matching the reported repro, then move
+        // to the "My code" section, which offers many more add-frame commands than imports does.
+        await moveCaretToEndOfSecondImportFrame(page);
+        await pressFrameShortcut(page, "i");
+        await waitForEditorSettled(page);
+        await page.keyboard.press("Escape");
+        await waitForEditorSettled(page);
+        await moveCaretToEndOfMyCode(page);
+
+        const list = page.locator("#addFramePanel .add-frame-commands-list");
+
+        // Read everything relevant in a single synchronous snapshot: separate round-tripped
+        // boundingBox() calls (one per command) risk a Vue re-render landing between them and
+        // reporting on a moving target.
+        const snapshot = await list.evaluate((el) => {
+            const listRect = el.getBoundingClientRect();
+            const commandRects = [...el.querySelectorAll(".frame-cmd-container")].map((c) => c.getBoundingClientRect());
+            return {
+                listLeft: listRect.left,
+                scrollWidth: el.scrollWidth,
+                commandCount: commandRects.length,
+                commandRects: commandRects.map((r) => ({left: r.left, width: r.width, height: r.height})),
+            };
         });
+        expect(snapshot.commandCount).toBeGreaterThan(5); // sanity check: this really is the many-commands case
+
+        for (const rect of snapshot.commandRects) {
+            // Every command must be present with a real, positive size (not collapsed/hidden)...
+            expect(rect.width).toBeGreaterThan(0);
+            expect(rect.height).toBeGreaterThan(0);
+            // ...and reachable within the list's own scrollable area -- not off in unreachable
+            // space to the right of it (the original bug: extra columns bled out past the pane
+            // with no way to scroll to them at all).
+            expect(rect.left - snapshot.listLeft + rect.width).toBeLessThanOrEqual(snapshot.scrollWidth + 1);
+        }
+
+        // And the overflow must be contained within the list itself (which is scrollable, via
+        // overflow-x: auto) rather than bleeding out into a pane- or page-level scrollbar the way
+        // the old, unbounded flex-wrap did.
+        const noPEACommandsOverflow = await page.locator(".no-pea-commands").evaluate(
+            (el) => el.scrollWidth - el.clientWidth
+        );
+        expect(noPEACommandsOverflow).toBeLessThanOrEqual(1);
+    });
+
+    test("the list re-wraps for a smaller section without needing a resize in between", async ({page}) => {
+        await page.setViewportSize({width: 1000, height: 320});
+
+        const list = page.locator("#addFramePanel .add-frame-commands-list");
+
+        await moveCaretToEndOfMyCode(page);
+        const manyCommandsColumnCount = await list.evaluate((el) => {
+            const lefts = new Set([...el.children].map((c) => (c as HTMLElement).offsetLeft));
+            return lefts.size;
+        });
+
+        await moveCaretToEndOfSecondImportFrame(page);
+        const fewCommandsColumnCount = await list.evaluate((el) => {
+            const lefts = new Set([...el.children].map((c) => (c as HTMLElement).offsetLeft));
+            return lefts.size;
+        });
+
+        // No window resize (nor PEA expand/collapse) happened between the two navigations above --
+        // if the list's column count didn't change, it's still using the old section's layout.
+        expect(fewCommandsColumnCount).toBeLessThan(manyCommandsColumnCount);
+    });
+
+    test("emptying the list while editing doesn't push the code-completion hint down or off-screen", async ({page}) => {
+        // A short viewport so the (not-editing) list needs several columns, matching the shape of
+        // the original bug -- the list is a flex-grow item, so without special handling for its
+        // empty (editing) state it would keep taking up the same vertical space even with no
+        // commands in it, pushing the hints below it down by that amount.
+        await page.setViewportSize({width: 1000, height: 320});
+        await moveCaretToEndOfMyCode(page);
 
         const panel = page.locator("#addFramePanel");
         const completionHint = panel.getByText("Code completion", {exact: false});
@@ -95,11 +190,6 @@ test.describe("Commands pane -- stale add-frame-commands height doesn't hide the
 
         await expect(panel).toContainText("Code completion");
 
-        // The stale height must actually be cleared, not just happen to leave enough room:
-        const heightAfter = await addFrameCommandsParagraph.evaluate((el) => parseFloat(getComputedStyle(el).height));
-        expect(heightAfter).toBeLessThan(100);
-
-        // And, crucially, the hint must sit above the PEA pane -- not merely exist in the DOM:
         const hintBox = await completionHint.boundingBox();
         const peaBox = await peaPane.boundingBox();
         expect(hintBox).not.toBeNull();
