@@ -316,10 +316,13 @@ span.open-book-dlg-description {
     scrollbar-gutter: stable;
 }
 
-.open-book-dlg-book-group-item {
+.open-book-dlg-chapter-list .open-book-dlg-book-group-item {
     --bs-list-group-item-padding-x:1.25rem;
     --bs-list-group-item-padding-y:0.3rem;
-    /* Indent outside the item itself, so it appears nested under its volume heading: */
+    /* Indent outside the item itself, so it appears nested under its volume heading.
+       (Selector needs the extra specificity to beat Bootstrap's own
+       .list-group-item-action { width: 100% } rule, which loads after this file's
+       styles and would otherwise win on source order and force a horizontal scrollbar.) */
     margin-left: 1.25rem;
     width: calc(100% - 1.25rem);
 }

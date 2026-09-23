@@ -1752,10 +1752,12 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
             cursorOffset += beforeStringCursortOffset;
             // Auto-convert a plain string matching a hex colour literal (e.g. "#aabbcc") into a colour
             // MediaSlot, but only once the cursor has genuinely left the string (cursorPos undefined, or
-            // outside the quotes -- inclusive bounds, so a boundary position is still treated as "inside"
-            // and doesn't convert), and only for unprefixed strings (f/r/b-prefixed strings are excluded,
-            // since those are constructed live the same way as a plain string via addNewSlot's string branch).
-            const cursorInsideThisString = flags?.cursorPos !== undefined && flags.cursorPos >= openingQuoteIndex && flags.cursorPos <= closingQuoteIndex;
+            // outside the quotes -- sitting exactly on the opening quote's own index means the cursor is
+            // just to its left, i.e. still outside, so that bound is exclusive; sitting on the closing
+            // quote's index means the cursor is just before it, i.e. still inside, so that bound is
+            // inclusive), and only for unprefixed strings (f/r/b-prefixed strings are excluded, since
+            // those are constructed live the same way as a plain string via addNewSlot's string branch).
+            const cursorInsideThisString = flags?.cursorPos !== undefined && flags.cursorPos > openingQuoteIndex && flags.cursorPos <= closingQuoteIndex;
             const hasStringPrefix = /(^|[^a-zA-Z0-9_])[fFrRbB]{1,2}$/.test(beforeStringCode);
             const structOfString: StringSlot | MediaSlot = (!cursorInsideThisString && !hasStringPrefix && isHexColourLiteral(stringContentCode))
                 ? {mediaType: "colour", code: openingQuoteValue + stringContentCode.toLowerCase() + openingQuoteValue} as MediaSlot
