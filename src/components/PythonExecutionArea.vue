@@ -93,6 +93,7 @@ import {getPythonClient, isPythonWorkerReady, renderer, serviceWorkerChannel, te
 import { TurtlePixiHandler } from "@/stryperuntime/turtle_pixi_handler";
 import {closeAudioContext, createOrGetAudioContext} from "@/helpers/audioContext";
 import {clearAllRuntimeErrors, computeFrameSnapshot} from "@/helpers/storeMethods";
+import {listEntries} from "@/helpers/localFsCache";
 import html2canvas from "html2canvas";
 
 // Helper to keep indexed tabs (for maintenance if we add some tabs etc)
@@ -746,7 +747,14 @@ export default defineComponent({
                         console.error("Error in serialized function:", err);
                     });
                 }
-                
+
+                // The active worker's "/local" is only refreshed from localFsCache when a worker is
+                // swapped in (see terminateAndRestartPyodide()), which happens after a run/stop, not
+                // before one -- so a file uploaded via the File system tab since the last swap would
+                // otherwise be invisible to this run. Push the cache into the current worker first;
+                // this is cheap and idempotent when nothing has changed.
+                await client.workerProxy.restoreLocalFs(listEntries());
+
                 (client.call(
                     client.workerProxy.executePython,
                     userCode,
