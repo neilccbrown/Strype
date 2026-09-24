@@ -4,7 +4,7 @@ import path from "node:path";
 import JSZip from "jszip";
 import en from "../../../src/localisation/en/en_main.json";
 import { setupStrypeTest } from "../support/general";
-import { startRunning, runButtonShowsRun, runToFinish } from "../support/execution";
+import { startRunning, runButtonShowsRun, runToFinish, checkConsoleContent } from "../support/execution";
 import { enterCode } from "../support/editor";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
@@ -109,6 +109,26 @@ test.describe("File system tab -- /local (writeable scratch area)", () => {
         await page.click("#addFramePEATab");
         await openFilesTab(page);
         await expect(localSection).toContainText("survives-run.txt");
+    });
+
+    test("a freshly uploaded file is visible to the very next Run", async ({ page }) => {
+        // Regression test: localFsCache (the main-thread mirror behind "/local") was only ever
+        // pushed into a live Pyodide worker's real "/local" on a worker swap, which happens after
+        // a run/stop finishes rather than before the next run starts -- see restoreLocalFs()'s call
+        // site in PythonExecutionArea.vue's execPythonCode(). A file uploaded since the last swap
+        // (i.e. before any run has happened at all in this session) was therefore invisible to the
+        // very first Run to look for it, only appearing from the run after that.
+        await openFilesTab(page);
+        const content = "visible on the first run\n";
+        const filePath = testFixturePath(test.info().outputDir, "first-run.txt", content);
+        await localUploadInput(page).setInputFiles(filePath);
+        const localSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.local });
+        await expect(localSection).toContainText("first-run.txt");
+
+        await enterCode(page, ["print(open(\"first-run.txt\").read())"]);
+        await runToFinish(page);
+
+        await checkConsoleContent(page, content + "\n");
     });
 
     test("upload is disabled while Python is executing", async ({ page }) => {
