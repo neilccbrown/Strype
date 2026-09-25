@@ -260,7 +260,9 @@ export default defineComponent({
 }
 
 .file-system-tree-upload-btn {
-    margin-left: 0.5em;
+    // No margin-left here: the flex spacer before it (in a tree row) already provides the
+    // separation, and FileSystemPane.vue's standalone "Local files" upload row (not preceded by a
+    // label/spacer at all) needs this to be flush left, matching the "(empty)" message above it.
     flex-shrink: 0;
 }
 

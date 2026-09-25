@@ -253,6 +253,25 @@ export default defineComponent({
     height: 100%;
     overflow: auto;
     padding: 0.5em;
+    // Matches .pea-console's colours (PythonExecutionArea.vue) so the Files tab looks consistent
+    // with the Console tab right next to it:
+    background-color: #333;
+    color: white;
+}
+
+// Mac Safari: always show scrollbar (when content is large enough to require one), and make it
+// light -- same treatment as .pea-console's own scrollbar (PythonExecutionArea.vue):
+.file-system-pane::-webkit-scrollbar {
+    width: 8px;
+}
+
+.file-system-pane::-webkit-scrollbar-track {
+    background: #333;
+}
+
+.file-system-pane::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 5px;
 }
 
 .file-system-pane-running-note {
