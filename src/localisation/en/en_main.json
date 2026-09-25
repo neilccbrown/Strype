@@ -286,12 +286,15 @@
     "fileSystem": "Files"
   },
   "fileSystemTab": {
+    "builtIn": "Built-in files",
     "assetRoot": "{path} (read-only)",
     "cloud": "Cloud",
     "local": "Local files",
     "programRunning": "Uploads are disabled while your program is running.",
     "cwd": "This is the current working directory when your code runs",
     "download": "Download",
+    "downloadZip": "Download as a zip file",
+    "copyPath": "Click to copy the path",
     "upload": "Upload",
     "loading": "Loading...",
     "emptyFolder": "(empty)",

@@ -4,6 +4,7 @@
 // "/cloud" (the connected cloud drive, when the project is saved to one).
 import { saveAs } from "file-saver";
 import * as Comlink from "comlink";
+import JSZip from "jszip";
 import { watch } from "vue";
 import { getPythonClient, isPythonWorkerReady } from "@/stryperuntime/main_thread_python_handler";
 import { FsTreeNode } from "@/stryperuntime/file_system_tree_types";
@@ -80,42 +81,41 @@ async function listCloudTree(): Promise<FsTreeNode | null> {
     return await buildCloudTree(loc, "/cloud", "cloud");
 }
 
-export async function downloadFsFile(node: FsTreeNode, root: FsRoot): Promise<void> {
+// Reads one file's raw bytes from whichever root it's under -- shared by downloadFsFile (a single
+// file) and downloadFsDirectoryAsZip (every file under a directory, zipped up) below.
+async function readFsFileBytes(node: FsTreeNode, root: FsRoot): Promise<Uint8Array | undefined> {
     if (root === "/local") {
-        const bytes = localFsCache.readFile(node.path);
-        if (bytes != null) {
-            saveAs(new Blob([bytes as BlobPart], {type: "application/octet-stream"}), node.name);
-        }
-        return;
+        return localFsCache.readFile(node.path);
     }
     if (root === "/cloud") {
         if (node.cloudFileId == null || node.size == null) {
-            return;
+            return undefined;
         }
-        const bytes = await cloudReadFile({cloudFileId: node.cloudFileId}, 0, node.size, node.path);
-        saveAs(new Blob([bytes as BlobPart], {type: "application/octet-stream"}), node.name);
-        return;
+        return await cloudReadFile({cloudFileId: node.cloudFileId}, 0, node.size, node.path);
     }
 
     const client = getPythonClient();
     if (client == null) {
-        return;
+        return undefined;
     }
     // client.call() (comsync's SyncClient) throws immediately if the client isn't in its "idle"
     // state -- it doesn't queue -- and createPyodideSlot() already has one client.call() running
     // from page load (awaiting the worker's onReady) until Pyodide finishes loading. Calling
     // client.call() again (for readFsFile, below) while that's still in flight throws "State is
-    // running, not idle" -- silently, since onDownload (FileSystemPane.vue) fires this whole
-    // function without awaiting it, so the rejection becomes an invisible unhandled promise
-    // rejection rather than a console error. Wait out both: isPythonWorkerReady (true once onReady's
-    // *callback* has fired -- see main_thread_python_handler.ts) first, then client.state actually
-    // settling back to "idle" (there's a brief further gap while the pyodideExpose wrapper finishes
-    // returning over Comlink). Previously this whole race was masked by accident: opening the File
-    // system tab always listed "/data" via a plain (non-client.call()) worker RPC first, which took
-    // long enough that Pyodide -- and thus onReady's call -- had always finished by the time a
-    // download's client.call() ran. Listing no longer touches the worker at all (see
-    // listFsRootTree() above), so that accidental ordering guarantee is gone and must be made
-    // explicit here instead:
+    // running, not idle" -- silently, since callers of this function (onDownload/onDownloadDir,
+    // FileSystemPane.vue) fire it without awaiting it, so the rejection becomes an invisible
+    // unhandled promise rejection rather than a console error. Wait out both: isPythonWorkerReady
+    // (true once onReady's *callback* has fired -- see main_thread_python_handler.ts) first, then
+    // client.state actually settling back to "idle" (there's a brief further gap while the
+    // pyodideExpose wrapper finishes returning over Comlink). Previously this whole race was masked
+    // by accident: opening the File system tab always listed "/data" via a plain (non-client.call())
+    // worker RPC first, which took long enough that Pyodide -- and thus onReady's call -- had
+    // always finished by the time a download's client.call() ran. Listing no longer touches the
+    // worker at all (see listFsRootTree() above), so that accidental ordering guarantee is gone and
+    // must be made explicit here instead. Once past this first call, later calls (e.g. one per file
+    // while zipping a directory) never need to wait: comsync resets state back to "idle" in a
+    // finally block that runs before client.call()'s own promise settles, so it's already idle
+    // again by the time our await above returns.
     if (!isPythonWorkerReady.value) {
         await new Promise<void>((resolve) => {
             const stopWatching = watch(isPythonWorkerReady, (ready) => {
@@ -138,7 +138,7 @@ export async function downloadFsFile(node: FsTreeNode, root: FsRoot): Promise<vo
     if (!(await isServiceWorkerChannelResponsive(serviceWorkerChannel.baseUrl))) {
         console.error("Service worker sync channel not responding; file download may fail");
     }
-    const bytes: Uint8Array = await client.call(
+    return await client.call(
         client.workerProxy.readFsFile,
         node.path,
         Comlink.proxy((asreq: SyncOrAsyncStrypePyodideWorkerRequest) => {
@@ -158,7 +158,41 @@ export async function downloadFsFile(node: FsTreeNode, root: FsRoot): Promise<vo
                 });
         })
     );
-    saveAs(new Blob([bytes as BlobPart], {type: "application/octet-stream"}), node.name);
+}
+
+export async function downloadFsFile(node: FsTreeNode, root: FsRoot): Promise<void> {
+    const bytes = await readFsFileBytes(node, root);
+    if (bytes != null) {
+        saveAs(new Blob([bytes as BlobPart], {type: "application/octet-stream"}), node.name);
+    }
+}
+
+// Recursively collects every file under dirNode (paths relative to dirNode itself), zips them, and
+// triggers a download of "<dirNode.name>.zip". Files are fetched sequentially (not in parallel):
+// for the read-only asset roots, they all share the one Pyodide worker client, whose client.call()
+// can only ever have one request in flight at a time (see readFsFileBytes's own comment).
+export async function downloadFsDirectoryAsZip(dirNode: FsTreeNode, root: FsRoot): Promise<void> {
+    const zip = new JSZip();
+
+    async function addNode(node: FsTreeNode, relativePath: string): Promise<void> {
+        if (node.isDir) {
+            for (const child of node.children ?? []) {
+                await addNode(child, `${relativePath}/${child.name}`);
+            }
+            return;
+        }
+        const bytes = await readFsFileBytes(node, root);
+        if (bytes != null) {
+            zip.file(relativePath, bytes);
+        }
+    }
+
+    for (const child of dirNode.children ?? []) {
+        await addNode(child, child.name);
+    }
+
+    const blob = await zip.generateAsync({type: "blob"});
+    saveAs(blob, `${dirNode.name}.zip`);
 }
 
 // Uploads a file into "/local" at the given directory node's path (e.g. "/local" itself, or a

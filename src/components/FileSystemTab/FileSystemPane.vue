@@ -5,14 +5,21 @@
             <div v-if="isPythonExecuting" class="file-system-pane-running-note">
                 {{ $t("fileSystemTab.programRunning") }}
             </div>
-            <div class="file-system-pane-root" v-for="entry in assetRoots" :key="entry.root">
-                <h4>{{ $t("fileSystemTab.assetRoot", {path: entry.root + "/"}) }}</h4>
-                <FileSystemTree
-                    :node="entry.tree"
-                    start-expanded
-                    :label-override="entry.root + '/'"
-                    @download="(n) => onDownload(n, entry.root)"
-                />
+            <div class="file-system-pane-root" v-if="assetRoots.length">
+                <h4 class="file-system-pane-builtin-header" @click="builtInExpanded = !builtInExpanded">
+                    <span class="file-system-tree-chevron">{{ builtInExpanded ? "▾" : "▸" }}</span>
+                    {{ $t("fileSystemTab.builtIn") }}
+                </h4>
+                <template v-if="builtInExpanded">
+                    <FileSystemTree
+                        v-for="entry in assetRoots"
+                        :key="entry.root"
+                        :node="entry.tree"
+                        :label-override="entry.root + '/'"
+                        @download="(n) => onDownload(n, entry.root)"
+                        @downloadDir="(n) => onDownloadDir(n, entry.root)"
+                    />
+                </template>
             </div>
             <div class="file-system-pane-root" v-if="cloudRoot">
                 <h4>{{ $t("fileSystemTab.cloud") }}</h4>
@@ -23,6 +30,7 @@
                     :upload-disabled="isPythonExecuting"
                     :is-cwd="cwdRoot === '/cloud'"
                     @download="(n) => onDownload(n, '/cloud')"
+                    @downloadDir="(n) => onDownloadDir(n, '/cloud')"
                     @upload="(n, file) => onUpload(n, file, '/cloud')"
                 />
             </div>
@@ -35,6 +43,7 @@
                     :upload-disabled="isPythonExecuting"
                     :is-cwd="cwdRoot === '/local'"
                     @download="(n) => onDownload(n, '/local')"
+                    @downloadDir="(n) => onDownloadDir(n, '/local')"
                     @upload="(n, file) => onUpload(n, file, '/local')"
                 />
             </div>
@@ -58,6 +67,7 @@ import FileSystemTree from "@/components/FileSystemTab/FileSystemTree.vue";
 import ArchiveImportDialog from "@/components/FileSystemTab/ArchiveImportDialog.vue";
 import {
     assetsRoots,
+    downloadFsDirectoryAsZip,
     downloadFsFile,
     FsRoot,
     isCloudMounted,
@@ -89,6 +99,10 @@ export default defineComponent({
     data() {
         return {
             loading: true,
+            // Collapsed by default -- expanding it reveals each individual asset root (/data,
+            // /books, etc), which themselves also start collapsed (see FileSystemTree's own
+            // startExpanded default) rather than dumping every bundled file on screen at once.
+            builtInExpanded: false,
             assetRoots: [] as { root: FsRoot, tree: FsTreeNode }[],
             localRoot: null as FsTreeNode | null,
             cloudRoot: null as FsTreeNode | null,
@@ -147,6 +161,10 @@ export default defineComponent({
 
         onDownload(node: FsTreeNode, root: FsRoot): void {
             void downloadFsFile(node, root);
+        },
+
+        onDownloadDir(node: FsTreeNode, root: FsRoot): void {
+            void downloadFsDirectoryAsZip(node, root);
         },
 
         onUpload(dirNode: FsTreeNode, file: File, root: "/local" | "/cloud"): void {
@@ -218,5 +236,12 @@ export default defineComponent({
     h4 {
         margin: 0 0 0.25em 0;
     }
+}
+
+.file-system-pane-builtin-header {
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
 }
 </style>

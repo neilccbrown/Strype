@@ -1,4 +1,4 @@
-import { test, expect, Page } from "@playwright/test";
+import { test, expect, Page, Locator } from "@playwright/test";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import JSZip from "jszip";
@@ -10,8 +10,10 @@ import { enterCode } from "../support/editor";
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     // Needs a real Pyodide worker (downloading an asset file goes via it -- see
     // fileSystemTabIO.ts/python-execution.ts's readFsFile), and some tests below also Run code, so
-    // this mirrors console-execution.spec.ts's budget rather than the shorter default:
-    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 180000});
+    // this mirrors console-execution.spec.ts's budget rather than the shorter default. fakeClipboard
+    // is needed for the "click to copy path" tests below (see setupStrypeTest's own comment on it,
+    // and colour-literal-copy-paste.spec.ts for the same pattern):
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 180000, fakeClipboard: true});
 });
 
 async function openFilesTab(page: Page): Promise<void> {
@@ -22,6 +24,17 @@ async function openFilesTab(page: Page): Promise<void> {
     await expect(page.locator(".file-system-pane-loading")).toHaveCount(0, {timeout: 30000});
 }
 
+// The asset roots (/data, /books, etc) are grouped under one collapsed-by-default "Built-in files"
+// heading, and each root is itself collapsed by default within that -- see FileSystemPane.vue's
+// builtInExpanded and FileSystemTree's startExpanded default. Expands both and returns the <li>
+// for the given root label (e.g. "/data/"), scoped so assertions only see that root's own subtree.
+async function openBuiltInSection(page: Page, rootLabel: string): Promise<Locator> {
+    await page.click(".file-system-pane-builtin-header");
+    const rootLi = page.locator("li", { has: page.locator(".file-system-tree-label", { hasText: rootLabel }) }).first();
+    await rootLi.locator(".file-system-tree-chevron").first().click();
+    return rootLi;
+}
+
 function localUploadInput(page: Page) {
     // Only "/local" ever renders an upload button/input (see FileSystemTree.vue's allow-upload
     // prop) -- the asset roots are read-only, so this is unambiguous as long as no subfolder has
@@ -30,21 +43,33 @@ function localUploadInput(page: Page) {
 }
 
 test.describe("File system tab -- /data (read-only bundled assets)", () => {
+    test("the Built-in files heading and every root under it start collapsed", async ({ page }) => {
+        await openFilesTab(page);
+        await expect(page.locator(".file-system-pane-builtin-header")).toContainText(en.fileSystemTab.builtIn);
+        await expect(page.locator(".file-system-tree-label", { hasText: "/data/" })).toHaveCount(0);
+        await page.click(".file-system-pane-builtin-header");
+        // The heading's now expanded, showing each root's own (still-collapsed) label, but not yet
+        // any of their file lists:
+        await expect(page.locator(".file-system-tree-label", { hasText: "/data/" })).toBeVisible();
+        await expect(page.getByText("london-temperature-2025.txt")).toHaveCount(0);
+    });
+
     test("lists the bundled data files", async ({ page }) => {
         await openFilesTab(page);
-        const dataSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.assetRoot.replace("{path}", "/data/") });
+        const dataSection = await openBuiltInSection(page, "/data/");
         await expect(dataSection).toContainText("london-temperature-2025.txt");
         await expect(dataSection).toContainText("word_counts.txt");
     });
 
     test("does not offer an upload button", async ({ page }) => {
         await openFilesTab(page);
-        const dataSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.assetRoot.replace("{path}", "/data/") });
+        const dataSection = await openBuiltInSection(page, "/data/");
         await expect(dataSection.locator(".file-system-tree-upload-btn")).toHaveCount(0);
     });
 
     test("downloading a file produces its real content", async ({ page }) => {
         await openFilesTab(page);
+        await openBuiltInSection(page, "/data/");
         const row = page.locator(".file-system-tree-file", { hasText: "london-temperature-2025.txt" });
         const [download] = await Promise.all([
             page.waitForEvent("download"),
@@ -58,6 +83,20 @@ test.describe("File system tab -- /data (read-only bundled assets)", () => {
             "utf8"
         );
         expect(actual).toEqual(expected);
+    });
+
+    test("clicking a file name copies its path to the clipboard", async ({ page }) => {
+        await openFilesTab(page);
+        const dataSection = await openBuiltInSection(page, "/data/");
+        await dataSection.locator(".file-system-tree-label", { hasText: "word_counts.txt" }).click();
+        await expect.poll(() => page.evaluate("navigator.clipboard.readText()")).toEqual("/data/word_counts.txt");
+    });
+
+    test("clicking a directory name copies its path to the clipboard", async ({ page }) => {
+        await openFilesTab(page);
+        const dataSection = await openBuiltInSection(page, "/data/");
+        await dataSection.locator(".file-system-tree-label", { hasText: "/data/" }).click();
+        await expect.poll(() => page.evaluate("navigator.clipboard.readText()")).toEqual("/data");
     });
 });
 
@@ -140,6 +179,20 @@ test.describe("File system tab -- /local (writeable scratch area)", () => {
         await runButton.click();
         await runButtonShowsRun(runButton);
     });
+
+    test("clicking a file or directory name copies its path to the clipboard", async ({ page }) => {
+        await openFilesTab(page);
+        const content = "for clipboard test\n";
+        const filePath = testFixturePath(test.info().outputDir, "clip-test.txt", content);
+        await localUploadInput(page).setInputFiles(filePath);
+
+        const localSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.local });
+        await localSection.locator(".file-system-tree-label", { hasText: "clip-test.txt" }).click();
+        await expect.poll(() => page.evaluate("navigator.clipboard.readText()")).toEqual("/local/clip-test.txt");
+
+        await localSection.locator(".file-system-tree-label", { hasText: "local" }).click();
+        await expect.poll(() => page.evaluate("navigator.clipboard.readText()")).toEqual("/local");
+    });
 });
 
 test.describe("File system tab -- uploading an archive to /local", () => {
@@ -207,8 +260,9 @@ test.describe("File system tab -- uploading an archive to /local", () => {
         await expect(localSection).not.toContainText("unzip-me.zip");
         await expect(localSection).toContainText("root.txt");
         await expect(localSection).toContainText("sub");
-        // "sub" is a nested directory, collapsed by default -- expand it to reveal nested.txt:
-        await localSection.locator(".file-system-tree-label", { hasText: "sub" }).click();
+        // "sub" is a nested directory, collapsed by default -- expand it (via its chevron; clicking
+        // the label itself copies its path instead -- see the clipboard tests) to reveal nested.txt:
+        await localSection.locator(".file-system-tree-dir", { hasText: "sub" }).locator(".file-system-tree-chevron").click();
         await expect(localSection).toContainText("nested.txt");
 
         const rootRow = page.locator(".file-system-tree-file", { hasText: "root.txt" });
@@ -224,6 +278,37 @@ test.describe("File system tab -- uploading an archive to /local", () => {
             nestedRow.locator(".file-system-tree-download-btn").click(),
         ]);
         expect(readFileSync((await nestedDownload.path()) as string, "utf8")).toEqual("nested content\n");
+    });
+
+    test("downloading a directory produces a zip of its contents", async ({ page }) => {
+        await openFilesTab(page);
+        const zipPath = await testZipFixturePath(test.info().outputDir, "zip-dir-test.zip", {
+            "sub/a.txt": "content a\n",
+            "sub/nested/b.txt": "content b\n",
+        });
+        await localUploadInput(page).setInputFiles(zipPath);
+        await page.getByRole("button", { name: en.fileSystemTab.unzipContents }).click();
+
+        const localSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.local });
+        await expect(localSection).toContainText("sub");
+
+        // Downloading a directory works straight off the already-loaded tree data, with no need to
+        // have expanded it in the UI first:
+        const subDir = localSection.locator(".file-system-tree-dir", { hasText: "sub" });
+        const [download] = await Promise.all([
+            page.waitForEvent("download"),
+            subDir.locator(".file-system-tree-download-btn").click(),
+        ]);
+        expect(download.suggestedFilename()).toEqual("sub.zip");
+        const downloadedPath = await download.path();
+        expect(downloadedPath).not.toBeNull();
+
+        const zip = await JSZip.loadAsync(readFileSync(downloadedPath as string));
+        // JSZip adds an implicit "nested/" directory entry on read even though only the two actual
+        // files were ever added to the zip (see downloadFsDirectoryAsZip, fileSystemTabIO.ts):
+        expect(Object.keys(zip.files).sort()).toEqual(["a.txt", "nested/", "nested/b.txt"]);
+        expect(await zip.file("a.txt")?.async("string")).toEqual("content a\n");
+        expect(await zip.file("nested/b.txt")?.async("string")).toEqual("content b\n");
     });
 });
 

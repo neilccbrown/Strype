@@ -2,15 +2,15 @@
     <ul class="file-system-tree-node">
         <li>
             <span v-if="node.isDir" class="file-system-tree-dir">
+                <span class="file-system-tree-chevron" @click="expanded = !expanded">{{ expanded ? "▾" : "▸" }}</span>
                 <span
                     class="file-system-tree-label"
-                    :class="{ 'file-system-tree-label-cwd': isCwd }"
-                    :title="isCwd ? $t('fileSystemTab.cwd') : undefined"
-                    @click="expanded = !expanded"
-                >
-                    <span class="file-system-tree-chevron">{{ expanded ? "▾" : "▸" }}</span>
-                    {{ labelOverride ?? node.name }}
-                </span>
+                    :class="{ 'file-system-tree-label-cwd': isCwd, 'flash-background': justCopied }"
+                    :title="labelTitle"
+                    @click="copyPath"
+                    @animationend="justCopied = false"
+                >{{ labelOverride ?? node.name }}</span>
+                <span class="file-system-tree-spacer"></span>
                 <button
                     v-if="allowUpload"
                     class="file-system-tree-upload-btn"
@@ -28,11 +28,25 @@
                     style="display:none"
                     @change="onFileSelected"
                 />
+                <button
+                    class="file-system-tree-download-btn"
+                    :title="$t('fileSystemTab.downloadZip')"
+                    @click="$emit('downloadDir', node)"
+                >
+                    <i class="fa fa-download"></i>
+                </button>
             </span>
             <span v-else class="file-system-tree-file">
-                {{ node.name }}
+                <span
+                    class="file-system-tree-label"
+                    :class="{ 'flash-background': justCopied }"
+                    :title="labelTitle"
+                    @click="copyPath"
+                    @animationend="justCopied = false"
+                >{{ node.name }}</span>
+                <span class="file-system-tree-spacer"></span>
                 <button class="file-system-tree-download-btn" :title="$t('fileSystemTab.download')" @click="$emit('download', node)">
-                    {{ $t("fileSystemTab.download") }}
+                    <i class="fa fa-download"></i>
                 </button>
             </span>
             <ul v-if="node.isDir && expanded" class="file-system-tree-children">
@@ -46,6 +60,7 @@
                     :allow-upload="allowUpload"
                     :upload-disabled="uploadDisabled"
                     @download="(n) => $emit('download', n)"
+                    @downloadDir="(n) => $emit('downloadDir', n)"
                     @upload="(n, file) => $emit('upload', n, file)"
                 />
             </ul>
@@ -83,15 +98,31 @@ export default defineComponent({
         labelOverride: { type: String, default: null },
     },
 
-    emits: ["download", "upload"],
+    emits: ["download", "downloadDir", "upload"],
 
     data() {
         return {
             expanded: this.startExpanded,
+            // Flash the label briefly after a click copies its path -- see copyPath()/the
+            // "flash-background"/"flash-bg-anim" keyframes (defined globally in
+            // PythonExecutionArea.vue, alongside the console's own copy-to-clipboard button).
+            justCopied: false,
         };
     },
 
+    computed: {
+        labelTitle(): string {
+            const copyHint = this.$t("fileSystemTab.copyPath") as string;
+            return this.isCwd ? `${this.$t("fileSystemTab.cwd")} -- ${copyHint}` : copyHint;
+        },
+    },
+
     methods: {
+        copyPath(): void {
+            navigator.clipboard.writeText(this.node.path);
+            this.justCopied = true;
+        },
+
         clickUploadInput(): void {
             (this.$refs.uploadInput as HTMLInputElement).click();
         },
@@ -117,7 +148,8 @@ export default defineComponent({
     padding-left: 1em;
 }
 
-.file-system-tree-dir {
+.file-system-tree-dir,
+.file-system-tree-file {
     display: flex;
     align-items: center;
 }
@@ -125,6 +157,8 @@ export default defineComponent({
 .file-system-tree-label {
     cursor: pointer;
     user-select: none;
+    border-radius: 3px;
+    padding: 0 2px;
 }
 
 .file-system-tree-label-cwd {
@@ -134,11 +168,31 @@ export default defineComponent({
 .file-system-tree-chevron {
     display: inline-block;
     width: 1em;
+    cursor: pointer;
+    user-select: none;
 }
 
-.file-system-tree-download-btn,
+.file-system-tree-spacer {
+    flex: 1;
+}
+
+.file-system-tree-download-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px 6px;
+    color: inherit;
+    margin-left: 0.5em;
+    flex-shrink: 0;
+}
+
+.file-system-tree-download-btn:hover {
+    opacity: 0.6;
+}
+
 .file-system-tree-upload-btn {
     margin-left: 0.5em;
+    flex-shrink: 0;
 }
 
 .file-system-tree-empty {
