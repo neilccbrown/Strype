@@ -6,7 +6,7 @@
                 <BTab v-show="isTabsLayout" :button-id="consoleTabId" :title="'\u2771\u23BD '+$t('PEA.console')" title-link-class="pea-display-tab"></BTab>
                 <!-- Files doesn't participate in the graphics/console split-vs-tabs layout at all (see
                      isFilesAreaShowing) -- it's always reachable as its own tab regardless of layout mode. -->
-                <BTab :button-id="filesTabId" :title="$t('PEA.fileSystem')" title-link-class="pea-display-tab"></BTab>
+                <BTab :button-id="filesTabId" :title="'📁 '+$t('PEA.fileSystem')" title-link-class="pea-display-tab"></BTab>
             </BTabs>
             <!-- IMPORTANT: keep this div with "invisible" text for proper layout rendering, it replaces the graphics/console tabs -->
             <span v-if="!isTabsLayout" :class="scssVars.peaNoTabsPlaceholderSpanClassName">c+g</span>
@@ -1580,7 +1580,9 @@ export default defineComponent({
         --bs-nav-link-color: black;
         --bs-nav-link-hover-color: black;
         --bs-nav-tabs-border-radius: 0.25rem;
-
+        // Slightly tighter than Bootstrap's 1rem default, so the tab bar (now with a third,
+        // Files, tab) doesn't feel as spread out:
+        --bs-nav-link-padding-x: 0.65rem;
     }
 
     .pea-display-tab:hover {

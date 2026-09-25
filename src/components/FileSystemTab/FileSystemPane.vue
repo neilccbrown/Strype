@@ -5,26 +5,45 @@
             <div v-if="isPythonExecuting" class="file-system-pane-running-note">
                 {{ $t("fileSystemTab.programRunning") }}
             </div>
-            <div class="file-system-pane-root" v-if="assetRoots.length">
-                <h4 class="file-system-pane-builtin-header" @click="builtInExpanded = !builtInExpanded">
-                    <span class="file-system-tree-chevron">{{ builtInExpanded ? "▾" : "▸" }}</span>
-                    {{ $t("fileSystemTab.builtIn") }}
-                </h4>
-                <template v-if="builtInExpanded">
-                    <FileSystemTree
-                        v-for="entry in assetRoots"
-                        :key="entry.root"
-                        :node="entry.tree"
-                        :label-override="entry.root + '/'"
-                        @download="(n) => onDownload(n, entry.root)"
-                        @downloadDir="(n) => onDownloadDir(n, entry.root)"
-                    />
-                </template>
+            <!-- Deliberately no FileSystemTree for "local" itself (unlike cloudRoot/assetRoots below):
+                 its children are listed flat, straight under this heading, rather than behind a
+                 redundant bold "local" row that just repeats what the heading above it already says. -->
+            <div class="file-system-pane-root" v-if="localRoot">
+                <h4
+                    :class="{ 'file-system-tree-label-cwd': cwdRoot === '/local' }"
+                    :title="cwdRoot === '/local' ? $t('fileSystemTab.cwd') : undefined"
+                >{{ $t("fileSystemTab.local") }}</h4>
+                <div v-if="(localRoot.children ?? []).length === 0" class="file-system-tree-empty file-system-pane-flat-item">
+                    {{ $t("fileSystemTab.emptyFolder") }}
+                </div>
+                <FileSystemTree
+                    v-for="child in localRoot.children"
+                    :key="child.path"
+                    :node="child"
+                    top-level
+                    allow-upload
+                    :upload-disabled="isPythonExecuting"
+                    @download="(n) => onDownload(n, '/local')"
+                    @downloadDir="(n) => onDownloadDir(n, '/local')"
+                    @upload="(n, file) => onUpload(n, file, '/local')"
+                />
+                <div class="file-system-pane-flat-item">
+                    <button
+                        class="file-system-tree-upload-btn"
+                        :disabled="isPythonExecuting"
+                        :title="$t('fileSystemTab.upload')"
+                        @click="clickLocalUploadInput"
+                    >
+                        {{ $t("fileSystemTab.upload") }}
+                    </button>
+                    <input ref="localUploadInput" type="file" class="file-system-tree-upload-input" style="display:none" @change="onLocalFileSelected" />
+                </div>
             </div>
             <div class="file-system-pane-root" v-if="cloudRoot">
                 <h4>{{ $t("fileSystemTab.cloud") }}</h4>
                 <FileSystemTree
                     :node="cloudRoot"
+                    top-level
                     start-expanded
                     allow-upload
                     :upload-disabled="isPythonExecuting"
@@ -34,17 +53,16 @@
                     @upload="(n, file) => onUpload(n, file, '/cloud')"
                 />
             </div>
-            <div class="file-system-pane-root" v-if="localRoot">
-                <h4>{{ $t("fileSystemTab.local") }}</h4>
+            <div class="file-system-pane-root" v-if="assetRoots.length">
+                <h4>{{ $t("fileSystemTab.builtIn") }}</h4>
                 <FileSystemTree
-                    :node="localRoot"
-                    start-expanded
-                    allow-upload
-                    :upload-disabled="isPythonExecuting"
-                    :is-cwd="cwdRoot === '/local'"
-                    @download="(n) => onDownload(n, '/local')"
-                    @downloadDir="(n) => onDownloadDir(n, '/local')"
-                    @upload="(n, file) => onUpload(n, file, '/local')"
+                    v-for="entry in assetRoots"
+                    :key="entry.root"
+                    :node="entry.tree"
+                    top-level
+                    :label-override="entry.root + '/'"
+                    @download="(n) => onDownload(n, entry.root)"
+                    @downloadDir="(n) => onDownloadDir(n, entry.root)"
                 />
             </div>
         </template>
@@ -99,10 +117,6 @@ export default defineComponent({
     data() {
         return {
             loading: true,
-            // Collapsed by default -- expanding it reveals each individual asset root (/data,
-            // /books, etc), which themselves also start collapsed (see FileSystemTree's own
-            // startExpanded default) rather than dumping every bundled file on screen at once.
-            builtInExpanded: false,
             assetRoots: [] as { root: FsRoot, tree: FsTreeNode }[],
             localRoot: null as FsTreeNode | null,
             cloudRoot: null as FsTreeNode | null,
@@ -165,6 +179,23 @@ export default defineComponent({
 
         onDownloadDir(node: FsTreeNode, root: FsRoot): void {
             void downloadFsDirectoryAsZip(node, root);
+        },
+
+        // "/local" doesn't render its own root row (see the template) -- there's no FileSystemTree
+        // instance there to own an upload button/input, so this pane owns one directly instead,
+        // uploading to localRoot itself (the same target the old root row's own upload button had).
+        clickLocalUploadInput(): void {
+            (this.$refs.localUploadInput as HTMLInputElement).click();
+        },
+
+        onLocalFileSelected(event: Event): void {
+            const input = event.target as HTMLInputElement;
+            const file = input.files?.[0];
+            input.value = "";
+            if (!file || this.localRoot == null) {
+                return;
+            }
+            this.onUpload(this.localRoot, file, "/local");
         },
 
         onUpload(dirNode: FsTreeNode, file: File, root: "/local" | "/cloud"): void {
@@ -238,10 +269,13 @@ export default defineComponent({
     }
 }
 
-.file-system-pane-builtin-header {
-    cursor: pointer;
-    user-select: none;
-    display: flex;
-    align-items: center;
+// The bits of the "Local files" section that aren't FileSystemTree instances themselves (the
+// empty-folder message, the upload row) -- see the template's comment on why "/local" has no root
+// row of its own to hang those off of instead. Left-aligned flush with the (also unindented,
+// top-level) file/directory rows above them, so everything in this section starts at the same
+// left edge as the "Local files" heading itself:
+.file-system-pane-flat-item {
+    padding-left: 0;
+    margin-top: 0.25em;
 }
 </style>

@@ -1,5 +1,5 @@
 <template>
-    <ul class="file-system-tree-node">
+    <ul class="file-system-tree-node" :class="{ 'file-system-tree-node-top': topLevel }">
         <li>
             <span v-if="node.isDir" class="file-system-tree-dir">
                 <span class="file-system-tree-chevron" @click="expanded = !expanded">{{ expanded ? "▾" : "▸" }}</span>
@@ -9,7 +9,7 @@
                     :title="labelTitle"
                     @click="copyPath"
                     @animationend="justCopied = false"
-                >{{ labelOverride ?? node.name }}</span>
+                ><span class="file-system-tree-invisible" aria-hidden="true">{{ invisiblePrefix }}</span>{{ ownLabelText }}</span>
                 <span class="file-system-tree-spacer"></span>
                 <button
                     v-if="allowUpload"
@@ -43,7 +43,7 @@
                     :title="labelTitle"
                     @click="copyPath"
                     @animationend="justCopied = false"
-                >{{ node.name }}</span>
+                ><span class="file-system-tree-invisible" aria-hidden="true">{{ invisiblePrefix }}</span>{{ node.name }}</span>
                 <span class="file-system-tree-spacer"></span>
                 <button class="file-system-tree-download-btn" :title="$t('fileSystemTab.download')" @click="$emit('download', node)">
                     <i class="fa fa-download"></i>
@@ -59,6 +59,7 @@
                     :node="child"
                     :allow-upload="allowUpload"
                     :upload-disabled="uploadDisabled"
+                    :invisible-prefix="childInvisiblePrefix"
                     @download="(n) => $emit('download', n)"
                     @downloadDir="(n) => $emit('downloadDir', n)"
                     @upload="(n, file) => $emit('upload', n, file)"
@@ -96,6 +97,21 @@ export default defineComponent({
         // node name "data") -- like isCwd, deliberately not forwarded to the recursive
         // FileSystemTree below, so it only ever affects the root node passed in by FileSystemPane.
         labelOverride: { type: String, default: null },
+        // Removes this node's own left indent (see .file-system-tree-node-top below) so its
+        // folding triangle/label lines up with the section heading above it, rather than sitting
+        // one indent level in from it. FileSystemPane.vue passes this for every root-level
+        // FileSystemTree it renders directly (the asset roots, "cloud", local's own children) --
+        // deliberately not forwarded to the recursive FileSystemTree below, so only ever true for
+        // that first row, never anything nested under it.
+        topLevel: { type: Boolean, default: false },
+        // An invisible (visibility:hidden, revealed on hover -- see the CSS below) copy of this
+        // text is rendered before the node's own label, in the same font, so the *visible* label
+        // lines up with wherever the text of the row above it ended -- e.g. under "/books/", every
+        // child's name starts exactly where "/books/" itself ends, rather than at a fixed small
+        // indent. Accumulates as it recurses (see the recursive FileSystemTree below, which passes
+        // this node's own invisiblePrefix + ownLabelText down as its children's prefix), and also
+        // doubles as a hover hint showing the item's full path.
+        invisiblePrefix: { type: String, default: "" },
     },
 
     emits: ["download", "downloadDir", "upload"],
@@ -111,6 +127,23 @@ export default defineComponent({
     },
 
     computed: {
+        // What's actually shown as this node's own label -- labelOverride for the root nodes
+        // FileSystemPane.vue passes it for (e.g. "/books/"), otherwise the plain node name.
+        ownLabelText(): string {
+            return this.labelOverride ?? this.node.name;
+        },
+
+        // The invisible-alignment prefix to pass down to this node's own children (see
+        // invisiblePrefix's own comment). Only ever non-empty for the direct children of a
+        // labelOverride'd root (e.g. "/books/"'s own children): labelOverride text already reads
+        // as a full path with its own trailing slash, so appending it verbatim reads naturally.
+        // Deeper levels reset to "" rather than keep accumulating plain node names with no
+        // separator between them, which would otherwise read as one run-together word on hover
+        // (e.g. "backgroundsspace" for a "space.png" two levels under "/images/"):
+        childInvisiblePrefix(): string {
+            return this.labelOverride != null ? this.invisiblePrefix + this.ownLabelText : "";
+        },
+
         labelTitle(): string {
             const copyHint = this.$t("fileSystemTab.copyPath") as string;
             return this.isCwd ? `${this.$t("fileSystemTab.cwd")} -- ${copyHint}` : copyHint;
@@ -148,6 +181,23 @@ export default defineComponent({
     padding-left: 1em;
 }
 
+// Each child's own indent comes entirely from its own recursive FileSystemTree's outer
+// .file-system-tree-node (above) -- this wrapper (rendered by the *parent*, around its children)
+// must not add any further padding of its own, or it stacks with that and the invisible-text
+// alignment (see invisiblePrefix) ends up short of where it's meant to land. Browsers give a
+// bare <ul> its own default padding otherwise, so this has to be reset explicitly:
+.file-system-tree-children {
+    list-style: none;
+    margin: 0;
+    padding-left: 0;
+}
+
+// Root-level rows (see the topLevel prop) skip the usual indent, so their folding triangle lines
+// up with the section heading above them instead of sitting one indent step in from it:
+.file-system-tree-node-top {
+    padding-left: 0;
+}
+
 .file-system-tree-dir,
 .file-system-tree-file {
     display: flex;
@@ -163,6 +213,15 @@ export default defineComponent({
 
 .file-system-tree-label-cwd {
     font-weight: bold;
+}
+
+.file-system-tree-invisible {
+    visibility: hidden;
+}
+
+.file-system-tree-label:hover .file-system-tree-invisible {
+    visibility: visible;
+    opacity: 0.5;
 }
 
 .file-system-tree-chevron {
@@ -182,12 +241,22 @@ export default defineComponent({
     cursor: pointer;
     padding: 2px 6px;
     color: inherit;
+    opacity: 0.5;
+    font-size: 0.9em;
     margin-left: 0.5em;
     flex-shrink: 0;
+    // Hidden (not display:none, so it doesn't shift the row's layout) until the row is hovered --
+    // see the two rules just below:
+    visibility: hidden;
 }
 
 .file-system-tree-download-btn:hover {
-    opacity: 0.6;
+    opacity: 0.8;
+}
+
+.file-system-tree-dir:hover > .file-system-tree-download-btn,
+.file-system-tree-file:hover > .file-system-tree-download-btn {
+    visibility: visible;
 }
 
 .file-system-tree-upload-btn {

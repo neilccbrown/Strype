@@ -24,13 +24,15 @@ async function openFilesTab(page: Page): Promise<void> {
     await expect(page.locator(".file-system-pane-loading")).toHaveCount(0, {timeout: 30000});
 }
 
-// The asset roots (/data, /books, etc) are grouped under one collapsed-by-default "Built-in files"
-// heading, and each root is itself collapsed by default within that -- see FileSystemPane.vue's
-// builtInExpanded and FileSystemTree's startExpanded default. Expands both and returns the <li>
-// for the given root label (e.g. "/data/"), scoped so assertions only see that root's own subtree.
+// The asset roots (/data, /books, etc) sit under one always-expanded "Built-in files" heading, but
+// each root is itself collapsed by default (see FileSystemTree's own startExpanded default).
+// Expands the given root (e.g. "/data/") and returns its <li>, scoped so assertions only see that
+// root's own subtree. Matched by an exact label (not a substring) since a root's children now also
+// carry its label as an invisible alignment prefix (see FileSystemTree.vue's invisiblePrefix) --
+// which would otherwise also match a plain hasText search for the root's own label text.
 async function openBuiltInSection(page: Page, rootLabel: string): Promise<Locator> {
-    await page.click(".file-system-pane-builtin-header");
-    const rootLi = page.locator("li", { has: page.locator(".file-system-tree-label", { hasText: rootLabel }) }).first();
+    const exactLabel = new RegExp(`^${rootLabel.replace(/[/]/g, "\\/")}$`);
+    const rootLi = page.locator("li", { has: page.locator(".file-system-tree-label", { hasText: exactLabel }) });
     await rootLi.locator(".file-system-tree-chevron").first().click();
     return rootLi;
 }
@@ -43,13 +45,14 @@ function localUploadInput(page: Page) {
 }
 
 test.describe("File system tab -- /data (read-only bundled assets)", () => {
-    test("the Built-in files heading and every root under it start collapsed", async ({ page }) => {
+    test("the Built-in files heading can't be folded, but every root under it starts collapsed", async ({ page }) => {
         await openFilesTab(page);
-        await expect(page.locator(".file-system-pane-builtin-header")).toContainText(en.fileSystemTab.builtIn);
-        await expect(page.locator(".file-system-tree-label", { hasText: "/data/" })).toHaveCount(0);
-        await page.click(".file-system-pane-builtin-header");
-        // The heading's now expanded, showing each root's own (still-collapsed) label, but not yet
-        // any of their file lists:
+        // "Built-in files" itself is a plain heading -- every root is visible straight away, each
+        // still collapsed on its own (no chevron click needed to see the root labels themselves,
+        // but their file lists stay hidden until each root's own chevron is clicked):
+        const builtInHeading = page.locator("h4", { hasText: en.fileSystemTab.builtIn });
+        await expect(builtInHeading).toBeVisible();
+        await expect(builtInHeading.locator(".file-system-tree-chevron")).toHaveCount(0);
         await expect(page.locator(".file-system-tree-label", { hasText: "/data/" })).toBeVisible();
         await expect(page.getByText("london-temperature-2025.txt")).toHaveCount(0);
     });
@@ -71,6 +74,9 @@ test.describe("File system tab -- /data (read-only bundled assets)", () => {
         await openFilesTab(page);
         await openBuiltInSection(page, "/data/");
         const row = page.locator(".file-system-tree-file", { hasText: "london-temperature-2025.txt" });
+        // The download button only shows on hover (see FileSystemTree.vue's CSS) -- hover the row
+        // first so Playwright's actionability check doesn't refuse to click a hidden element:
+        await row.hover();
         const [download] = await Promise.all([
             page.waitForEvent("download"),
             row.locator(".file-system-tree-download-btn").click(),
@@ -95,7 +101,10 @@ test.describe("File system tab -- /data (read-only bundled assets)", () => {
     test("clicking a directory name copies its path to the clipboard", async ({ page }) => {
         await openFilesTab(page);
         const dataSection = await openBuiltInSection(page, "/data/");
-        await dataSection.locator(".file-system-tree-label", { hasText: "/data/" }).click();
+        // Exact match: a child's own label also carries "/data/" as an invisible alignment prefix
+        // (see FileSystemTree.vue), so a plain substring search would match more than just the
+        // root's own label:
+        await dataSection.locator(".file-system-tree-label", { hasText: /^\/data\/$/ }).click();
         await expect.poll(() => page.evaluate("navigator.clipboard.readText()")).toEqual("/data");
     });
 });
@@ -118,6 +127,7 @@ test.describe("File system tab -- /local (writeable scratch area)", () => {
         await expect(localSection).toContainText("upload-test.txt");
 
         const row = page.locator(".file-system-tree-file", { hasText: "upload-test.txt" });
+        await row.hover();
         const [download] = await Promise.all([
             page.waitForEvent("download"),
             row.locator(".file-system-tree-download-btn").click(),
@@ -180,7 +190,7 @@ test.describe("File system tab -- /local (writeable scratch area)", () => {
         await runButtonShowsRun(runButton);
     });
 
-    test("clicking a file or directory name copies its path to the clipboard", async ({ page }) => {
+    test("clicking a file name copies its path to the clipboard", async ({ page }) => {
         await openFilesTab(page);
         const content = "for clipboard test\n";
         const filePath = testFixturePath(test.info().outputDir, "clip-test.txt", content);
@@ -189,9 +199,6 @@ test.describe("File system tab -- /local (writeable scratch area)", () => {
         const localSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.local });
         await localSection.locator(".file-system-tree-label", { hasText: "clip-test.txt" }).click();
         await expect.poll(() => page.evaluate("navigator.clipboard.readText()")).toEqual("/local/clip-test.txt");
-
-        await localSection.locator(".file-system-tree-label", { hasText: "local" }).click();
-        await expect.poll(() => page.evaluate("navigator.clipboard.readText()")).toEqual("/local");
     });
 });
 
@@ -237,6 +244,7 @@ test.describe("File system tab -- uploading an archive to /local", () => {
         await expect(localSection).not.toContainText("root.txt");
 
         const row = page.locator(".file-system-tree-file", { hasText: "keep-me.zip" });
+        await row.hover();
         const [download] = await Promise.all([
             page.waitForEvent("download"),
             row.locator(".file-system-tree-download-btn").click(),
@@ -266,6 +274,7 @@ test.describe("File system tab -- uploading an archive to /local", () => {
         await expect(localSection).toContainText("nested.txt");
 
         const rootRow = page.locator(".file-system-tree-file", { hasText: "root.txt" });
+        await rootRow.hover();
         const [rootDownload] = await Promise.all([
             page.waitForEvent("download"),
             rootRow.locator(".file-system-tree-download-btn").click(),
@@ -273,6 +282,7 @@ test.describe("File system tab -- uploading an archive to /local", () => {
         expect(readFileSync((await rootDownload.path()) as string, "utf8")).toEqual("root content\n");
 
         const nestedRow = page.locator(".file-system-tree-file", { hasText: "nested.txt" });
+        await nestedRow.hover();
         const [nestedDownload] = await Promise.all([
             page.waitForEvent("download"),
             nestedRow.locator(".file-system-tree-download-btn").click(),
@@ -295,6 +305,7 @@ test.describe("File system tab -- uploading an archive to /local", () => {
         // Downloading a directory works straight off the already-loaded tree data, with no need to
         // have expanded it in the UI first:
         const subDir = localSection.locator(".file-system-tree-dir", { hasText: "sub" });
+        await subDir.hover();
         const [download] = await Promise.all([
             page.waitForEvent("download"),
             subDir.locator(".file-system-tree-download-btn").click(),

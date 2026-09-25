@@ -287,7 +287,6 @@
   },
   "fileSystemTab": {
     "builtIn": "Built-in files",
-    "assetRoot": "{path} (read-only)",
     "cloud": "Cloud",
     "local": "Local files",
     "programRunning": "Uploads are disabled while your program is running.",
