@@ -2,9 +2,14 @@
     <ul class="file-system-tree-node">
         <li>
             <span v-if="node.isDir" class="file-system-tree-dir">
-                <span class="file-system-tree-label" @click="expanded = !expanded">
+                <span
+                    class="file-system-tree-label"
+                    :class="{ 'file-system-tree-label-cwd': isCwd }"
+                    :title="isCwd ? $t('fileSystemTab.cwd') : undefined"
+                    @click="expanded = !expanded"
+                >
                     <span class="file-system-tree-chevron">{{ expanded ? "▾" : "▸" }}</span>
-                    {{ node.name }}
+                    {{ labelOverride ?? node.name }}
                 </span>
                 <button
                     v-if="allowUpload"
@@ -57,16 +62,25 @@ export default defineComponent({
 
     props: {
         node: { type: Object as PropType<FsTreeNode>, required: true },
-        // FileSystemPane passes true for the top-level /data, /local and /cloud roots so they
+        // FileSystemPane passes true for the top-level asset roots, /local and /cloud so they
         // open immediately; nested directories always start collapsed.
         startExpanded: { type: Boolean, default: false },
         // Whether directories in this subtree get an upload button -- true under /local and /cloud,
-        // false under the read-only /data.
+        // false under the read-only asset roots (/data, /books, etc).
         allowUpload: { type: Boolean, default: false },
         // Uploads are disabled while Python is executing (see FileSystemPane.vue): both /local's
         // main-thread cache and /cloud's cache (cloudFileIO.ts) are only meant to be touched
         // between runs, not while a run might also be reading/writing the same files.
         uploadDisabled: { type: Boolean, default: false },
+        // Whether this node is the directory that will be the current working directory when the
+        // code is next run. Only ever true for the root node passed in by FileSystemPane.vue --
+        // it's deliberately not forwarded to the recursive FileSystemTree below, since the cwd is
+        // always a /local or /cloud root, never a subdirectory.
+        isCwd: { type: Boolean, default: false },
+        // Overrides the displayed label for this node only (e.g. "/data/" instead of the bare
+        // node name "data") -- like isCwd, deliberately not forwarded to the recursive
+        // FileSystemTree below, so it only ever affects the root node passed in by FileSystemPane.
+        labelOverride: { type: String, default: null },
     },
 
     emits: ["download", "upload"],
@@ -111,6 +125,10 @@ export default defineComponent({
 .file-system-tree-label {
     cursor: pointer;
     user-select: none;
+}
+
+.file-system-tree-label-cwd {
+    font-weight: bold;
 }
 
 .file-system-tree-chevron {

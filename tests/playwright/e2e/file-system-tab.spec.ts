@@ -8,41 +8,38 @@ import { startRunning, runButtonShowsRun, runToFinish, checkConsoleContent } fro
 import { enterCode } from "../support/editor";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
-    // Needs a real Pyodide worker (listing/reading "/data" goes via it -- see fileSystemTabIO.ts),
-    // and some tests below also Run code, so this mirrors console-execution.spec.ts's budget
-    // rather than the shorter default:
+    // Needs a real Pyodide worker (downloading an asset file goes via it -- see
+    // fileSystemTabIO.ts/python-execution.ts's readFsFile), and some tests below also Run code, so
+    // this mirrors console-execution.spec.ts's budget rather than the shorter default:
     await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 180000});
 });
 
 async function openFilesTab(page: Page): Promise<void> {
     await page.click("#filesPEATab");
-    // The pane fetches "/data" and "/local" from the worker on mount (FileSystemPane.vue's
-    // mounted() -> refresh()) -- wait for the loading placeholder to be gone rather than for a
-    // fixed delay. Generous timeout: this is a Comlink round-trip to the Pyodide worker (mounting
-    // "/data"'s lazy-fetch FS on first use), seen to genuinely need more than the default 5s under
-    // Firefox/CI contention (matching the same "worker RPC can be slow on a loaded runner" pattern
-    // documented in execution.ts's startRunning()/runButtonShowsRun()):
+    // The pane builds the asset-root and "/local" trees on the main thread (FileSystemPane.vue's
+    // mounted() -> refresh() -- see fileSystemTabIO.ts's listFsRootTree()), no worker round trip
+    // involved, but still wait for the loading placeholder to be gone rather than for a fixed delay:
     await expect(page.locator(".file-system-pane-loading")).toHaveCount(0, {timeout: 30000});
 }
 
 function localUploadInput(page: Page) {
     // Only "/local" ever renders an upload button/input (see FileSystemTree.vue's allow-upload
-    // prop) -- "/data" is read-only, so this is unambiguous as long as no subfolder has been
-    // created under "/local" (none of these tests do):
+    // prop) -- the asset roots are read-only, so this is unambiguous as long as no subfolder has
+    // been created under "/local" (none of these tests do):
     return page.locator(".file-system-tree-upload-input");
 }
 
 test.describe("File system tab -- /data (read-only bundled assets)", () => {
     test("lists the bundled data files", async ({ page }) => {
         await openFilesTab(page);
-        const dataSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.data });
+        const dataSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.assetRoot.replace("{path}", "/data/") });
         await expect(dataSection).toContainText("london-temperature-2025.txt");
         await expect(dataSection).toContainText("word_counts.txt");
     });
 
     test("does not offer an upload button", async ({ page }) => {
         await openFilesTab(page);
-        const dataSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.data });
+        const dataSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.assetRoot.replace("{path}", "/data/") });
         await expect(dataSection.locator(".file-system-tree-upload-btn")).toHaveCount(0);
     });
 

@@ -286,10 +286,11 @@
     "fileSystem": "Files"
   },
   "fileSystemTab": {
-    "data": "Data (read-only)",
+    "assetRoot": "{path} (read-only)",
     "cloud": "Cloud",
     "local": "Local files",
     "programRunning": "Uploads are disabled while your program is running.",
+    "cwd": "This is the current working directory when your code runs",
     "download": "Download",
     "upload": "Upload",
     "loading": "Loading...",

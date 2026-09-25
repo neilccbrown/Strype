@@ -1,10 +1,11 @@
 // Orchestration for the "File system" tab (see FileSystemPane.vue): listing, downloading and
-// uploading files from the internal Pyodide filesystem's "/data" (read-only bundled assets),
-// "/local" (writeable scratch area) and "/cloud" (the connected cloud drive, when the project is
-// saved to one) roots.
+// uploading files from the internal Pyodide filesystem's read-only bundled asset roots ("/data",
+// "/books", "/images", etc -- see assetsRoots() below), "/local" (writeable scratch area) and
+// "/cloud" (the connected cloud drive, when the project is saved to one).
 import { saveAs } from "file-saver";
 import * as Comlink from "comlink";
-import { getPythonClient } from "@/stryperuntime/main_thread_python_handler";
+import { watch } from "vue";
+import { getPythonClient, isPythonWorkerReady } from "@/stryperuntime/main_thread_python_handler";
 import { FsTreeNode } from "@/stryperuntime/file_system_tree_types";
 import { SyncOrAsyncStrypePyodideWorkerRequest } from "@/stryperuntime/worker_bridge_type";
 import { encodeUint8ToString } from "@/stryperuntime/worker_bridge_type";
@@ -14,8 +15,19 @@ import * as localFsCache from "@/helpers/localFsCache";
 import { cloudCloseFile, cloudCreate, cloudListDir, cloudReadFile, cloudWriteFile } from "@/helpers/cloudFileIO";
 import { useStore } from "@/store/store";
 import { ArchiveEntry } from "@/helpers/archive";
+import { assetsFilePrefixes, buildAssetTree } from "@/stryperuntime/assets_file_index";
 
-export type FsRoot = "/data" | "/local" | "/cloud";
+// "/local" and "/cloud" are the two writeable roots; anything else is one of the read-only asset
+// roots mounted from src/assetsFilesystem/ (see assetsRoots() below).
+export type FsRoot = "/local" | "/cloud" | string;
+
+// The read-only asset roots to show in the File system tab, one per top-level directory under
+// src/assetsFilesystem/ (e.g. "/data", "/books", "/images") -- derived dynamically from
+// assetsFilePrefixes so this list tracks whatever directories actually exist there, rather than
+// being a hard-coded list that would go stale if those directories change.
+export function assetsRoots(): FsRoot[] {
+    return assetsFilePrefixes.map((prefix) => "/" + prefix);
+}
 
 // Whether the project is currently saved to a cloud drive -- the same condition
 // PythonExecutionArea.vue uses to decide whether a run mounts "/cloud" at all
@@ -24,13 +36,14 @@ export function isCloudMounted(): boolean {
     return typeof useStore().strypeProjectLocation === "string";
 }
 
-// isPythonWorkerReady only reflects whether a worker is up and its service worker channel is
-// confirmed responsive -- listFsTree just needs a live worker to talk to, so we don't gate on it
-// here; getPythonClient() returning null (e.g. "TestingNoPyodide") is the only case we need to
-// guard against. "/local" never asks the worker at all -- see localFsCache.ts's own comment for
-// why it, not a live worker, is the single source of truth for what's shown here. "/cloud" never
-// asks the worker either -- cloudFileIO.ts's functions are plain main-thread async functions, so
-// there's no need to go via the worker just to browse it.
+// None of the three kinds of root need a live Pyodide worker just to be listed: "/local" is read
+// from localFsCache.ts's own main-thread mirror (see its comment for why that, not a live worker,
+// is the single source of truth for what's shown here); "/cloud" goes via cloudFileIO.ts's plain
+// main-thread async functions; and the read-only asset roots are built straight from the
+// build-time glob in assets_file_index.ts (see buildAssetTree's own comment for why -- avoiding a
+// worker round trip here matters for how quickly the worker becomes ready for an actual Run
+// straight after the File system tab is opened). Downloading an asset file (downloadFsFile below)
+// is the only place that still needs the worker, to lazily mount and fetch that file's real bytes.
 export async function listFsRootTree(root: FsRoot): Promise<FsTreeNode | null> {
     if (root === "/local") {
         return localFsCache.listTree();
@@ -38,11 +51,11 @@ export async function listFsRootTree(root: FsRoot): Promise<FsTreeNode | null> {
     if (root === "/cloud") {
         return await listCloudTree();
     }
-    const client = getPythonClient();
-    if (client == null) {
-        return null;
+    const prefix = root.slice(1);
+    if (assetsFilePrefixes.includes(prefix)) {
+        return buildAssetTree(prefix);
     }
-    return await client.workerProxy.listFsTree(root);
+    return null;
 }
 
 async function buildCloudTree(cloudFileId: string, virtualPath: string, name: string): Promise<FsTreeNode> {
@@ -88,12 +101,40 @@ export async function downloadFsFile(node: FsTreeNode, root: FsRoot): Promise<vo
     if (client == null) {
         return;
     }
+    // client.call() (comsync's SyncClient) throws immediately if the client isn't in its "idle"
+    // state -- it doesn't queue -- and createPyodideSlot() already has one client.call() running
+    // from page load (awaiting the worker's onReady) until Pyodide finishes loading. Calling
+    // client.call() again (for readFsFile, below) while that's still in flight throws "State is
+    // running, not idle" -- silently, since onDownload (FileSystemPane.vue) fires this whole
+    // function without awaiting it, so the rejection becomes an invisible unhandled promise
+    // rejection rather than a console error. Wait out both: isPythonWorkerReady (true once onReady's
+    // *callback* has fired -- see main_thread_python_handler.ts) first, then client.state actually
+    // settling back to "idle" (there's a brief further gap while the pyodideExpose wrapper finishes
+    // returning over Comlink). Previously this whole race was masked by accident: opening the File
+    // system tab always listed "/data" via a plain (non-client.call()) worker RPC first, which took
+    // long enough that Pyodide -- and thus onReady's call -- had always finished by the time a
+    // download's client.call() ran. Listing no longer touches the worker at all (see
+    // listFsRootTree() above), so that accidental ordering guarantee is gone and must be made
+    // explicit here instead:
+    if (!isPythonWorkerReady.value) {
+        await new Promise<void>((resolve) => {
+            const stopWatching = watch(isPythonWorkerReady, (ready) => {
+                if (ready) {
+                    stopWatching();
+                    resolve();
+                }
+            });
+        });
+    }
+    while (client.state !== "idle") {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+    }
     // readFsFile is pyodideExpose'd (see python-execution.ts's own comment for why) so, unlike
-    // listFsTree, it must go via client.call() and is handed a callback for any synchronous
-    // request it makes back to the main thread while reading -- in practice the only kind it can
-    // ever issue is "assetFile_fetch" (fetching a lazily-loaded /data asset's bytes). This mirrors
-    // PythonExecutionArea.vue's own sync-request handling in execPythonCode(), just narrowed to
-    // the one request kind relevant here.
+    // the plain worker RPCs above, it must go via client.call() and is handed a callback for any
+    // synchronous request it makes back to the main thread while reading -- in practice the only
+    // kind it can ever issue is "assetFile_fetch" (fetching a lazily-loaded asset file's bytes).
+    // This mirrors PythonExecutionArea.vue's own sync-request handling in execPythonCode(), just
+    // narrowed to the one request kind relevant here.
     if (!(await isServiceWorkerChannelResponsive(serviceWorkerChannel.baseUrl))) {
         console.error("Service worker sync channel not responding; file download may fail");
     }

@@ -87,7 +87,6 @@ import { assetsFilePrefixes, createLazyFetchAssetsFS } from "@/stryperuntime/pyo
 import {isServiceWorkerChannelResponsive, PyodideErrorDetails} from "@/workers/shared_helpers";
 import {makeServiceWorkerChannel} from "sync-message";
 import {createLazyFetchFS} from "@/stryperuntime/pyodide-emscript-fetch-fs";
-import {FsTreeNode} from "@/stryperuntime/file_system_tree_types";
 
 // We only specify updatePort here as we don't want other files using it directly:
 declare const self: PyodideWorkerGlobalScope & { updatePort: MessagePort };
@@ -119,59 +118,41 @@ async function loadOnly() : Promise<PyodideInterface> {
 }
 const reloader = new PyodideFatalErrorReloader(loadOnly);
 
-// Builds the tree for one root ("/data" or "/local") for the File system tab. Unlike executePython,
-// this does not run any Python code -- it just needs the FS mounted, so it can be (and is) called
-// from the main thread at any time, including before the user has ever pressed Run. Mounting /data
-// and /local here uses the same guarded mkdir/mount pattern as executePython's own setup (see the
-// comment there) so the two don't conflict if a real run subsequently starts on this same worker.
-function ensureFsRootMounted(pyodide: PyodideInterface, root: "/data" | "/local"): void {
+// Mounts one asset root (any of assetsFilePrefixes -- "/data", "/books", "/images", etc) on demand.
+// Used by readFsFile below so that downloading an asset file works even before the user has ever
+// pressed Run (which is the only other place these get mounted -- see executePython's own loop
+// further down). Uses the same guarded mkdir/mount pattern as that loop so the two don't conflict
+// if a real run subsequently starts on this same worker.
+function ensureAssetRootMounted(pyodide: PyodideInterface, root: string): void {
+    const dir = root.slice(1);
+    if (!assetsFilePrefixes.includes(dir)) {
+        return;
+    }
     try {
         pyodide.FS.mkdir(root);
     }
     catch {
         // Ignore errors because they will come from the dir already existing
     }
-    if (root === "/data") {
-        try {
-            pyodide.FS.mount(pyodide.FS.filesystems.ASSETSFS, {root: "data"}, "/data");
-        }
-        catch {
-            // Ignore errors because they will come from it already being mounted
-        }
+    try {
+        pyodide.FS.mount(pyodide.FS.filesystems.ASSETSFS, {root: dir}, root);
+    }
+    catch {
+        // Ignore errors because they will come from it already being mounted
     }
 }
 
-function buildFsTree(pyodide: PyodideInterface, path: string, name: string): FsTreeNode {
-    const stat = pyodide.FS.stat(path);
-    if (!pyodide.FS.isDir(stat.mode)) {
-        return {name, path, isDir: false, size: stat.size};
-    }
-    const children = pyodide.FS.readdir(path)
-        .filter((entry: string) => entry !== "." && entry !== "..")
-        .map((entry: string) => buildFsTree(pyodide, path === "/" ? `/${entry}` : `${path}/${entry}`, entry));
-    return {name, path, isDir: true, children};
-}
-
-// Exposed to the main thread (see Comlink.expose below) for the File system tab. Only ever reads
-// "/data" and "/local" -- "/cloud" is browsed directly from the main thread via cloudFileIO.ts,
-// with no need to go via the worker/Pyodide FS at all.
-async function listFsTree(root: "/data" | "/local"): Promise<FsTreeNode> {
-    return await reloader.withPyodide(async (pyodide: PyodideInterface) => {
-        ensureFsRootMounted(pyodide, root);
-        return buildFsTree(pyodide, root, root.slice(1));
-    });
-}
-
-// Exposed to the main thread for downloading a single file shown in the File system tab. Unlike
-// listFsTree, this has to be pyodideExpose'd (and so, unlike listFsTree, called via client.call()
-// rather than directly): reading an actual /data file's bytes (as opposed to just its directory
-// listing/stat, which listFsTree only ever does) goes through LazyFetchFS's open() -- see
-// pyodide-emscript-fetch-fs.ts -- which fetches the file via self.syncStrypePyodideWorkerBridge,
-// the same synchronous main-thread round trip executePython sets up as "bridgeSync" below. That
-// global is otherwise only ever set while a real Python run is in progress, so without setting it
-// up here too, downloading a /data file before ever pressing Run would throw
-// "self.syncStrypePyodideWorkerBridge is not a function". /local files need no such thing (they're
-// plain MEMFS, no lazy fetch), but there's no harm setting the bridge up unconditionally here.
+// Exposed to the main thread for downloading a single file shown in the File system tab (the tree
+// listing itself is built without the worker at all -- see fileSystemTabIO.ts's listFsRootTree()
+// and assets_file_index.ts's buildAssetTree() for why). This has to be pyodideExpose'd (and so
+// called via client.call() rather than directly): reading an actual asset file's bytes goes through
+// LazyFetchFS's open() -- see pyodide-emscript-fetch-fs.ts -- which fetches the file via
+// self.syncStrypePyodideWorkerBridge, the same synchronous main-thread round trip executePython
+// sets up as "bridgeSync" below. That global is otherwise only ever set while a real Python run is
+// in progress, so without setting it up here too, downloading an asset file before ever pressing
+// Run would throw "self.syncStrypePyodideWorkerBridge is not a function". /local files need no such
+// thing (they're plain MEMFS, no lazy fetch), but there's no harm setting the bridge up
+// unconditionally here.
 const readFsFile = pyodideExpose(async (
     extras: PyodideExtras,
     path: string,
@@ -193,6 +174,7 @@ const readFsFile = pyodideExpose(async (
         };
         self.syncStrypePyodideWorkerBridge = bridgeSync;
         self.asyncStrypePyodideWorkerBridge = (r) => makeRawRequest({kind: "async", request: r});
+        ensureAssetRootMounted(pyodide, "/" + path.split("/")[1]);
         return pyodide.FS.readFile(path, {encoding: "binary"});
     });
 });
@@ -215,7 +197,7 @@ function collectFlatFiles(pyodide: PyodideInterface, path: string, out: Record<s
 // takes a full snapshot of "/local" as a flat {path: bytes} map, right before this worker is
 // discarded, so the main-thread cache (localFsCache.ts) can carry its contents over to the next
 // run's worker (see restoreLocalFs below). Plain MEMFS, no lazy fetch involved, so -- unlike
-// readFsFile -- this needs no pyodideExpose/sync bridge, same as listFsTree.
+// readFsFile -- this needs no pyodideExpose/sync bridge.
 async function snapshotLocalFs(): Promise<Record<string, Uint8Array>> {
     return await reloader.withPyodide(async (pyodide: PyodideInterface) => {
         const out: Record<string, Uint8Array> = {};
@@ -609,9 +591,10 @@ runner`);
         }
         
         // We mount the "books" assets at /books, "images" at /images, etc. Guarded the same way as
-        // /cloud and /local above (rather than the unguarded mkdir+mount this used to be): the File
-        // system tab (see listFsTree()) can mount /data on this same worker instance before any run
-        // ever starts, so by the time a run gets here /data may already exist and be mounted.
+        // /cloud and /local above (rather than the unguarded mkdir+mount this used to be): downloading
+        // a file from the File system tab (see readFsFile/ensureAssetRootMounted above) can mount an
+        // asset root on this same worker instance before any run ever starts, so by the time a run
+        // gets here that root may already exist and be mounted.
         for (const dir of assetsFilePrefixes) {
             try {
                 pyodide.FS.mkdir("/" + dir);
@@ -701,7 +684,6 @@ const onReady = pyodideExpose(async (extras: PyodideExtras, callOnceReady:  Coml
 Comlink.expose({
     executePython,
     onReady,
-    listFsTree,
     readFsFile,
     snapshotLocalFs,
     restoreLocalFs,

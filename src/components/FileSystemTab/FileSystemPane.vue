@@ -5,9 +5,14 @@
             <div v-if="isPythonExecuting" class="file-system-pane-running-note">
                 {{ $t("fileSystemTab.programRunning") }}
             </div>
-            <div class="file-system-pane-root" v-if="dataRoot">
-                <h4>{{ $t("fileSystemTab.data") }}</h4>
-                <FileSystemTree :node="dataRoot" start-expanded @download="(n) => onDownload(n, '/data')" />
+            <div class="file-system-pane-root" v-for="entry in assetRoots" :key="entry.root">
+                <h4>{{ $t("fileSystemTab.assetRoot", {path: entry.root + "/"}) }}</h4>
+                <FileSystemTree
+                    :node="entry.tree"
+                    start-expanded
+                    :label-override="entry.root + '/'"
+                    @download="(n) => onDownload(n, entry.root)"
+                />
             </div>
             <div class="file-system-pane-root" v-if="cloudRoot">
                 <h4>{{ $t("fileSystemTab.cloud") }}</h4>
@@ -16,6 +21,7 @@
                     start-expanded
                     allow-upload
                     :upload-disabled="isPythonExecuting"
+                    :is-cwd="cwdRoot === '/cloud'"
                     @download="(n) => onDownload(n, '/cloud')"
                     @upload="(n, file) => onUpload(n, file, '/cloud')"
                 />
@@ -27,6 +33,7 @@
                     start-expanded
                     allow-upload
                     :upload-disabled="isPythonExecuting"
+                    :is-cwd="cwdRoot === '/local'"
                     @download="(n) => onDownload(n, '/local')"
                     @upload="(n, file) => onUpload(n, file, '/local')"
                 />
@@ -50,6 +57,7 @@ import { PythonExecRunningState } from "@/types/types";
 import FileSystemTree from "@/components/FileSystemTab/FileSystemTree.vue";
 import ArchiveImportDialog from "@/components/FileSystemTab/ArchiveImportDialog.vue";
 import {
+    assetsRoots,
     downloadFsFile,
     FsRoot,
     isCloudMounted,
@@ -81,7 +89,7 @@ export default defineComponent({
     data() {
         return {
             loading: true,
-            dataRoot: null as FsTreeNode | null,
+            assetRoots: [] as { root: FsRoot, tree: FsTreeNode }[],
             localRoot: null as FsTreeNode | null,
             cloudRoot: null as FsTreeNode | null,
             // Set while the "keep as zip / unzip contents" dialog is open for a .zip upload --
@@ -100,6 +108,12 @@ export default defineComponent({
         archiveImportDlgId(): string {
             return "fileSystemArchiveImportDlg";
         },
+
+        // The root that will be the current working directory when the code is next run --
+        // matches the mounting logic in python-execution.ts's executePython() (startInSlashCloud).
+        cwdRoot(): "/local" | "/cloud" {
+            return isCloudMounted() ? "/cloud" : "/local";
+        },
     },
 
     mounted() {
@@ -109,12 +123,15 @@ export default defineComponent({
     methods: {
         async refresh(): Promise<void> {
             this.loading = true;
-            const [dataRoot, localRoot, cloudRoot] = await Promise.all([
-                listFsRootTree("/data"),
+            const roots = assetsRoots();
+            const [assetTrees, localRoot, cloudRoot] = await Promise.all([
+                Promise.all(roots.map((root) => listFsRootTree(root))),
                 listFsRootTree("/local"),
                 isCloudMounted() ? listFsRootTree("/cloud") : Promise.resolve(null),
             ]);
-            this.dataRoot = dataRoot;
+            this.assetRoots = roots
+                .map((root, i) => ({root, tree: assetTrees[i]}))
+                .filter((entry): entry is { root: FsRoot, tree: FsTreeNode } => entry.tree != null);
             this.localRoot = localRoot;
             this.cloudRoot = cloudRoot;
             this.loading = false;
