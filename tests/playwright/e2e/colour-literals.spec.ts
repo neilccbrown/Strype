@@ -1,7 +1,7 @@
 import { test, expect, Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { setupStrypeTest } from "../support/general";
-import { pressFrameShortcut, waitForEditorSettled, typeIndividually, pressN } from "../support/editor";
+import { pressFrameShortcut, waitForEditorSettled, typeIndividually, pressN, doTextHomeEndKeyPress } from "../support/editor";
 import { checkFrameErrorCount } from "../support/execution";
 import { loadContent, save } from "../support/loading-saving";
 
@@ -120,6 +120,30 @@ test.describe("Auto-conversion of typed hex strings to colour literals", () => {
         await page.keyboard.press("ControlOrMeta+y");
         await waitForEditorSettled(page);
         await expect(colourSwatch(page)).toHaveAttribute("data-code", "\"#aabbcc\"");
+    });
+
+    // Regression test, in the same spirit as structured-expressions-media.spec.ts's bracket-wrap
+    // tests for image/sound literals (bug #661): wrapping a converted colour literal's selection
+    // in brackets used to leave it rendered as a plain string until the cursor passed through it
+    // again. That's because the cursor lands exactly on the string's opening-quote index right
+    // after the wrap (immediately to its left, i.e. genuinely outside the string), but the "is the
+    // cursor still inside this string" check in parseCodeLiteral() (editor.ts) treated that
+    // boundary as inside, so it suppressed the re-conversion. See editor.ts's cursorInsideThisString
+    // for the fix.
+    test("Wrapping a colour literal in brackets keeps it rendered as a colour literal", async ({page}) => {
+        await openIfFrame(page);
+        await typeStringThenLeaveIt(page, "#aabbcc");
+        await expect(colourSwatch(page)).toHaveAttribute("data-code", "\"#aabbcc\"");
+
+        // Click the swatch itself (as a user would) to place the cursor in it, then select its
+        // whole content and wrap it in brackets:
+        await colourSwatch(page).click();
+        await doTextHomeEndKeyPress(page, true, true); // Shift+End, selecting the whole literal
+        await page.keyboard.type("(");
+        await waitForEditorSettled(page);
+
+        await expect(colourSwatch(page)).toHaveAttribute("data-code", "\"#aabbcc\"");
+        await checkFrameErrorCount(page, 0);
     });
 });
 

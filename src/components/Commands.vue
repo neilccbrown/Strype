@@ -22,7 +22,7 @@
                         <BTabs id="commandsTabsStandard" content-class="mt-2" v-model:index="standardCommandsTabIndex" no-fade>
                             <BTab button-id="addFramePEATab" :title="$t('commandTabs.0')" active :disabled="isEditing">
                         <!-- #v-endif -->
-                        <div @mousedown.prevent.stop @mouseup.prevent.stop>
+                        <div class="commands-flex-fill" @mousedown.prevent.stop @mouseup.prevent.stop>
                             <!-- #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE -->
                             <!-- no-fade: opening the frame commands pane (Tab/Space at a frame caret) switches
                                  to this tab and immediately needs to focus one of its buttons -- a fade transition
@@ -46,7 +46,7 @@
                                                     <span class="frame-cmd-prefix-btn frame-cmd-btn-large frame-cmd-prefix-btn-wide">{{ $t('autoCompletion.spaceKey') }}</span>
                                                     <span>{{ $t('commandsPane.pressSpaceThenSuffix') }}</span>
                                                 </div>
-                                                <p class="frame-cmd-row">
+                                                <p class="frame-cmd-row add-frame-commands-list">
                                                     <AddFrameCommand
                                                         v-for="addFrameCommand in addFrameCommands"
                                                         :id="addFrameCommandUID(addFrameCommand[0].type.type)"
@@ -463,32 +463,6 @@ export default defineComponent({
         progressPercentWidthStyle(): string {
             return "width: " + this.progressPercent + "%;";
         },
-    },
-
-    watch: {
-        // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
-        isEditing(nowEditing: boolean){
-            // computeAddFrameCommandContainerSize() (see helpers/editor.ts) pins an explicit inline height on the
-            // add-frame-commands <p> so its buttons can wrap into columns when a row doesn't fit. That height is only
-            // ever recomputed on PEA expand/collapse and splitter-resize events -- never when isEditing toggles, even
-            // though addFrameCommands is deliberately emptied while editing a slot (replaced by the codeCompletionCommand/
-            // wrapSelectionCommands/slotShortcutsCommands hints below it). Left pinned, a stale height leaves a gap
-            // above those hints, pushing them down the pane -- enough indentation (more column-wrapping, hence a taller
-            // pinned height to start with) can push them far enough to be hidden behind the PEA pane below, even though
-            // they're still rendered and their shortcuts still work.
-            this.$nextTick(() => {
-                if(nowEditing){
-                    const addFrameCommandsP = document.querySelector("." + scssVars.addFrameCommandsContainerClassName + " p") as HTMLParagraphElement | null;
-                    if(addFrameCommandsP){
-                        addFrameCommandsP.style.height = "";
-                    }
-                }
-                else{
-                    computeAddFrameCommandContainerSize(this.isExpandedPEA);
-                }
-            });
-        },
-        // #v-endif
     },
 
     created() {
@@ -1423,9 +1397,10 @@ export default defineComponent({
                 // The splitter's PEA pane's min size will be updated after computeAddFrameCommandContainerSize() is called
             }
 
-            // Finally, also update the frame commands panel as it may now overflow...
+            // Finally, also refresh the commands/PEA splitter's minimum pane sizes, as the frame
+            // commands panel's rendered height (and so its minimum) may have changed.
             setTimeout(() => {
-                computeAddFrameCommandContainerSize(); 
+                computeAddFrameCommandContainerSize();
             }, 200);
         },
 
@@ -1649,6 +1624,61 @@ export default defineComponent({
     // Matches the margin a <p> would have had (these rows were previously <p> elements).
     margin: 0 0 1rem 0;
 }
+
+// #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
+// The add-frame-commands list (.add-frame-commands-list below) needs to wrap into extra columns
+// whenever it doesn't have room to lay its commands out in one, and it needs to know how much
+// room that is. Rather than have JS measure the pane and pin an explicit pixel height on it (which
+// only happened on splitter-resize/PEA-expand-collapse events, and so went stale the moment the
+// *content* changed instead -- e.g. moving the frame cursor to a section with a different number
+// of available commands -- see the "4-column layout cuts off the right edge" bug this replaced),
+// this chain threads flex-grow with min-height: 0 down from the pane that already has a real,
+// non-auto height, so the list gets an actual CSS height for free, one the browser keeps in sync
+// on every layout change automatically instead of only at specific JS-triggered moments.
+.commands-flex-fill,
+.command-tab-content,
+#addFramePanel {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.#{$strype-classname-add-frame-commands-container} {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+// The list itself is the only child of that chain that should actually grow -- the intro
+// sentence and the (mutually-exclusive, editing-only) code-completion/slot-shortcuts/wrap-selection
+// rows around it all keep their natural content height.
+.add-frame-commands-list {
+    flex: 1 1 0;
+    min-height: 0;
+    display: grid;
+    grid-auto-flow: column;
+    // 28px is a floor slightly under a single command row's natural rendered height (~30px,
+    // AddFrameCommand.vue's .frame-cmd-container margin plus its button); auto-fill uses it to
+    // work out how many rows fit, and the 1fr max then shares out any leftover height evenly so
+    // rows don't end up shorter than their content.
+    grid-template-rows: repeat(auto-fill, minmax(28px, 1fr));
+    // If there's genuinely not enough width for as many columns as the height demands, scroll
+    // rather than silently clip -- unlike the old flex-wrap mechanism, which had no equivalent.
+    overflow-x: auto;
+}
+
+// While a slot is being edited, generateAvailableFrameCommands() (store.ts) deliberately returns
+// no commands at all, so this list renders with zero children; without this override it would
+// still flex-grow to fill the available height (an empty box, but one still taking up space),
+// pushing the code-completion/slot-shortcuts/wrap-selection rows that come after it in the DOM
+// down by that amount -- in the non-expanded-PEA case those rows are in normal flow, so they'd
+// visibly shift down (and could end up hidden behind the PEA pane), same symptom as the bug above.
+.add-frame-commands-list:empty {
+    flex: 0 0 auto;
+}
+// #v-endif
 
 .frame-commands-pane-intro {
     display: flex;
