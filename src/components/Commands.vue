@@ -16,12 +16,6 @@
                                 <span class="gdrive-sync-label" v-else-if="isEditorContentModifiedFlag" :class="{'modifed-label-span': isProjectNotSourced}">{{ $t("appMessage.modified") }}</span>
                             </div>
                         </div>
-                        <!-- #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE -->
-                        <!-- no-fade for the same reason as the micro:bit BTabs below: opening the frame commands
-                             pane (Tab/Space at a frame caret) must not be delayed by a fade transition. -->
-                        <BTabs id="commandsTabsStandard" content-class="mt-2" v-model:index="standardCommandsTabIndex" no-fade>
-                            <BTab button-id="addFramePEATab" :title="$t('commandTabs.0')" active :disabled="isEditing">
-                        <!-- #v-endif -->
                         <div class="commands-flex-fill" @mousedown.prevent.stop @mouseup.prevent.stop>
                             <!-- #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE -->
                             <!-- no-fade: opening the frame commands pane (Tab/Space at a frame caret) switches
@@ -132,13 +126,6 @@
                             </BTabs>
                             <!-- #v-endif-->
                         </div>
-                        <!-- #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE -->
-                            </BTab>
-                            <BTab button-id="filesPEATab" :title="$t('PEA.fileSystem')">
-                                <FileSystemPane class="command-tab-content" />
-                            </BTab>
-                        </BTabs>
-                        <!-- #v-endif -->
                         <text id="userCode"></text>
                         <span id="keystrokeSpan"></span>
                     </div>
@@ -198,7 +185,6 @@ import { BTab, BTabs } from "bootstrap-vue-next";
 import {Splitpanes, Pane} from "splitpanes";
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
 import {getPEAConsoleId, getPEATabContentContainerDivId, getPEAComponentRefId, getPEAControlsDivId} from "@/helpers/editor";
-import FileSystemPane from "@/components/FileSystemTab/FileSystemPane.vue";
 // #v-else
 import APIDiscovery from "@/components/APIDiscovery.vue";
 import { flash } from "@/helpers/webUSB";
@@ -229,7 +215,6 @@ export default defineComponent({
         // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
         Splitpanes, Pane,
         PythonExecutionArea,
-        FileSystemPane,
         // #v-else
         APIDiscovery,
         SimpleMsgModalDlg,
@@ -259,12 +244,6 @@ export default defineComponent({
             commandSplitterPane2MinSize: 0, // to be adjusted after the component is mounted
             commandsSplitterPane2Size: 0, // to be adjused after the component is mounted
             isCommandsSplitterChanged: false,
-            // Tab index for this pane's own "Add Frame"/"Files" tabs -- deliberately separate from
-            // appStore.commandsTabIndex, which is the micro:bit build's Add-Frame/API-discovery tab
-            // index: reusing that here would mean validateSlot()/setFocusEditableSlot() (store.ts),
-            // which switch that index between 0 and 1 as the user enters/leaves an editable slot,
-            // would also flip this pane between Add Frame and Files -- not what those calls mean.
-            standardCommandsTabIndex: 0,
             // #v-endif
         };
     },

@@ -101,9 +101,9 @@ test.describe("File system tab -- /local (writeable scratch area)", () => {
 
         await runToFinish(page);
 
-        // Re-open the tab (it's unmounted/remounted per tab switch -- see PythonExecutionArea's
-        // v-if in Commands.vue -- so this also re-fetches from the cache):
-        await page.click("#addFramePEATab");
+        // Re-open the tab (it's unmounted/remounted per tab switch -- see PythonExecutionArea.vue's
+        // v-if on FileSystemPane -- so this also re-fetches from the cache):
+        await page.click("#consolePEATab");
         await openFilesTab(page);
         await expect(localSection).toContainText("survives-run.txt");
     });
