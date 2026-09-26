@@ -219,6 +219,24 @@ export function deleteFromLocal(node: FsTreeNode): void {
     localFsCache.deleteFile(node.path);
 }
 
+// Files at or above this size can't be pinned (see togglePinLocal below) -- kept in sync with the
+// identical constant in FileSystemTree.vue, which uses it to grey out the pin button rather than
+// relying solely on this function silently refusing (that constant isn't imported here to avoid
+// pulling FileSystemTree.vue's presentational code into this file, or vice versa).
+export const MAX_PINNABLE_FILE_SIZE = 1024 * 1024;
+
+// Toggles whether a "/local" file is pinned (saved into the .spy file itself -- see load-save.ts's
+// savePinnedLocalFiles()/loadPinnedLocalFiles()). Refuses to newly pin a file at or above
+// MAX_PINNABLE_FILE_SIZE, but never refuses to unpin one already over that size (e.g. from an
+// older project saved before this limit existed, or before the file grew past it).
+export function togglePinLocal(node: FsTreeNode): void {
+    const currentlyPinned = localFsCache.isPinned(node.path);
+    if (!currentlyPinned && (node.size ?? 0) >= MAX_PINNABLE_FILE_SIZE) {
+        return;
+    }
+    localFsCache.setPinned(node.path, !currentlyPinned);
+}
+
 // Uploads a file into "/cloud" at the given directory node (its cloudFileId is the parent folder
 // to create the new file in). Goes straight through cloudFileIO.ts's main-thread functions --
 // create, write the actual content, then close (which awaits the write actually landing, the same

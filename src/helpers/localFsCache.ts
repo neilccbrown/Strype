@@ -15,6 +15,38 @@ import { FsTreeNode } from "@/stryperuntime/file_system_tree_types";
 
 const files = new Map<string, Uint8Array>();
 
+// Which files (by path) are "pinned" -- see load-save.ts's savePinnedLocalFiles()/
+// loadPinnedLocalFiles() for what that actually means (saved into the .spy file itself, so they
+// survive a reload). Separate from `files` above since pinning is metadata about an entry, not
+// the entry's content.
+const pinnedPaths = new Set<string>();
+
+export function isPinned(path: string): boolean {
+    return pinnedPaths.has(path);
+}
+
+export function setPinned(path: string, pinned: boolean): void {
+    if (pinned) {
+        pinnedPaths.add(path);
+    }
+    else {
+        pinnedPaths.delete(path);
+    }
+}
+
+// Every currently-pinned file's bytes, keyed by path -- what savePinnedLocalFiles() (load-save.ts)
+// actually serialises into the .spy file.
+export function listPinnedEntries(): Record<string, Uint8Array> {
+    const result: Record<string, Uint8Array> = {};
+    for (const path of pinnedPaths) {
+        const data = files.get(path);
+        if (data != null) {
+            result[path] = data;
+        }
+    }
+    return result;
+}
+
 export function mergeSnapshot(entries: Record<string, Uint8Array>): void {
     for (const [path, data] of Object.entries(entries)) {
         files.set(path, data);
@@ -35,6 +67,7 @@ export function readFile(path: string): Uint8Array | undefined {
 
 export function deleteFile(path: string): void {
     files.delete(path);
+    pinnedPaths.delete(path);
 }
 
 // Builds the same FsTreeNode shape the worker's listFsTree() produces for "/data", but from this
@@ -60,7 +93,7 @@ export function listTree(): FsTreeNode {
         const dirPath = path.slice(0, path.lastIndexOf("/")) || "/local";
         const dir = ensureDir(dirPath, dirPath.slice(dirPath.lastIndexOf("/") + 1));
         const name = path.slice(path.lastIndexOf("/") + 1);
-        dir.children?.push({name, path, isDir: false, size: files.get(path)?.length});
+        dir.children?.push({name, path, isDir: false, size: files.get(path)?.length, isPinned: pinnedPaths.has(path)});
     }
     return root;
 }

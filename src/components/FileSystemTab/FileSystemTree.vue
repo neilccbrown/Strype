@@ -67,6 +67,16 @@
                 >
                     <i class="fa fa-trash"></i>
                 </button>
+                <button
+                    v-if="allowPin"
+                    class="file-system-tree-pin-btn"
+                    :class="{ 'file-system-tree-pin-btn-pinned': node.isPinned }"
+                    :disabled="pinDisabled"
+                    :title="pinTitle"
+                    @click="$emit('pin', node)"
+                >
+                    <i class="fa fa-thumbtack"></i>
+                </button>
                 <button class="file-system-tree-download-btn" :title="$t('fileSystemTab.download')" @click="$emit('download', node)">
                     <i class="fa fa-download"></i>
                 </button>
@@ -81,12 +91,14 @@
                     :node="child"
                     :allow-upload="allowUpload"
                     :allow-delete="allowDelete"
+                    :allow-pin="allowPin"
                     :upload-disabled="uploadDisabled"
                     :invisible-prefix="childInvisiblePrefix"
                     @download="(n) => $emit('download', n)"
                     @downloadDir="(n) => $emit('downloadDir', n)"
                     @upload="(n, file) => $emit('upload', n, file)"
                     @delete="(n) => $emit('delete', n)"
+                    @pin="(n) => $emit('pin', n)"
                 />
             </ul>
         </li>
@@ -96,6 +108,12 @@
 <script lang="ts">
 import { defineComponent, PropType } from "vue";
 import { FsTreeNode } from "@/stryperuntime/file_system_tree_types";
+
+// Kept in sync with the identical MAX_PINNABLE_FILE_SIZE in fileSystemTabIO.ts (which actually
+// enforces it) -- duplicated rather than imported so this purely-presentational component doesn't
+// need to pull in that file's much heavier dependency graph (worker/Comlink/cloud types) just for
+// one constant.
+const MAX_PINNABLE_FILE_SIZE = 1024 * 1024;
 
 export default defineComponent({
     name: "FileSystemTree",
@@ -112,6 +130,12 @@ export default defineComponent({
         // FileSystemPane.vue): unlike upload, this isn't offered under /cloud too, since deleting a
         // cloud file needs real API calls this doesn't (yet) make, not just a local cache edit.
         allowDelete: { type: Boolean, default: false },
+        // Whether *files* (not directories -- see the template, only the file branch uses this) in
+        // this subtree get a pin button -- true only under /local (see FileSystemPane.vue): pinning
+        // saves the file into the .spy project file itself (see load-save.ts's
+        // savePinnedLocalFiles()), which only makes sense for /local's otherwise-ephemeral cache,
+        // not the read-only asset roots or (not yet supported) /cloud.
+        allowPin: { type: Boolean, default: false },
         // Uploads/deletes are disabled while Python is executing (see FileSystemPane.vue): /local's
         // main-thread cache (and, for uploads only, /cloud's cache in cloudFileIO.ts) are only meant
         // to be touched between runs, not while a run might also be reading/writing the same files.
@@ -135,7 +159,7 @@ export default defineComponent({
         invisiblePrefix: { type: String, default: "" },
     },
 
-    emits: ["download", "downloadDir", "upload", "delete"],
+    emits: ["download", "downloadDir", "upload", "delete", "pin"],
 
     data() {
         return {
@@ -192,6 +216,24 @@ export default defineComponent({
                 }
             }
             return path;
+        },
+
+        // Whether this node's pin button should be disabled -- true if it's not already pinned
+        // and is at or above MAX_PINNABLE_FILE_SIZE (see fileSystemTabIO.ts's togglePinLocal,
+        // which enforces the same limit): already-pinned files can always be unpinned regardless
+        // of size.
+        pinDisabled(): boolean {
+            return !this.node.isPinned && (this.node.size ?? 0) >= MAX_PINNABLE_FILE_SIZE;
+        },
+
+        pinTitle(): string {
+            if (this.node.isPinned) {
+                return this.$t("fileSystemTab.unpin") as string;
+            }
+            if (this.pinDisabled) {
+                return this.$t("fileSystemTab.pinTooLarge") as string;
+            }
+            return this.$t("fileSystemTab.pin") as string;
         },
     },
 
@@ -278,7 +320,8 @@ export default defineComponent({
 // code) locating ".file-system-tree-download-btn" within a row must find exactly the download
 // button, never also the delete button next to it.
 .file-system-tree-download-btn,
-.file-system-tree-delete-btn {
+.file-system-tree-delete-btn,
+.file-system-tree-pin-btn {
     background: none;
     border: none;
     cursor: pointer;
@@ -289,7 +332,8 @@ export default defineComponent({
     margin-left: 0.5em;
     flex-shrink: 0;
     // Hidden (not display:none, so it doesn't shift the row's layout) until the row is hovered --
-    // see the two rules just below:
+    // see the rules just below -- unless it's a pinned file's pin button (see
+    // .file-system-tree-pin-btn-pinned), which stays visible so pinned status is always apparent.
     visibility: hidden;
 }
 
@@ -303,10 +347,28 @@ export default defineComponent({
     color: #c33;
 }
 
+.file-system-tree-pin-btn:hover {
+    opacity: 0.8;
+}
+
+.file-system-tree-pin-btn:disabled {
+    cursor: not-allowed;
+}
+
+// Once a file is pinned, its pin button stays visible (not just on row-hover) and tinted, so
+// pinned status is visible at a glance without needing to hover every row:
+.file-system-tree-pin-btn-pinned {
+    visibility: visible !important;
+    opacity: 0.8;
+    color: #d9a520;
+}
+
 .file-system-tree-dir:hover > .file-system-tree-download-btn,
 .file-system-tree-file:hover > .file-system-tree-download-btn,
 .file-system-tree-dir:hover > .file-system-tree-delete-btn,
-.file-system-tree-file:hover > .file-system-tree-delete-btn {
+.file-system-tree-file:hover > .file-system-tree-delete-btn,
+.file-system-tree-dir:hover > .file-system-tree-pin-btn,
+.file-system-tree-file:hover > .file-system-tree-pin-btn {
     visibility: visible;
 }
 

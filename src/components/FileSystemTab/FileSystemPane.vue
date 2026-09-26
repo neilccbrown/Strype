@@ -22,11 +22,13 @@
                     :node="child"
                     allow-upload
                     allow-delete
+                    allow-pin
                     :upload-disabled="isPythonExecuting"
                     @download="(n) => onDownload(n, '/local')"
                     @downloadDir="(n) => onDownloadDir(n, '/local')"
                     @upload="(n, file) => onUpload(n, file, '/local')"
                     @delete="onDeleteLocal"
+                    @pin="onPinLocal"
                 />
                 <div class="file-system-pane-flat-item">
                     <button
@@ -90,6 +92,7 @@ import {
     FsRoot,
     isCloudMounted,
     listFsRootTree,
+    togglePinLocal,
     uploadEntriesToCloud,
     uploadEntriesToLocal,
     uploadToCloud,
@@ -183,6 +186,11 @@ export default defineComponent({
 
         onDeleteLocal(node: FsTreeNode): void {
             deleteFromLocal(node);
+            void this.refreshLocal();
+        },
+
+        onPinLocal(node: FsTreeNode): void {
+            togglePinLocal(node);
             void this.refreshLocal();
         },
 

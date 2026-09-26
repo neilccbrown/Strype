@@ -1,11 +1,14 @@
 import { test, expect, Page, Locator } from "@playwright/test";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { rename } from "node:fs/promises";
 import path from "node:path";
 import JSZip from "jszip";
 import en from "../../../src/localisation/en/en_main.json";
-import { setupStrypeTest } from "../support/general";
+import { setupStrypeTest, DEFAULT_STARTING_FRAME_COUNT } from "../support/general";
 import { startRunning, runButtonShowsRun, runToFinish, checkConsoleContent } from "../support/execution";
 import { enterCode } from "../support/editor";
+import { save, load } from "../support/loading-saving";
+import { strypeElIds } from "../support/proxy";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     // Needs a real Pyodide worker (downloading an asset file goes via it -- see
@@ -35,6 +38,15 @@ async function openBuiltInSection(page: Page, rootLabel: string): Promise<Locato
     const rootLi = page.locator("li", { has: page.locator(".file-system-tree-label", { hasText: exactLabel }) });
     await rootLi.locator(".file-system-tree-chevron").first().click();
     return rootLi;
+}
+
+// See load-save-frame-content.spec.ts's identically-named helper for the same reasoning (a full
+// page reload, needed here so /local's in-memory cache -- localFsCache.ts -- is genuinely reset,
+// not just re-rendered, before checking that a pinned file gets restored into it from scratch):
+async function newProject(page: Page): Promise<void> {
+    await page.click("#" + await strypeElIds(page).getEditorMenuUID());
+    await page.click("#" + await strypeElIds(page).getNewProjectLinkId(), {noWaitAfter: true});
+    await expect(page.locator(".frame-div")).toHaveCount(DEFAULT_STARTING_FRAME_COUNT, {timeout: 20000});
 }
 
 function localUploadInput(page: Page) {
@@ -283,6 +295,61 @@ test.describe("File system tab -- /local (writeable scratch area)", () => {
 
         await expect(localSection).not.toContainText("sub");
         await expect(localSection).toContainText("keep.txt");
+    });
+
+    test("pinning a file saves it into the project file, and it's restored on load", async ({ page }) => {
+        await openFilesTab(page);
+        const content = "pin me and save me\n";
+        const filePath = testFixturePath(test.info().outputDir, "pin-me.txt", content);
+        await localUploadInput(page).setInputFiles(filePath);
+
+        const localSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.local });
+        const row = localSection.locator(".file-system-tree-file", { hasText: "pin-me.txt" });
+        await row.hover();
+        await row.locator(".file-system-tree-pin-btn").click();
+        await expect(row.locator(".file-system-tree-pin-btn")).toHaveClass(/file-system-tree-pin-btn-pinned/);
+
+        const savedPath = await save(page, true, "pin-round-trip");
+        await newProject(page);
+        // The downloaded file has no ".spy" extension (Playwright's download gives it a bare temp
+        // name) -- load() derives the expected post-load project name from the file's own name, so
+        // it needs a real ".spy" name first (see load-save-frame-content.spec.ts's identical step):
+        await rename(savedPath, savedPath + ".spy");
+        await load(page, savedPath + ".spy");
+
+        await openFilesTab(page);
+        await expect(localSection).toContainText("pin-me.txt");
+        const reloadedRow = localSection.locator(".file-system-tree-file", { hasText: "pin-me.txt" });
+        await expect(reloadedRow.locator(".file-system-tree-pin-btn")).toHaveClass(/file-system-tree-pin-btn-pinned/);
+
+        await reloadedRow.hover();
+        const [download] = await Promise.all([
+            page.waitForEvent("download"),
+            reloadedRow.locator(".file-system-tree-download-btn").click(),
+        ]);
+        const downloadedPath = await download.path();
+        expect(downloadedPath).not.toBeNull();
+        expect(readFileSync(downloadedPath as string, "utf8")).toEqual(content);
+    });
+
+    test("a file at or over 1MB can't be pinned, but pinning still works just under the limit", async ({ page }) => {
+        await openFilesTab(page);
+        // One byte under the 1MB limit (see MAX_PINNABLE_FILE_SIZE, fileSystemTabIO.ts):
+        const smallEnoughPath = testFixturePath(test.info().outputDir, "just-fits.txt", "a".repeat(1024 * 1024 - 1));
+        // One byte at (over) the limit:
+        const tooBigPath = testFixturePath(test.info().outputDir, "too-big.txt", "a".repeat(1024 * 1024));
+
+        await localUploadInput(page).setInputFiles(smallEnoughPath);
+        await localUploadInput(page).setInputFiles(tooBigPath);
+
+        const localSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.local });
+        const smallRow = localSection.locator(".file-system-tree-file", { hasText: "just-fits.txt" });
+        const bigRow = localSection.locator(".file-system-tree-file", { hasText: "too-big.txt" });
+
+        await smallRow.hover();
+        await expect(smallRow.locator(".file-system-tree-pin-btn")).toBeEnabled();
+        await bigRow.hover();
+        await expect(bigRow.locator(".file-system-tree-pin-btn")).toBeDisabled();
     });
 });
 

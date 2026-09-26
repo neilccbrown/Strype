@@ -155,7 +155,7 @@ import RecordSoundDlg from "@/components/RecordSoundDlg.vue";
 import ColourPickerDlg from "@/components/ColourPickerDlg.vue";
 import axios from "axios";
 import scssVars from "@/assets/style/_export.module.scss";
-import {loadDivider} from "@/helpers/load-save";
+import {loadDivider, loadPinnedLocalFiles} from "@/helpers/load-save";
 import FrameHeader from "@/components/FrameHeader.vue";
 import { eventBus, projectDocumentationFrameId } from "@/helpers/appContext";
 import {inflateRaw} from "pako";
@@ -1792,6 +1792,11 @@ export default defineComponent({
 
                     // Clear the Python Execution Area as it could have be run before.
                     vueComponentsAPIHandler.peaComponentAPI?.clear();
+
+                    // Restore any files pinned into this project (see load-save.ts's
+                    // savePinnedLocalFiles()) into "/local" -- see loadPinnedLocalFiles()'s own
+                    // comment. Only relevant here, not micro:bit mode, since that has no Files tab.
+                    loadPinnedLocalFiles(s.headers["pinnedLocalFiles"]);
                     // #v-endif
                     
                     this.appStore.setDividerStates(

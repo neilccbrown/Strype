@@ -16,4 +16,9 @@ export interface FsTreeNode {
     // "path" is still populated for cloud nodes too (a virtual "/cloud/..." path, matching what a
     // real Python run's mounted /cloud would resolve it to), for display and as a stable v-for key.
     cloudFileId?: string,
+    // Only meaningful for files under "/local" (see localFsCache.ts's listTree()): whether this
+    // file is "pinned" -- saved into the .spy file itself (see load-save.ts's
+    // savePinnedLocalFiles()/loadPinnedLocalFiles()) so it survives a project reload, rather than
+    // being lost like the rest of "/local" (which is plain in-memory scratch space otherwise).
+    isPinned?: boolean,
 }
