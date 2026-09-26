@@ -223,6 +223,51 @@ test.describe("File system tab -- /local (writeable scratch area)", () => {
         await expect(localSection).not.toContainText("delete-me.txt");
         await expect(localSection).toContainText(en.fileSystemTab.emptyFolder);
     });
+
+    test("deleting one of several files removes only that one", async ({ page }) => {
+        await openFilesTab(page);
+        const localSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.local });
+
+        for (const name of ["keep-a.txt", "delete-me.txt", "keep-b.txt"]) {
+            const filePath = testFixturePath(test.info().outputDir, name, `content of ${name}\n`);
+            await localUploadInput(page).setInputFiles(filePath);
+            await expect(localSection).toContainText(name);
+        }
+
+        const row = localSection.locator(".file-system-tree-file", { hasText: "delete-me.txt" });
+        await row.hover();
+        await row.locator(".file-system-tree-delete-btn").click();
+
+        await expect(localSection).not.toContainText("delete-me.txt");
+        await expect(localSection).toContainText("keep-a.txt");
+        await expect(localSection).toContainText("keep-b.txt");
+        // Two files remain, so this must NOT show as empty:
+        await expect(localSection).not.toContainText(en.fileSystemTab.emptyFolder);
+    });
+
+    test("deleting a directory removes only its own contents, leaving a sibling file", async ({ page }) => {
+        await openFilesTab(page);
+        const zipPath = await testZipFixturePath(test.info().outputDir, "delete-dir-test.zip", {
+            "keep.txt": "keep me\n",
+            "sub/a.txt": "content a\n",
+            "sub/nested/b.txt": "content b\n",
+        });
+        await localUploadInput(page).setInputFiles(zipPath);
+        await page.getByRole("button", { name: en.fileSystemTab.unzipContents }).click();
+
+        const localSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.local });
+        await expect(localSection).toContainText("keep.txt");
+        await expect(localSection).toContainText("sub");
+
+        // Deleting a directory works straight off the already-loaded tree data (see the equivalent
+        // download-as-zip test above), with no need to have expanded it in the UI first:
+        const subDir = localSection.locator(".file-system-tree-dir", { hasText: "sub" });
+        await subDir.hover();
+        await subDir.locator(".file-system-tree-delete-btn").click();
+
+        await expect(localSection).not.toContainText("sub");
+        await expect(localSection).toContainText("keep.txt");
+    });
 });
 
 test.describe("File system tab -- uploading an archive to /local", () => {
