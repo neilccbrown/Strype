@@ -127,21 +127,26 @@ export default defineComponent({
     },
 
     computed: {
-        // What's actually shown as this node's own label -- labelOverride for the root nodes
-        // FileSystemPane.vue passes it for (e.g. "/books/"), otherwise the plain node name.
+        // What's actually shown as this node's own label (directories only -- see the template):
+        // labelOverride for the root nodes FileSystemPane.vue passes it for (e.g. "/books/", which
+        // already has its own trailing slash baked in), otherwise the plain node name with a
+        // trailing slash added (e.g. "backgrounds/") so it reads as a path segment and so
+        // childInvisiblePrefix below can append it without the two run together (e.g.
+        // "backgroundsspace" for a "space.png" under "backgrounds" without the slash).
         ownLabelText(): string {
-            return this.labelOverride ?? this.node.name;
+            if (this.labelOverride != null) {
+                return this.labelOverride;
+            }
+            return this.node.isDir ? this.node.name + "/" : this.node.name;
         },
 
         // The invisible-alignment prefix to pass down to this node's own children (see
-        // invisiblePrefix's own comment). Only ever non-empty for the direct children of a
-        // labelOverride'd root (e.g. "/books/"'s own children): labelOverride text already reads
-        // as a full path with its own trailing slash, so appending it verbatim reads naturally.
-        // Deeper levels reset to "" rather than keep accumulating plain node names with no
-        // separator between them, which would otherwise read as one run-together word on hover
-        // (e.g. "backgroundsspace" for a "space.png" two levels under "/images/"):
+        // invisiblePrefix's own comment) -- this node's own inherited prefix plus its own label,
+        // which (per ownLabelText above) always ends in "/". Accumulates at every nesting level,
+        // so e.g. a file two levels under "/images/" (in "backgrounds") gets the invisible prefix
+        // "/images/backgrounds/" and a visible label starting exactly where that ends:
         childInvisiblePrefix(): string {
-            return this.labelOverride != null ? this.invisiblePrefix + this.ownLabelText : "";
+            return this.invisiblePrefix + this.ownLabelText;
         },
 
         labelTitle(): string {
