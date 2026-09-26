@@ -293,6 +293,8 @@
     "cwd": "This is the current working directory when your code runs",
     "download": "Download",
     "downloadZip": "Download as a zip file",
+    "delete": "Delete this file",
+    "deleteDir": "Delete this folder and everything in it",
     "copyPath": "Click to copy the path",
     "upload": "Upload",
     "loading": "Loading...",

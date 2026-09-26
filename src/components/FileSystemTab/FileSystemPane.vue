@@ -21,10 +21,12 @@
                     :key="child.path"
                     :node="child"
                     allow-upload
+                    allow-delete
                     :upload-disabled="isPythonExecuting"
                     @download="(n) => onDownload(n, '/local')"
                     @downloadDir="(n) => onDownloadDir(n, '/local')"
                     @upload="(n, file) => onUpload(n, file, '/local')"
+                    @delete="onDeleteLocal"
                 />
                 <div class="file-system-pane-flat-item">
                     <button
@@ -82,6 +84,7 @@ import FileSystemTree from "@/components/FileSystemTab/FileSystemTree.vue";
 import ArchiveImportDialog from "@/components/FileSystemTab/ArchiveImportDialog.vue";
 import {
     assetsRoots,
+    deleteFromLocal,
     downloadFsDirectoryAsZip,
     downloadFsFile,
     FsRoot,
@@ -176,6 +179,11 @@ export default defineComponent({
 
         onDownloadDir(node: FsTreeNode, root: FsRoot): void {
             void downloadFsDirectoryAsZip(node, root);
+        },
+
+        onDeleteLocal(node: FsTreeNode): void {
+            deleteFromLocal(node);
+            void this.refreshLocal();
         },
 
         // "/local" doesn't render its own root row (see the template) -- there's no FileSystemTree

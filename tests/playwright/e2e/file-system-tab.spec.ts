@@ -70,6 +70,12 @@ test.describe("File system tab -- /data (read-only bundled assets)", () => {
         await expect(dataSection.locator(".file-system-tree-upload-btn")).toHaveCount(0);
     });
 
+    test("does not offer a delete button", async ({ page }) => {
+        await openFilesTab(page);
+        const dataSection = await openBuiltInSection(page, "/data/");
+        await expect(dataSection.locator(".file-system-tree-delete-btn")).toHaveCount(0);
+    });
+
     test("downloading a file produces its real content", async ({ page }) => {
         await openFilesTab(page);
         await openBuiltInSection(page, "/data/");
@@ -199,6 +205,23 @@ test.describe("File system tab -- /local (writeable scratch area)", () => {
         const localSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.local });
         await localSection.locator(".file-system-tree-label", { hasText: "clip-test.txt" }).click();
         await expect.poll(() => page.evaluate("navigator.clipboard.readText()")).toEqual("/local/clip-test.txt");
+    });
+
+    test("clicking the delete button removes the file", async ({ page }) => {
+        await openFilesTab(page);
+        const filePath = testFixturePath(test.info().outputDir, "delete-me.txt", "content\n");
+        await localUploadInput(page).setInputFiles(filePath);
+
+        const localSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.local });
+        await expect(localSection).toContainText("delete-me.txt");
+
+        const row = localSection.locator(".file-system-tree-file", { hasText: "delete-me.txt" });
+        // The delete button only shows on hover (see FileSystemTree.vue's CSS):
+        await row.hover();
+        await row.locator(".file-system-tree-delete-btn").click();
+
+        await expect(localSection).not.toContainText("delete-me.txt");
+        await expect(localSection).toContainText(en.fileSystemTab.emptyFolder);
     });
 });
 

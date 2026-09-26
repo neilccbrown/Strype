@@ -206,6 +206,19 @@ export async function uploadToLocal(dirNode: FsTreeNode, file: File): Promise<vo
     localFsCache.writeFile(path, data);
 }
 
+// Deletes a file, or every file under a directory, from "/local". Directories aren't stored as
+// entries of their own in localFsCache.ts (they're purely implicit in the files' paths), so
+// "deleting" one just means deleting every file whose path falls under it.
+export function deleteFromLocal(node: FsTreeNode): void {
+    if (node.isDir) {
+        for (const child of node.children ?? []) {
+            deleteFromLocal(child);
+        }
+        return;
+    }
+    localFsCache.deleteFile(node.path);
+}
+
 // Uploads a file into "/cloud" at the given directory node (its cloudFileId is the parent folder
 // to create the new file in). Goes straight through cloudFileIO.ts's main-thread functions --
 // create, write the actual content, then close (which awaits the write actually landing, the same

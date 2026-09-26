@@ -29,6 +29,15 @@
                     @change="onFileSelected"
                 />
                 <button
+                    v-if="allowDelete"
+                    class="file-system-tree-delete-btn"
+                    :disabled="uploadDisabled"
+                    :title="$t('fileSystemTab.deleteDir')"
+                    @click="$emit('delete', node)"
+                >
+                    <i class="fa fa-trash"></i>
+                </button>
+                <button
                     class="file-system-tree-download-btn"
                     :title="$t('fileSystemTab.downloadZip')"
                     @click="$emit('downloadDir', node)"
@@ -49,6 +58,15 @@
                     @animationend="justCopied = false"
                 ><span class="file-system-tree-invisible" aria-hidden="true">{{ invisiblePrefix }}</span>{{ node.name }}</span>
                 <span class="file-system-tree-spacer"></span>
+                <button
+                    v-if="allowDelete"
+                    class="file-system-tree-delete-btn"
+                    :disabled="uploadDisabled"
+                    :title="$t('fileSystemTab.delete')"
+                    @click="$emit('delete', node)"
+                >
+                    <i class="fa fa-trash"></i>
+                </button>
                 <button class="file-system-tree-download-btn" :title="$t('fileSystemTab.download')" @click="$emit('download', node)">
                     <i class="fa fa-download"></i>
                 </button>
@@ -62,11 +80,13 @@
                     :key="child.path"
                     :node="child"
                     :allow-upload="allowUpload"
+                    :allow-delete="allowDelete"
                     :upload-disabled="uploadDisabled"
                     :invisible-prefix="childInvisiblePrefix"
                     @download="(n) => $emit('download', n)"
                     @downloadDir="(n) => $emit('downloadDir', n)"
                     @upload="(n, file) => $emit('upload', n, file)"
+                    @delete="(n) => $emit('delete', n)"
                 />
             </ul>
         </li>
@@ -88,9 +108,13 @@ export default defineComponent({
         // Whether directories in this subtree get an upload button -- true under /local and /cloud,
         // false under the read-only asset roots (/data, /books, etc).
         allowUpload: { type: Boolean, default: false },
-        // Uploads are disabled while Python is executing (see FileSystemPane.vue): both /local's
-        // main-thread cache and /cloud's cache (cloudFileIO.ts) are only meant to be touched
-        // between runs, not while a run might also be reading/writing the same files.
+        // Whether items in this subtree get a delete button -- true only under /local (see
+        // FileSystemPane.vue): unlike upload, this isn't offered under /cloud too, since deleting a
+        // cloud file needs real API calls this doesn't (yet) make, not just a local cache edit.
+        allowDelete: { type: Boolean, default: false },
+        // Uploads/deletes are disabled while Python is executing (see FileSystemPane.vue): /local's
+        // main-thread cache (and, for uploads only, /cloud's cache in cloudFileIO.ts) are only meant
+        // to be touched between runs, not while a run might also be reading/writing the same files.
         uploadDisabled: { type: Boolean, default: false },
         // Whether this node is the directory that will be the current working directory when the
         // code is next run. Only ever true for the root node passed in by FileSystemPane.vue --
@@ -111,7 +135,7 @@ export default defineComponent({
         invisiblePrefix: { type: String, default: "" },
     },
 
-    emits: ["download", "downloadDir", "upload"],
+    emits: ["download", "downloadDir", "upload", "delete"],
 
     data() {
         return {
@@ -231,7 +255,11 @@ export default defineComponent({
     flex: 1;
 }
 
-.file-system-tree-download-btn {
+// Deliberately two separate classes, not one shared class on both buttons: tests (and any other
+// code) locating ".file-system-tree-download-btn" within a row must find exactly the download
+// button, never also the delete button next to it.
+.file-system-tree-download-btn,
+.file-system-tree-delete-btn {
     background: none;
     border: none;
     cursor: pointer;
@@ -250,8 +278,16 @@ export default defineComponent({
     opacity: 0.8;
 }
 
+// A slight red tint on hover, distinguishing it from the (non-destructive) download button next
+// to it:
+.file-system-tree-delete-btn:hover {
+    color: #c33;
+}
+
 .file-system-tree-dir:hover > .file-system-tree-download-btn,
-.file-system-tree-file:hover > .file-system-tree-download-btn {
+.file-system-tree-file:hover > .file-system-tree-download-btn,
+.file-system-tree-dir:hover > .file-system-tree-delete-btn,
+.file-system-tree-file:hover > .file-system-tree-delete-btn {
     visibility: visible;
 }
 
