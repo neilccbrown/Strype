@@ -174,11 +174,30 @@ export default defineComponent({
             const copyHint = this.$t("fileSystemTab.copyPath") as string;
             return this.isCwd ? `${this.$t("fileSystemTab.cwd")} -- ${copyHint}` : copyHint;
         },
+
+        // What copyPath() below actually puts on the clipboard: with the leading "/local/" or
+        // "/cloud/" stripped off for anything under either of those roots, since one of them is
+        // always the working directory the code runs from (see cwdRoot, FileSystemPane.vue) -- a
+        // plain relative path (e.g. "photo.png", not "/local/photo.png") is what you'd actually
+        // write in open(...) etc. Left as the full path for everything else (the read-only asset
+        // roots): those are never the working directory, so only their absolute path ever resolves.
+        pathToCopy(): string {
+            const path = this.node.path;
+            for (const cwdRoot of ["/local", "/cloud"]) {
+                if (path === cwdRoot) {
+                    return ".";
+                }
+                if (path.startsWith(cwdRoot + "/")) {
+                    return path.slice(cwdRoot.length + 1);
+                }
+            }
+            return path;
+        },
     },
 
     methods: {
         copyPath(): void {
-            navigator.clipboard.writeText(this.node.path);
+            navigator.clipboard.writeText(this.pathToCopy);
             this.justCopied = true;
         },
 

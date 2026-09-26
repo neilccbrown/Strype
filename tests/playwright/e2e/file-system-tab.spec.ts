@@ -196,7 +196,7 @@ test.describe("File system tab -- /local (writeable scratch area)", () => {
         await runButtonShowsRun(runButton);
     });
 
-    test("clicking a file name copies its path to the clipboard", async ({ page }) => {
+    test("clicking a file name copies its path to the clipboard, without the /local/ prefix", async ({ page }) => {
         await openFilesTab(page);
         const content = "for clipboard test\n";
         const filePath = testFixturePath(test.info().outputDir, "clip-test.txt", content);
@@ -204,7 +204,23 @@ test.describe("File system tab -- /local (writeable scratch area)", () => {
 
         const localSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.local });
         await localSection.locator(".file-system-tree-label", { hasText: "clip-test.txt" }).click();
-        await expect.poll(() => page.evaluate("navigator.clipboard.readText()")).toEqual("/local/clip-test.txt");
+        // "/local" is the working directory the code runs from, so the copied path is relative to
+        // it (just "clip-test.txt"), not the absolute "/local/clip-test.txt" -- see FileSystemTree
+        // .vue's pathToCopy.
+        await expect.poll(() => page.evaluate("navigator.clipboard.readText()")).toEqual("clip-test.txt");
+    });
+
+    test("clicking a directory name copies its path to the clipboard, without the /local/ prefix", async ({ page }) => {
+        await openFilesTab(page);
+        const zipPath = await testZipFixturePath(test.info().outputDir, "clip-dir-test.zip", {
+            "sub/a.txt": "content a\n",
+        });
+        await localUploadInput(page).setInputFiles(zipPath);
+        await page.getByRole("button", { name: en.fileSystemTab.unzipContents }).click();
+
+        const localSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.local });
+        await localSection.locator(".file-system-tree-dir", { hasText: "sub" }).locator(".file-system-tree-label").click();
+        await expect.poll(() => page.evaluate("navigator.clipboard.readText()")).toEqual("sub");
     });
 
     test("clicking the delete button removes the file", async ({ page }) => {
