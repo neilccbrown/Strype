@@ -1,5 +1,5 @@
 <template>
-    <ul class="file-system-tree-node" :class="{ 'file-system-tree-node-top': topLevel }">
+    <ul class="file-system-tree-node">
         <li>
             <span v-if="node.isDir" class="file-system-tree-dir">
                 <span class="file-system-tree-chevron" @click="expanded = !expanded">{{ expanded ? "▾" : "▸" }}</span>
@@ -37,6 +37,10 @@
                 </button>
             </span>
             <span v-else class="file-system-tree-file">
+                <!-- Same width as a directory's chevron (below), so every row's label -- file or
+                     directory, at any nesting depth -- starts at the same fixed column, however
+                     deep it is; the invisible-prefix text is what conveys the nesting instead: -->
+                <span class="file-system-tree-chevron-spacer"></span>
                 <span
                     class="file-system-tree-label"
                     :class="{ 'flash-background': justCopied }"
@@ -97,13 +101,6 @@ export default defineComponent({
         // node name "data") -- like isCwd, deliberately not forwarded to the recursive
         // FileSystemTree below, so it only ever affects the root node passed in by FileSystemPane.
         labelOverride: { type: String, default: null },
-        // Removes this node's own left indent (see .file-system-tree-node-top below) so its
-        // folding triangle/label lines up with the section heading above it, rather than sitting
-        // one indent level in from it. FileSystemPane.vue passes this for every root-level
-        // FileSystemTree it renders directly (the asset roots, "cloud", local's own children) --
-        // deliberately not forwarded to the recursive FileSystemTree below, so only ever true for
-        // that first row, never anything nested under it.
-        topLevel: { type: Boolean, default: false },
         // An invisible (visibility:hidden, revealed on hover -- see the CSS below) copy of this
         // text is rendered before the node's own label, in the same font, so the *visible* label
         // lines up with wherever the text of the row above it ended -- e.g. under "/books/", every
@@ -180,26 +177,15 @@ export default defineComponent({
 </script>
 
 <style lang="scss">
-.file-system-tree-node {
-    list-style: none;
-    margin: 0;
-    padding-left: 1em;
-}
-
-// Each child's own indent comes entirely from its own recursive FileSystemTree's outer
-// .file-system-tree-node (above) -- this wrapper (rendered by the *parent*, around its children)
-// must not add any further padding of its own, or it stacks with that and the invisible-text
-// alignment (see invisiblePrefix) ends up short of where it's meant to land. Browsers give a
-// bare <ul> its own default padding otherwise, so this has to be reset explicitly:
+// No left indent at any nesting depth -- deliberately: the folding triangle stays in a single
+// fixed-left column at every depth (matching the section heading above the whole tree) instead of
+// stepping in further with each level, and the invisible-prefix text (see invisiblePrefix) is what
+// conveys nesting instead, via each row's *label* starting further right the deeper it is. Browsers
+// give a bare <ul> its own default padding otherwise, so this has to be reset explicitly:
+.file-system-tree-node,
 .file-system-tree-children {
     list-style: none;
     margin: 0;
-    padding-left: 0;
-}
-
-// Root-level rows (see the topLevel prop) skip the usual indent, so their folding triangle lines
-// up with the section heading above them instead of sitting one indent step in from it:
-.file-system-tree-node-top {
     padding-left: 0;
 }
 
@@ -234,6 +220,11 @@ export default defineComponent({
     width: 1em;
     cursor: pointer;
     user-select: none;
+}
+
+.file-system-tree-chevron-spacer {
+    display: inline-block;
+    width: 1em;
 }
 
 .file-system-tree-spacer {

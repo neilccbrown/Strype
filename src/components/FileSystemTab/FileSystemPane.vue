@@ -20,7 +20,6 @@
                     v-for="child in localRoot.children"
                     :key="child.path"
                     :node="child"
-                    top-level
                     allow-upload
                     :upload-disabled="isPythonExecuting"
                     @download="(n) => onDownload(n, '/local')"
@@ -43,7 +42,6 @@
                 <h4>{{ $t("fileSystemTab.cloud") }}</h4>
                 <FileSystemTree
                     :node="cloudRoot"
-                    top-level
                     start-expanded
                     allow-upload
                     :upload-disabled="isPythonExecuting"
@@ -59,7 +57,6 @@
                     v-for="entry in assetRoots"
                     :key="entry.root"
                     :node="entry.tree"
-                    top-level
                     :label-override="entry.root + '/'"
                     @download="(n) => onDownload(n, entry.root)"
                     @downloadDir="(n) => onDownloadDir(n, entry.root)"
@@ -290,11 +287,12 @@ export default defineComponent({
 
 // The bits of the "Local files" section that aren't FileSystemTree instances themselves (the
 // empty-folder message, the upload row) -- see the template's comment on why "/local" has no root
-// row of its own to hang those off of instead. Left-aligned flush with the (also unindented,
-// top-level) file/directory rows above them, so everything in this section starts at the same
-// left edge as the "Local files" heading itself:
+// row of its own to hang those off of instead. Matches the 1em gutter every file/directory row
+// reserves for a folding triangle (see .file-system-tree-chevron/-spacer, FileSystemTree.vue) --
+// neither of these has one of its own, any more than a file row does, so they align with those
+// rows' *labels* rather than sitting flush with where a triangle would be:
 .file-system-pane-flat-item {
-    padding-left: 0;
+    padding-left: 1em;
     margin-top: 0.25em;
 }
 </style>
