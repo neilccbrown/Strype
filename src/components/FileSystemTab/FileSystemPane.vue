@@ -29,6 +29,7 @@
                     @upload="(n, file) => onUpload(n, file, '/local')"
                     @delete="onDeleteLocal"
                     @pin="onPinLocal"
+                    @view="(n) => onView(n, '/local')"
                 />
                 <div class="file-system-pane-flat-item">
                     <button
@@ -53,6 +54,7 @@
                     @download="(n) => onDownload(n, '/cloud')"
                     @downloadDir="(n) => onDownloadDir(n, '/cloud')"
                     @upload="(n, file) => onUpload(n, file, '/cloud')"
+                    @view="(n) => onView(n, '/cloud')"
                 />
             </div>
             <div class="file-system-pane-root" v-if="assetRoots.length">
@@ -64,6 +66,7 @@
                     :label-override="entry.root + '/'"
                     @download="(n) => onDownload(n, entry.root)"
                     @downloadDir="(n) => onDownloadDir(n, entry.root)"
+                    @view="(n) => onView(n, entry.root)"
                 />
             </div>
         </template>
@@ -73,6 +76,16 @@
             @keep-zip="onKeepAsZip"
             @unzip="onUnzipContents"
             @cancelled="pendingUpload = null"
+        />
+        <FileViewerDlg
+            :dlgId="fileViewerDlgId"
+            :fileName="viewingFile?.node.name ?? ''"
+            :kind="viewingFile?.kind ?? 'loading'"
+            :objectUrl="viewingFile?.objectUrl"
+            :text="viewingFile?.text"
+            :tooLarge="viewingFile?.tooLarge ?? false"
+            @closed="onViewClosed"
+            @download="onDownloadViewing"
         />
     </div>
 </template>
@@ -84,6 +97,7 @@ import { useStore } from "@/store/store";
 import { PythonExecRunningState } from "@/types/types";
 import FileSystemTree from "@/components/FileSystemTab/FileSystemTree.vue";
 import ArchiveImportDialog from "@/components/FileSystemTab/ArchiveImportDialog.vue";
+import FileViewerDlg from "@/components/FileSystemTab/FileViewerDlg.vue";
 import {
     assetsRoots,
     deleteFromLocal,
@@ -92,6 +106,7 @@ import {
     FsRoot,
     isCloudMounted,
     listFsRootTree,
+    readFsFileBytes,
     togglePinLocal,
     uploadEntriesToCloud,
     uploadEntriesToLocal,
@@ -102,11 +117,23 @@ import { FsTreeNode } from "@/stryperuntime/file_system_tree_types";
 import { isZipFile, unzipEntries } from "@/helpers/archive";
 import { eventBus } from "@/helpers/appContext";
 import { CustomEventTypes } from "@/helpers/editor";
+import { decodeAsTextIfValid, MAX_PREVIEWABLE_FILE_SIZE, mimeTypeForExtension, previewKindForExtension } from "@/helpers/filePreview";
+import { saveAs } from "file-saver";
 
 interface PendingUpload {
     dirNode: FsTreeNode,
     file: File,
     root: "/local" | "/cloud",
+}
+
+interface ViewingFile {
+    node: FsTreeNode,
+    root: FsRoot,
+    kind: "loading" | "image" | "sound" | "text" | "unsupported",
+    objectUrl?: string,
+    text?: string,
+    tooLarge?: boolean,
+    bytes?: Uint8Array,
 }
 
 export default defineComponent({
@@ -115,6 +142,7 @@ export default defineComponent({
     components: {
         FileSystemTree,
         ArchiveImportDialog,
+        FileViewerDlg,
     },
 
     data() {
@@ -126,6 +154,8 @@ export default defineComponent({
             // Set while the "keep as zip / unzip contents" dialog is open for a .zip upload --
             // see onUpload()/ArchiveImportDialog.vue.
             pendingUpload: null as PendingUpload | null,
+            // Set while the "view file" dialog is open (or loading) -- see onView()/FileViewerDlg.vue.
+            viewingFile: null as ViewingFile | null,
         };
     },
 
@@ -138,6 +168,10 @@ export default defineComponent({
 
         archiveImportDlgId(): string {
             return "fileSystemArchiveImportDlg";
+        },
+
+        fileViewerDlgId(): string {
+            return "fileSystemFileViewerDlg";
         },
 
         // The root that will be the current working directory when the code is next run --
@@ -192,6 +226,66 @@ export default defineComponent({
         onPinLocal(node: FsTreeNode): void {
             togglePinLocal(node);
             void this.refreshLocal();
+        },
+
+        // Opens FileViewerDlg.vue and fetches+classifies the file's content for it (see
+        // filePreview.ts). Skips the fetch entirely for a file already known (from its listed
+        // size) to be over MAX_PREVIEWABLE_FILE_SIZE -- previewing is a convenience, not worth
+        // downloading a huge file just to then refuse to render it.
+        async onView(node: FsTreeNode, root: FsRoot): Promise<void> {
+            this.revokeViewingObjectUrl();
+            this.viewingFile = {node, root, kind: "loading"};
+            eventBus.emit(CustomEventTypes.showStrypeModal, this.fileViewerDlgId);
+
+            if ((node.size ?? 0) > MAX_PREVIEWABLE_FILE_SIZE) {
+                this.viewingFile = {node, root, kind: "unsupported", tooLarge: true};
+                return;
+            }
+            const bytes = await readFsFileBytes(node, root);
+            // The user may have opened a different file's preview while this one was still
+            // fetching -- discard a stale result rather than overwriting the newer one:
+            if (this.viewingFile?.node !== node) {
+                return;
+            }
+            if (bytes == null) {
+                this.viewingFile = {node, root, kind: "unsupported"};
+                return;
+            }
+
+            const extKind = previewKindForExtension(node.name);
+            if (extKind !== "unknown") {
+                const objectUrl = URL.createObjectURL(new Blob([bytes as BlobPart], {type: mimeTypeForExtension(node.name)}));
+                this.viewingFile = {node, root, kind: extKind, objectUrl, bytes};
+                return;
+            }
+            const text = decodeAsTextIfValid(bytes);
+            this.viewingFile = text !== undefined
+                ? {node, root, kind: "text", text, bytes}
+                : {node, root, kind: "unsupported", bytes};
+        },
+
+        revokeViewingObjectUrl(): void {
+            if (this.viewingFile?.objectUrl) {
+                URL.revokeObjectURL(this.viewingFile.objectUrl);
+            }
+        },
+
+        onViewClosed(): void {
+            this.revokeViewingObjectUrl();
+            this.viewingFile = null;
+        },
+
+        onDownloadViewing(): void {
+            if (this.viewingFile == null) {
+                return;
+            }
+            if (this.viewingFile.bytes) {
+                saveAs(new Blob([this.viewingFile.bytes as BlobPart], {type: "application/octet-stream"}), this.viewingFile.node.name);
+            }
+            else {
+                // Only reachable if the size cap skipped fetching bytes entirely (see onView()):
+                void downloadFsFile(this.viewingFile.node, this.viewingFile.root);
+            }
         },
 
         // "/local" doesn't render its own root row (see the template) -- there's no FileSystemTree

@@ -82,8 +82,10 @@ async function listCloudTree(): Promise<FsTreeNode | null> {
 }
 
 // Reads one file's raw bytes from whichever root it's under -- shared by downloadFsFile (a single
-// file) and downloadFsDirectoryAsZip (every file under a directory, zipped up) below.
-async function readFsFileBytes(node: FsTreeNode, root: FsRoot): Promise<Uint8Array | undefined> {
+// file), downloadFsDirectoryAsZip (every file under a directory, zipped up) below, and
+// FileSystemPane.vue's onView() (the "view file" feature, which needs the raw bytes to classify
+// and render a preview from, not just to trigger a save-to-disk).
+export async function readFsFileBytes(node: FsTreeNode, root: FsRoot): Promise<Uint8Array | undefined> {
     if (root === "/local") {
         return localFsCache.readFile(node.path);
     }

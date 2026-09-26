@@ -77,6 +77,9 @@
                 >
                     <i class="fa fa-thumbtack"></i>
                 </button>
+                <button class="file-system-tree-view-btn" :title="$t('fileSystemTab.view')" @click="$emit('view', node)">
+                    <i class="fa fa-eye"></i>
+                </button>
                 <button class="file-system-tree-download-btn" :title="$t('fileSystemTab.download')" @click="$emit('download', node)">
                     <i class="fa fa-download"></i>
                 </button>
@@ -99,6 +102,7 @@
                     @upload="(n, file) => $emit('upload', n, file)"
                     @delete="(n) => $emit('delete', n)"
                     @pin="(n) => $emit('pin', n)"
+                    @view="(n) => $emit('view', n)"
                 />
             </ul>
         </li>
@@ -159,7 +163,7 @@ export default defineComponent({
         invisiblePrefix: { type: String, default: "" },
     },
 
-    emits: ["download", "downloadDir", "upload", "delete", "pin"],
+    emits: ["download", "downloadDir", "upload", "delete", "pin", "view"],
 
     data() {
         return {
@@ -321,7 +325,8 @@ export default defineComponent({
 // button, never also the delete button next to it.
 .file-system-tree-download-btn,
 .file-system-tree-delete-btn,
-.file-system-tree-pin-btn {
+.file-system-tree-pin-btn,
+.file-system-tree-view-btn {
     background: none;
     border: none;
     cursor: pointer;
@@ -337,7 +342,8 @@ export default defineComponent({
     visibility: hidden;
 }
 
-.file-system-tree-download-btn:hover {
+.file-system-tree-download-btn:hover,
+.file-system-tree-view-btn:hover {
     opacity: 0.8;
 }
 
@@ -368,7 +374,8 @@ export default defineComponent({
 .file-system-tree-dir:hover > .file-system-tree-delete-btn,
 .file-system-tree-file:hover > .file-system-tree-delete-btn,
 .file-system-tree-dir:hover > .file-system-tree-pin-btn,
-.file-system-tree-file:hover > .file-system-tree-pin-btn {
+.file-system-tree-file:hover > .file-system-tree-pin-btn,
+.file-system-tree-file:hover > .file-system-tree-view-btn {
     visibility: visible;
 }
 

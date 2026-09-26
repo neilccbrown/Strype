@@ -388,6 +388,107 @@ test.describe("File system tab -- /local (writeable scratch area)", () => {
     });
 });
 
+test.describe("File system tab -- viewing a file", () => {
+    // FileViewerDlg.vue's own body: BootstrapVueNext gives every BModal's body the id "<id>-body"
+    // (see ArchiveImportDialog's identical use of this pattern in the archive tests below).
+    function viewerBody(page: Page): Locator {
+        return page.locator("#fileSystemFileViewerDlg-body");
+    }
+
+    async function clickView(row: Locator): Promise<void> {
+        await row.hover();
+        await row.locator(".file-system-tree-view-btn").click();
+    }
+
+    test("shows a text file's content", async ({ page }) => {
+        await openFilesTab(page);
+        const content = "Hello, this is previewable text.\nSecond line.\n";
+        const filePath = testFixturePath(test.info().outputDir, "view-me.txt", content);
+        await localUploadInput(page).setInputFiles(filePath);
+
+        const row = page.locator(".file-system-tree-file", { hasText: "view-me.txt" });
+        await clickView(row);
+
+        await expect(viewerBody(page)).toContainText(content.trim());
+    });
+
+    test("renders an image file as an <img>", async ({ page }) => {
+        await openFilesTab(page);
+        const filePath = testFixturePath(test.info().outputDir, "view-me.png", MINIMAL_PNG);
+        await localUploadInput(page).setInputFiles(filePath);
+
+        const row = page.locator(".file-system-tree-file", { hasText: "view-me.png" });
+        await clickView(row);
+
+        // A real <img> whose src is an object URL built from the fetched bytes (see
+        // FileSystemPane.vue's onView()), not just the dialog showing some generic message:
+        const img = viewerBody(page).locator("img");
+        await expect(img).toBeVisible();
+        await expect(img).toHaveAttribute("src", /^blob:/);
+    });
+
+    test("renders a sound file as a playable <audio> element", async ({ page }) => {
+        await openFilesTab(page);
+        const filePath = testFixturePath(test.info().outputDir, "view-me.wav", makeMinimalWav());
+        await localUploadInput(page).setInputFiles(filePath);
+
+        const row = page.locator(".file-system-tree-file", { hasText: "view-me.wav" });
+        await clickView(row);
+
+        const audio = viewerBody(page).locator("audio");
+        await expect(audio).toBeVisible();
+        await expect(audio).toHaveAttribute("src", /^blob:/);
+    });
+
+    test("shows \"unsupported\" with a working Download option for an unrecognised binary file", async ({ page }) => {
+        await openFilesTab(page);
+        // Invalid UTF-8 (so the content-sniff fails) with an extension that isn't a recognised
+        // image/sound type either -- see filePreview.ts's previewKindForExtension():
+        const content = Buffer.from([0xff, 0xfe, 0x00, 0x01, 0xc0, 0xaf]);
+        const filePath = testFixturePath(test.info().outputDir, "view-me.bin", content);
+        await localUploadInput(page).setInputFiles(filePath);
+
+        const row = page.locator(".file-system-tree-file", { hasText: "view-me.bin" });
+        await clickView(row);
+
+        await expect(viewerBody(page)).toContainText(en.fileSystemTab.viewUnsupported);
+        const [download] = await Promise.all([
+            page.waitForEvent("download"),
+            page.getByRole("button", { name: en.fileSystemTab.download }).click(),
+        ]);
+        const downloadedPath = await download.path();
+        expect(downloadedPath).not.toBeNull();
+        expect(readFileSync(downloadedPath as string)).toEqual(content);
+    });
+
+    test("shows \"too large to preview\" for a file over the size cap, without a Download-content mismatch", async ({ page }) => {
+        await openFilesTab(page);
+        // One byte over MAX_PREVIEWABLE_FILE_SIZE (filePreview.ts) -- content doesn't matter, only
+        // the size does, since this path skips fetching bytes entirely (FileSystemPane.vue's onView()):
+        const content = Buffer.alloc(10 * 1024 * 1024 + 1, "a");
+        const filePath = testFixturePath(test.info().outputDir, "view-me-toobig.txt", content);
+        await localUploadInput(page).setInputFiles(filePath);
+
+        const row = page.locator(".file-system-tree-file", { hasText: "view-me-toobig.txt" });
+        await clickView(row);
+
+        await expect(viewerBody(page)).toContainText(en.fileSystemTab.viewTooLarge);
+    });
+
+    test("also offers a view button on read-only built-in assets", async ({ page }) => {
+        await openFilesTab(page);
+        const dataSection = await openBuiltInSection(page, "/data/");
+        const row = dataSection.locator(".file-system-tree-file", { hasText: "word_counts.txt" });
+        await clickView(row);
+
+        // Unlike /local (a plain in-memory read), fetching an asset root's file goes via the real
+        // Pyodide worker (readFsFileBytes, fileSystemTabIO.ts) -- occasionally slow to settle under
+        // load (seen taking >15s on a contended run), so give this generous headroom rather than
+        // the default 5s:
+        await expect(viewerBody(page)).toContainText("sandbox", {timeout: 30000});
+    });
+});
+
 test.describe("File system tab -- uploading an archive to /local", () => {
     test("shows the keep-as-zip/unzip dialog, naming the uploaded file", async ({ page }) => {
         await openFilesTab(page);
@@ -522,12 +623,42 @@ test.describe("File system tab -- /cloud", () => {
 });
 
 // Writes fixture content to a fresh file under outputDir and returns its path, for use with
-// locator.setInputFiles() (which needs a real file on disk).
-function testFixturePath(outputDir: string, fileName: string, content: string): string {
+// locator.setInputFiles() (which needs a real file on disk). Content can be a Buffer for binary
+// fixtures (see the view-file tests' image/sound/size-cap fixtures below).
+function testFixturePath(outputDir: string, fileName: string, content: string | Buffer): string {
     mkdirSync(outputDir, { recursive: true });
     const filePath = path.join(outputDir, fileName);
     writeFileSync(filePath, content);
     return filePath;
+}
+
+// A valid, minimal 1x1 pixel PNG (real bytes, not just a plausible-looking extension), so an
+// uploaded ".png" file genuinely renders as an <img> rather than failing to decode.
+const MINIMAL_PNG = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+    "base64"
+);
+
+// A valid, minimal WAV file (a real header plus a short burst of silent 16-bit PCM samples), so
+// an uploaded ".wav" file genuinely plays as an <audio> element rather than failing to decode.
+function makeMinimalWav(durationSeconds = 0.1, sampleRate = 8000): Buffer {
+    const numSamples = Math.floor(durationSeconds * sampleRate);
+    const dataSize = numSamples * 2; // 16-bit mono
+    const buffer = Buffer.alloc(44 + dataSize);
+    buffer.write("RIFF", 0);
+    buffer.writeUInt32LE(36 + dataSize, 4);
+    buffer.write("WAVE", 8);
+    buffer.write("fmt ", 12);
+    buffer.writeUInt32LE(16, 16);
+    buffer.writeUInt16LE(1, 20); // PCM
+    buffer.writeUInt16LE(1, 22); // mono
+    buffer.writeUInt32LE(sampleRate, 24);
+    buffer.writeUInt32LE(sampleRate * 2, 28);
+    buffer.writeUInt16LE(2, 32);
+    buffer.writeUInt16LE(16, 34);
+    buffer.write("data", 36);
+    buffer.writeUInt32LE(dataSize, 40);
+    return buffer;
 }
 
 // Builds a real .zip fixture (using the same "jszip" package the app itself uses -- see
