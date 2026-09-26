@@ -332,6 +332,41 @@ test.describe("File system tab -- /local (writeable scratch area)", () => {
         expect(readFileSync(downloadedPath as string, "utf8")).toEqual(content);
     });
 
+    test("deleting a pinned file un-pins it too, so it isn't restored on load", async ({ page }) => {
+        await openFilesTab(page);
+        const keptContent = "kept and pinned\n";
+        const keptPath = testFixturePath(test.info().outputDir, "keep-pinned.txt", keptContent);
+        const deletedPath = testFixturePath(test.info().outputDir, "delete-pinned.txt", "pinned then deleted\n");
+        await localUploadInput(page).setInputFiles(keptPath);
+        await localUploadInput(page).setInputFiles(deletedPath);
+
+        const localSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.local });
+        const keptRow = localSection.locator(".file-system-tree-file", { hasText: "keep-pinned.txt" });
+        const deletedRow = localSection.locator(".file-system-tree-file", { hasText: "delete-pinned.txt" });
+        await keptRow.hover();
+        await keptRow.locator(".file-system-tree-pin-btn").click();
+        await deletedRow.hover();
+        await deletedRow.locator(".file-system-tree-pin-btn").click();
+        await expect(keptRow.locator(".file-system-tree-pin-btn")).toHaveClass(/file-system-tree-pin-btn-pinned/);
+        await expect(deletedRow.locator(".file-system-tree-pin-btn")).toHaveClass(/file-system-tree-pin-btn-pinned/);
+
+        // Deleting a pinned file must clear its pinned status too (see localFsCache.ts's
+        // deleteFile()), otherwise it would keep being saved into the project even though it's
+        // gone from "/local":
+        await deletedRow.hover();
+        await deletedRow.locator(".file-system-tree-delete-btn").click();
+        await expect(localSection).not.toContainText("delete-pinned.txt");
+
+        const savedPath = await save(page, true, "pin-delete-round-trip");
+        await newProject(page);
+        await rename(savedPath, savedPath + ".spy");
+        await load(page, savedPath + ".spy");
+
+        await openFilesTab(page);
+        await expect(localSection).toContainText("keep-pinned.txt");
+        await expect(localSection).not.toContainText("delete-pinned.txt");
+    });
+
     test("a file at or over 1MB can't be pinned, but pinning still works just under the limit", async ({ page }) => {
         await openFilesTab(page);
         // One byte under the 1MB limit (see MAX_PINNABLE_FILE_SIZE, fileSystemTabIO.ts):
