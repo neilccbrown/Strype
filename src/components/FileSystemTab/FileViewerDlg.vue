@@ -151,13 +151,23 @@ export default defineComponent({
 }
 
 .file-viewer-dlg-image {
+    // Capped, not fixed: a small sprite still shows at its own true size (this never scales an
+    // image up), but a large one (e.g. a 344x166 sprite, easily bigger than it ever appears drawn
+    // small on an actual game canvas) doesn't dominate the whole dialog:
     max-width: 100%;
+    max-height: 400px;
     display: block;
     margin: 0 auto;
 }
 
 .file-viewer-dlg-sound {
-    text-align: center;
+    // A flex column (not the old text-align:center + inline-block combination -- that let the
+    // Play button sit on the same line as the waveform, side by side, whenever the dialog was
+    // wide enough for both, instead of underneath it) so the waveform and the button both center
+    // horizontally and the button always lands on its own line below:
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .file-viewer-dlg-sound-info {
@@ -166,7 +176,6 @@ export default defineComponent({
 
 .file-viewer-dlg-sound-image-container {
     position: relative;
-    display: inline-block;
     margin-bottom: 1em;
 
     img {

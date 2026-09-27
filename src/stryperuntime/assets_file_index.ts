@@ -53,6 +53,11 @@ export function buildAssetTree(prefix: string): FsTreeNode {
     const relativePaths = Object.keys(assetsFileIndex)
         .map((path) => path.replace(/^\/src\/assetsFilesystem\//, ""))
         .filter((path) => path === prefix || path.startsWith(prefix + "/"))
+        // "/images" bundles a handful of real photos (e.g. cat-test.jpg) purely as Playwright/
+        // Cypress test fixtures (see fileIO.spec.ts), never meant to be picked as a sprite image
+        // -- hide them from the Files tab by their "-test" naming convention rather than listing
+        // them individually, so a future addition just needs to follow the same convention:
+        .filter((path) => prefix !== "images" || !path.slice(path.lastIndexOf("/") + 1).includes("-test"))
         .sort();
 
     for (const relativePath of relativePaths) {

@@ -127,6 +127,18 @@ test.describe("File system tab -- /data (read-only bundled assets)", () => {
     });
 });
 
+test.describe("File system tab -- /images (read-only bundled assets)", () => {
+    test("hides files with \"-test\" in the name", async ({ page }) => {
+        // cat-test.jpg, cat-test-2.png and mouse-test.jpg are real photos bundled purely as
+        // Playwright/Cypress fixtures (see fileIO.spec.ts) -- see assets_file_index.ts's
+        // buildAssetTree() for the "-test" naming convention that hides them here:
+        await openFilesTab(page);
+        const imagesSection = await openBuiltInSection(page, "/images/");
+        await expect(imagesSection).toContainText("fish.png");
+        await expect(imagesSection).not.toContainText("-test");
+    });
+});
+
 test.describe("File system tab -- /local (writeable scratch area)", () => {
     test("starts empty", async ({ page }) => {
         await openFilesTab(page);
@@ -427,6 +439,41 @@ test.describe("File system tab -- viewing a file", () => {
         await expect(img).toHaveAttribute("src", /^blob:/);
     });
 
+    test("caps an oversized image to fit the dialog, without upscaling a small one", async ({ page }) => {
+        await openFilesTab(page);
+        // A real bundled asset that's genuinely larger than the cap (800x617 -- see
+        // FileViewerDlg.vue's .file-viewer-dlg-image max-height):
+        const bigContent = readFileSync(path.join(__dirname, "..", "..", "..", "src", "assetsFilesystem", "images", "backgrounds", "space.jpg"));
+        const bigPath = testFixturePath(test.info().outputDir, "view-me-big.jpg", bigContent);
+        await localUploadInput(page).setInputFiles(bigPath);
+
+        const smallPath = testFixturePath(test.info().outputDir, "view-me-small.png", MINIMAL_PNG);
+        await localUploadInput(page).setInputFiles(smallPath);
+
+        const bigRow = page.locator(".file-system-tree-file", { hasText: "view-me-big.jpg" });
+        await clickView(bigRow);
+        const bigImg = viewerBody(page).locator("img");
+        await expect(bigImg).toBeVisible();
+        const bigBox = await bigImg.boundingBox();
+        expect(bigBox).not.toBeNull();
+        const bigNatural = await bigImg.evaluate((el: HTMLImageElement) => ({ w: el.naturalWidth, h: el.naturalHeight }));
+        expect(bigNatural.h).toBeGreaterThan(400);
+        expect(bigBox?.height).toBeLessThanOrEqual(400);
+        // Aspect ratio preserved, not squashed to a fixed box:
+        const bigBoxChecked = bigBox as { width: number, height: number };
+        expect(Math.abs((bigBoxChecked.width / bigBoxChecked.height) - (bigNatural.w / bigNatural.h))).toBeLessThan(0.05);
+        await page.getByRole("button", { name: en.buttonLabel.close }).click();
+
+        const smallRow = page.locator(".file-system-tree-file", { hasText: "view-me-small.png" });
+        await clickView(smallRow);
+        const smallImg = viewerBody(page).locator("img");
+        const smallBox = await smallImg.boundingBox();
+        const smallNatural = await smallImg.evaluate((el: HTMLImageElement) => ({ w: el.naturalWidth, h: el.naturalHeight }));
+        // Never upscaled -- a 1x1 image stays 1x1, it doesn't get stretched up to fill the dialog:
+        expect(smallBox?.width).toBeLessThanOrEqual(smallNatural.w + 1);
+        expect(smallBox?.height).toBeLessThanOrEqual(smallNatural.h + 1);
+    });
+
     test("renders a sound file as a waveform with a working Play/Stop toggle", async ({ page }) => {
         // Reuses the same waveform preview as the code editor's own sound literal preview/edit
         // dialogs (drawSoundOnCanvas, media.ts -- see MediaPreviewPopup.vue/EditSoundDlg.vue),
@@ -446,6 +493,21 @@ test.describe("File system tab -- viewing a file", () => {
 
         const playButton = body.getByRole("button", { name: en.media.soundPlay });
         await expect(playButton).toBeVisible();
+
+        // Centred *beneath* the waveform (own line, horizontally aligned), not squeezed onto the
+        // same line beside it -- regression check for the inline-block layout that used to let it
+        // sit to the right of the waveform whenever the dialog was wide enough for both:
+        const waveformBox = await waveform.boundingBox();
+        const playBox = await playButton.boundingBox();
+        expect(waveformBox).not.toBeNull();
+        expect(playBox).not.toBeNull();
+        const waveformBoxChecked = waveformBox as { x: number, y: number, width: number, height: number };
+        const playBoxChecked = playBox as { x: number, y: number, width: number, height: number };
+        expect(playBoxChecked.y).toBeGreaterThanOrEqual(waveformBoxChecked.y + waveformBoxChecked.height);
+        const waveformCentreX = waveformBoxChecked.x + waveformBoxChecked.width / 2;
+        const playCentreX = playBoxChecked.x + playBoxChecked.width / 2;
+        expect(Math.abs(waveformCentreX - playCentreX)).toBeLessThan(2);
+
         await playButton.click();
         await expect(body.getByRole("button", { name: en.media.soundStop })).toBeVisible();
         await body.getByRole("button", { name: en.media.soundStop }).click();
