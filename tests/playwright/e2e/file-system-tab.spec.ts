@@ -420,6 +420,48 @@ test.describe("File system tab -- /local (writeable scratch area)", () => {
         await expect(localSection).not.toContainText("delete-pinned.txt");
     });
 
+    test("pinning a file in a subfolder restores it (and the subfolder) on load, with no mkdir step needed", async ({ page }) => {
+        // localFsCache.ts has no real directory objects (see its own comment) -- a pinned path's
+        // subfolder is purely reconstructed from the flat path string by listTree(), and
+        // loadPinnedLocalFiles() just writes straight to that flat path, so this must work with no
+        // separate "create the folder first" step, for any nesting depth:
+        await openFilesTab(page);
+        const content = "hello nested pinned file\n";
+        const zipPath = await testZipFixturePath(test.info().outputDir, "nested-pin-test.zip", {
+            "outputs/nested.txt": content,
+        });
+        await localUploadInput(page).setInputFiles(zipPath);
+        await page.getByRole("button", { name: en.fileSystemTab.unzipContents }).click();
+
+        const localSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.local });
+        await expect(localSection).toContainText("outputs");
+        await localSection.locator(".file-system-tree-dir", { hasText: "outputs" }).locator(".file-system-tree-chevron").click();
+        const row = localSection.locator(".file-system-tree-file", { hasText: "nested.txt" });
+        await row.hover();
+        await row.locator(".file-system-tree-pin-btn").click();
+        await expect(row.locator(".file-system-tree-pin-btn")).toHaveClass(/file-system-tree-pin-btn-pinned/);
+
+        const savedPath = await save(page, true, "nested-pin-round-trip");
+        await newProject(page);
+        await rename(savedPath, savedPath + ".spy");
+        await load(page, savedPath + ".spy");
+
+        await openFilesTab(page);
+        await expect(localSection).toContainText("outputs");
+        await localSection.locator(".file-system-tree-dir", { hasText: "outputs" }).locator(".file-system-tree-chevron").click();
+        const reloadedRow = localSection.locator(".file-system-tree-file", { hasText: "nested.txt" });
+        await expect(reloadedRow.locator(".file-system-tree-pin-btn")).toHaveClass(/file-system-tree-pin-btn-pinned/);
+
+        await reloadedRow.hover();
+        const [download] = await Promise.all([
+            page.waitForEvent("download"),
+            reloadedRow.locator(".file-system-tree-download-btn").click(),
+        ]);
+        const downloadedPath = await download.path();
+        expect(downloadedPath).not.toBeNull();
+        expect(readFileSync(downloadedPath as string, "utf8")).toEqual(content);
+    });
+
     test("a file at or over 1MB can't be pinned, but pinning still works just under the limit", async ({ page }) => {
         await openFilesTab(page);
         // One byte under the 1MB limit (see MAX_PINNABLE_FILE_SIZE, fileSystemTabIO.ts):
