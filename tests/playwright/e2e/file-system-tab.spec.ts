@@ -427,17 +427,29 @@ test.describe("File system tab -- viewing a file", () => {
         await expect(img).toHaveAttribute("src", /^blob:/);
     });
 
-    test("renders a sound file as a playable <audio> element", async ({ page }) => {
+    test("renders a sound file as a waveform with a working Play/Stop toggle", async ({ page }) => {
+        // Reuses the same waveform preview as the code editor's own sound literal preview/edit
+        // dialogs (drawSoundOnCanvas, media.ts -- see MediaPreviewPopup.vue/EditSoundDlg.vue),
+        // rather than a plain native <audio> control:
         await openFilesTab(page);
-        const filePath = testFixturePath(test.info().outputDir, "view-me.wav", makeMinimalWav());
+        const filePath = testFixturePath(test.info().outputDir, "view-me.wav", makeMinimalWav(1.0));
         await localUploadInput(page).setInputFiles(filePath);
 
         const row = page.locator(".file-system-tree-file", { hasText: "view-me.wav" });
         await clickView(row);
 
-        const audio = viewerBody(page).locator("audio");
-        await expect(audio).toBeVisible();
-        await expect(audio).toHaveAttribute("src", /^blob:/);
+        const body = viewerBody(page);
+        await expect(body).toContainText("1.00");
+        const waveform = body.locator(".file-viewer-dlg-sound-image-container img");
+        await expect(waveform).toBeVisible();
+        await expect(waveform).toHaveAttribute("src", /^data:image\/png;base64,/);
+
+        const playButton = body.getByRole("button", { name: en.media.soundPlay });
+        await expect(playButton).toBeVisible();
+        await playButton.click();
+        await expect(body.getByRole("button", { name: en.media.soundStop })).toBeVisible();
+        await body.getByRole("button", { name: en.media.soundStop }).click();
+        await expect(playButton).toBeVisible();
     });
 
     test("shows \"unsupported\" with a working Download option for an unrecognised binary file", async ({ page }) => {

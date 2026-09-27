@@ -82,6 +82,8 @@
             :fileName="viewingFile?.node.name ?? ''"
             :kind="viewingFile?.kind ?? 'loading'"
             :objectUrl="viewingFile?.objectUrl"
+            :audioBuffer="viewingFile?.audioBuffer"
+            :waveformDataUrl="viewingFile?.waveformDataUrl"
             :text="viewingFile?.text"
             :tooLarge="viewingFile?.tooLarge ?? false"
             @closed="onViewClosed"
@@ -118,7 +120,13 @@ import { isZipFile, unzipEntries } from "@/helpers/archive";
 import { eventBus } from "@/helpers/appContext";
 import { CustomEventTypes } from "@/helpers/editor";
 import { decodeAsTextIfValid, MAX_PREVIEWABLE_FILE_SIZE, mimeTypeForExtension, previewKindForExtension } from "@/helpers/filePreview";
+import { drawSoundOnCanvas } from "@/helpers/media";
 import { saveAs } from "file-saver";
+
+// Waveform image size for the "view file" sound preview -- wider than MediaPreviewPopup.vue's own
+// 200x50 (a small hover popup) since this renders in a full-width modal dialog instead.
+const SOUND_WAVEFORM_WIDTH = 600;
+const SOUND_WAVEFORM_HEIGHT = 120;
 
 interface PendingUpload {
     dirNode: FsTreeNode,
@@ -130,7 +138,12 @@ interface ViewingFile {
     node: FsTreeNode,
     root: FsRoot,
     kind: "loading" | "image" | "sound" | "text" | "unsupported",
+    // Only set when kind is "image" (an object URL, needing an explicit revoke -- see
+    // revokeViewingObjectUrl()).
     objectUrl?: string,
+    // Only set when kind is "sound" -- see drawSoundOnCanvas()/FileViewerDlg.vue's playback.
+    audioBuffer?: AudioBuffer,
+    waveformDataUrl?: string,
     text?: string,
     tooLarge?: boolean,
     bytes?: Uint8Array,
@@ -253,9 +266,28 @@ export default defineComponent({
             }
 
             const extKind = previewKindForExtension(node.name);
-            if (extKind !== "unknown") {
+            if (extKind === "image") {
                 const objectUrl = URL.createObjectURL(new Blob([bytes as BlobPart], {type: mimeTypeForExtension(node.name)}));
-                this.viewingFile = {node, root, kind: extKind, objectUrl, bytes};
+                this.viewingFile = {node, root, kind: "image", objectUrl, bytes};
+                return;
+            }
+            if (extKind === "sound") {
+                try {
+                    // Decoding (unlike playback) needs no user gesture and doesn't touch real
+                    // output, so an OfflineAudioContext is fine here -- matches LabelSlot.vue's
+                    // identical decode for the code-editor's own sound-literal preview:
+                    const arrayBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+                    const audioBuffer = await new OfflineAudioContext(1, 1, 48000).decodeAudioData(arrayBuffer);
+                    if (this.viewingFile?.node !== node) {
+                        return;
+                    }
+                    const waveformDataUrl = drawSoundOnCanvas(audioBuffer, SOUND_WAVEFORM_WIDTH, SOUND_WAVEFORM_HEIGHT, 1.0, 0.75);
+                    this.viewingFile = {node, root, kind: "sound", audioBuffer, waveformDataUrl, bytes};
+                }
+                catch {
+                    // Not actually valid audio despite the extension (e.g. corrupted upload):
+                    this.viewingFile = {node, root, kind: "unsupported", bytes};
+                }
                 return;
             }
             const text = decodeAsTextIfValid(bytes);
