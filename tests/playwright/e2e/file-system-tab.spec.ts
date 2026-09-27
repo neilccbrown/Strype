@@ -139,6 +139,47 @@ test.describe("File system tab -- /images (read-only bundled assets)", () => {
     });
 });
 
+test.describe("File system tab -- scrolling", () => {
+    test("the pane scrolls when its expanded content is taller than the visible area", async ({ page }) => {
+        // Regression test: .pea-tab-content-container (PythonExecutionArea.vue) used to have no
+        // "overflow: hidden" of its own, so it (and everything above FileSystemPane.vue's own
+        // .file-system-pane in the DOM) just grew to fit however much content the tree expanded
+        // to, rather than clipping it -- meaning .file-system-pane's own overflow:auto never
+        // actually had anything to scroll (it was already exactly as tall as its content), and the
+        // whole thing was only clipped, with no scrollbar at all, by an outer Splitpanes pane.
+        await openFilesTab(page);
+        // Expand every built-in root (each has plenty of files/subfolders) so the tree is
+        // comfortably taller than the pane's own visible height:
+        for (const root of ["/books/", "/data/", "/images/", "/sounds/"]) {
+            await openBuiltInSection(page, root);
+        }
+
+        const pane = page.locator(".file-system-pane");
+        const overflow = await pane.evaluate((el) => ({ clientHeight: el.clientHeight, scrollHeight: el.scrollHeight }));
+        expect(overflow.scrollHeight).toBeGreaterThan(overflow.clientHeight);
+
+        await pane.evaluate((el) => {
+            el.scrollTop = 500;
+        });
+        await expect.poll(() => pane.evaluate((el) => el.scrollTop)).toBe(500);
+    });
+
+    test("does not affect Console/Graphics -- their container still has no overflow clipping", async ({ page }) => {
+        // The fix above (.pea-tab-content-container.pea-files-showing) is deliberately scoped to
+        // only apply while the Files tab itself is showing, via PythonExecutionArea.vue's
+        // isFilesAreaShowing -- confirm Console and Graphics keep their pre-existing
+        // "overflow: visible" container, unaffected by the Files-tab-only fix:
+        await page.click("#consolePEATab");
+        const container = page.locator(".pea-tab-content-container");
+        await expect(container).not.toHaveClass(/pea-files-showing/);
+        await expect(container).toHaveCSS("overflow", "visible");
+
+        await page.click("#graphicsPEATab");
+        await expect(container).not.toHaveClass(/pea-files-showing/);
+        await expect(container).toHaveCSS("overflow", "visible");
+    });
+});
+
 test.describe("File system tab -- /local (writeable scratch area)", () => {
     test("starts empty", async ({ page }) => {
         await openFilesTab(page);

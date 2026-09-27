@@ -19,7 +19,7 @@
                 <span>{{runCodeButtonLabel}}</span>
             </button>
         </div>
-        <div :id="tabContentContainerDivId" :class="{'pea-tab-content-container': true, 'flex-padding': true, 'pea-43-ratio': hasDefault43Ratio}">
+        <div :id="tabContentContainerDivId" :class="{'pea-tab-content-container': true, 'flex-padding': true, 'pea-43-ratio': hasDefault43Ratio, 'pea-files-showing': isFilesAreaShowing}">
             <!-- the SplitPanes is used in all layout configurations: for tabs, we only show 1 of the panes and disable moving the divider, and for stacked window it acts as normal -->
             <!-- the container div is only here because the new version of Splitpanes doesn't get the classes -->
             <div v-show="!isFilesAreaShowing" :class="{'strype-PEA-split-theme': true, 'with-expanded-PEA': isExpandedPEA, 'tabs-PEA': isTabsLayout}">
@@ -1609,6 +1609,23 @@ export default defineComponent({
     .pea-tab-content-container {
         width: 100%;
         position: relative;
+    }
+
+    // Scoped to only when the Files tab is showing -- deliberately not applied to the
+    // Graphics/Console layout (the Splitpanes-based sibling further down), which must render
+    // exactly as before. Without this, a child taller than this container's own height (whether
+    // that height comes from the aspect-ratio rule just below, or from .pea-component's own
+    // "no-43-ratio-collapsed-PEA"/expanded-mode height elsewhere) forces this container itself to
+    // grow to fit that content instead of clipping it -- the CSS auto-minimum-size behaviour that
+    // "overflow: visible" (the default) leaves in place. That defeats FileSystemPane.vue's own
+    // .file-system-pane overflow:auto: if this container just keeps growing instead, the pane
+    // never actually overflows *its own* box, so it never shows a scrollbar -- the oversized
+    // content is only clipped (with no scrollbar at all) by whatever ancestor finally does have a
+    // hard, non-content-based size (in practice, the outer Splitpanes pane). This one line
+    // establishes this container's own height as authoritative, so .file-system-pane's own
+    // overflow:auto is what actually engages:
+    .pea-tab-content-container.pea-files-showing {
+        overflow: hidden;
     }
 
     .pea-tab-content-container.pea-43-ratio {
