@@ -208,6 +208,67 @@ test.describe("File system tab -- /local (writeable scratch area)", () => {
         expect(readFileSync(downloadedPath as string, "utf8")).toEqual(content);
     });
 
+    test("uploading a file with the same name as an existing one asks to overwrite, and Cancel leaves the original untouched", async ({ page }) => {
+        await openFilesTab(page);
+        const originalContent = "original content\n";
+        const replacementContent = "replacement content, should not be used\n";
+        const originalPath = testFixturePath(test.info().outputDir, "clash.txt", originalContent);
+        // Same file name, but from a different source directory, so the browser's file picker
+        // doesn't just re-select the exact same path -- it's the name clash on "/local" that
+        // matters here, not the source path:
+        const replacementPath = testFixturePath(path.join(test.info().outputDir, "clash-source"), "clash.txt", replacementContent);
+        await localUploadInput(page).setInputFiles(originalPath);
+
+        const localSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.local });
+        await expect(localSection).toContainText("clash.txt");
+
+        await localUploadInput(page).setInputFiles(replacementPath);
+        const overwriteDlgBody = page.locator("#fileSystemOverwriteConfirmDlg-body");
+        await expect(overwriteDlgBody).toContainText("clash.txt");
+        await page.getByRole("button", { name: en.buttonLabel.cancel, exact: true }).click();
+
+        // Only one row for "clash.txt" -- the upload was abandoned, not merged/duplicated -- and its
+        // content is still the original:
+        await expect(localSection.locator(".file-system-tree-file", { hasText: "clash.txt" })).toHaveCount(1);
+        const row = localSection.locator(".file-system-tree-file", { hasText: "clash.txt" });
+        await row.hover();
+        const [download] = await Promise.all([
+            page.waitForEvent("download"),
+            row.locator(".file-system-tree-download-btn").click(),
+        ]);
+        const downloadedPath = await download.path();
+        expect(downloadedPath).not.toBeNull();
+        expect(readFileSync(downloadedPath as string, "utf8")).toEqual(originalContent);
+    });
+
+    test("uploading a file with the same name as an existing one and confirming Overwrite replaces its content", async ({ page }) => {
+        await openFilesTab(page);
+        const originalContent = "original content\n";
+        const replacementContent = "replacement content, should be used\n";
+        const originalPath = testFixturePath(test.info().outputDir, "clash-overwrite.txt", originalContent);
+        const replacementPath = testFixturePath(path.join(test.info().outputDir, "clash-overwrite-source"), "clash-overwrite.txt", replacementContent);
+        await localUploadInput(page).setInputFiles(originalPath);
+
+        const localSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.local });
+        await expect(localSection).toContainText("clash-overwrite.txt");
+
+        await localUploadInput(page).setInputFiles(replacementPath);
+        const overwriteDlgBody = page.locator("#fileSystemOverwriteConfirmDlg-body");
+        await expect(overwriteDlgBody).toContainText("clash-overwrite.txt");
+        await page.getByRole("button", { name: en.fileSystemTab.overwrite, exact: true }).click();
+
+        await expect(localSection.locator(".file-system-tree-file", { hasText: "clash-overwrite.txt" })).toHaveCount(1);
+        const row = localSection.locator(".file-system-tree-file", { hasText: "clash-overwrite.txt" });
+        await row.hover();
+        const [download] = await Promise.all([
+            page.waitForEvent("download"),
+            row.locator(".file-system-tree-download-btn").click(),
+        ]);
+        const downloadedPath = await download.path();
+        expect(downloadedPath).not.toBeNull();
+        expect(readFileSync(downloadedPath as string, "utf8")).toEqual(replacementContent);
+    });
+
     test("an uploaded file survives Run restarting the Pyodide worker", async ({ page }) => {
         // Regression test: "/local" used to be wiped on every run because
         // terminateAndRestartPyodide() fully discards and recreates the worker -- see
@@ -460,6 +521,69 @@ test.describe("File system tab -- /local (writeable scratch area)", () => {
         const downloadedPath = await download.path();
         expect(downloadedPath).not.toBeNull();
         expect(readFileSync(downloadedPath as string, "utf8")).toEqual(content);
+    });
+
+    test("pinning several files at once -- at the root, sharing a subfolder, and in different subfolders -- all round-trip together", async ({ page }) => {
+        await openFilesTab(page);
+        const rootContent = "hello from the root\n";
+        const sharedContentOne = "first file in the shared subfolder\n";
+        const sharedContentTwo = "second file in the shared subfolder\n";
+        const otherContent = "hello from a different subfolder\n";
+        const zipPath = await testZipFixturePath(test.info().outputDir, "multi-pin-test.zip", {
+            "root.txt": rootContent,
+            "outputs/one.txt": sharedContentOne,
+            "outputs/two.txt": sharedContentTwo,
+            "logs/three.txt": otherContent,
+        });
+        await localUploadInput(page).setInputFiles(zipPath);
+        await page.getByRole("button", { name: en.fileSystemTab.unzipContents }).click();
+
+        const localSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.local });
+        await expect(localSection).toContainText("outputs");
+        await expect(localSection).toContainText("logs");
+
+        async function pinFile(name: string): Promise<void> {
+            const row = localSection.locator(".file-system-tree-file", { hasText: name });
+            await row.hover();
+            await row.locator(".file-system-tree-pin-btn").click();
+            await expect(row.locator(".file-system-tree-pin-btn")).toHaveClass(/file-system-tree-pin-btn-pinned/);
+        }
+
+        await pinFile("root.txt");
+        await localSection.locator(".file-system-tree-dir", { hasText: "outputs" }).locator(".file-system-tree-chevron").click();
+        await pinFile("one.txt");
+        await pinFile("two.txt");
+        await localSection.locator(".file-system-tree-dir", { hasText: "logs" }).locator(".file-system-tree-chevron").click();
+        await pinFile("three.txt");
+
+        const savedPath = await save(page, true, "multi-pin-round-trip");
+        await newProject(page);
+        await rename(savedPath, savedPath + ".spy");
+        await load(page, savedPath + ".spy");
+
+        await openFilesTab(page);
+        await expect(localSection).toContainText("outputs");
+        await expect(localSection).toContainText("logs");
+        await localSection.locator(".file-system-tree-dir", { hasText: "outputs" }).locator(".file-system-tree-chevron").click();
+        await localSection.locator(".file-system-tree-dir", { hasText: "logs" }).locator(".file-system-tree-chevron").click();
+
+        async function checkReloaded(name: string, expectedContent: string): Promise<void> {
+            const row = localSection.locator(".file-system-tree-file", { hasText: name });
+            await expect(row.locator(".file-system-tree-pin-btn")).toHaveClass(/file-system-tree-pin-btn-pinned/);
+            await row.hover();
+            const [download] = await Promise.all([
+                page.waitForEvent("download"),
+                row.locator(".file-system-tree-download-btn").click(),
+            ]);
+            const downloadedPath = await download.path();
+            expect(downloadedPath).not.toBeNull();
+            expect(readFileSync(downloadedPath as string, "utf8")).toEqual(expectedContent);
+        }
+
+        await checkReloaded("root.txt", rootContent);
+        await checkReloaded("one.txt", sharedContentOne);
+        await checkReloaded("two.txt", sharedContentTwo);
+        await checkReloaded("three.txt", otherContent);
     });
 
     test("a file at or over 1MB can't be pinned, but pinning still works just under the limit", async ({ page }) => {

@@ -309,7 +309,10 @@
     "archiveDialogTitle": "Upload archive",
     "archiveDialogMessage": "\"{name}\" is a zip archive. Do you want to keep it as a single zip file, or unzip its contents?",
     "keepAsZip": "Keep as zip",
-    "unzipContents": "Unzip contents"
+    "unzipContents": "Unzip contents",
+    "overwriteDialogTitle": "File already exists",
+    "overwriteDialogMessage": "A file named \"{name}\" already exists here. Do you want to overwrite it?",
+    "overwrite": "Overwrite"
   },
   "media": {
     "edit": "Edit",

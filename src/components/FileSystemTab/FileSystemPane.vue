@@ -70,6 +70,12 @@
                 />
             </div>
         </template>
+        <OverwriteConfirmDialog
+            :dlgId="overwriteConfirmDlgId"
+            :fileName="pendingOverwrite?.file.name ?? ''"
+            @overwrite="onConfirmOverwrite"
+            @cancelled="pendingOverwrite = null"
+        />
         <ArchiveImportDialog
             :dlgId="archiveImportDlgId"
             :fileName="pendingUpload?.file.name ?? ''"
@@ -99,10 +105,12 @@ import { useStore } from "@/store/store";
 import { PythonExecRunningState } from "@/types/types";
 import FileSystemTree from "@/components/FileSystemTab/FileSystemTree.vue";
 import ArchiveImportDialog from "@/components/FileSystemTab/ArchiveImportDialog.vue";
+import OverwriteConfirmDialog from "@/components/FileSystemTab/OverwriteConfirmDialog.vue";
 import FileViewerDlg from "@/components/FileSystemTab/FileViewerDlg.vue";
 import {
     assetsRoots,
     deleteFromLocal,
+    dirHasEntryNamed,
     downloadFsDirectoryAsZip,
     downloadFsFile,
     FsRoot,
@@ -155,6 +163,7 @@ export default defineComponent({
     components: {
         FileSystemTree,
         ArchiveImportDialog,
+        OverwriteConfirmDialog,
         FileViewerDlg,
     },
 
@@ -167,6 +176,10 @@ export default defineComponent({
             // Set while the "keep as zip / unzip contents" dialog is open for a .zip upload --
             // see onUpload()/ArchiveImportDialog.vue.
             pendingUpload: null as PendingUpload | null,
+            // Set while the overwrite-confirmation dialog is open, for an upload whose name
+            // clashes with an existing entry in the target directory -- see
+            // proceedWithUpload()/OverwriteConfirmDialog.vue.
+            pendingOverwrite: null as PendingUpload | null,
             // Set while the "view file" dialog is open (or loading) -- see onView()/FileViewerDlg.vue.
             viewingFile: null as ViewingFile | null,
         };
@@ -181,6 +194,10 @@ export default defineComponent({
 
         archiveImportDlgId(): string {
             return "fileSystemArchiveImportDlg";
+        },
+
+        overwriteConfirmDlgId(): string {
+            return "fileSystemOverwriteConfirmDlg";
         },
 
         fileViewerDlgId(): string {
@@ -338,6 +355,25 @@ export default defineComponent({
         },
 
         onUpload(dirNode: FsTreeNode, file: File, root: "/local" | "/cloud"): void {
+            if (dirHasEntryNamed(dirNode, file.name)) {
+                // Ask for confirmation before silently overwriting an existing entry -- see
+                // onConfirmOverwrite() below, triggered from OverwriteConfirmDialog.vue.
+                this.pendingOverwrite = {dirNode, file, root};
+                eventBus.emit(CustomEventTypes.showStrypeModal, this.overwriteConfirmDlgId);
+                return;
+            }
+            this.proceedWithUpload(dirNode, file, root);
+        },
+
+        onConfirmOverwrite(): void {
+            const pending = this.pendingOverwrite;
+            this.pendingOverwrite = null;
+            if (pending) {
+                this.proceedWithUpload(pending.dirNode, pending.file, pending.root);
+            }
+        },
+
+        proceedWithUpload(dirNode: FsTreeNode, file: File, root: "/local" | "/cloud"): void {
             if (isZipFile(file)) {
                 // Ask the user whether to keep the archive as-is or unzip its contents -- see
                 // onKeepAsZip()/onUnzipContents() below, triggered from ArchiveImportDialog.vue.

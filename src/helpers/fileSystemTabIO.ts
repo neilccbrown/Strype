@@ -197,6 +197,14 @@ export async function downloadFsDirectoryAsZip(dirNode: FsTreeNode, root: FsRoot
     saveAs(blob, `${dirNode.name}.zip`);
 }
 
+// Whether dirNode already has a direct child (file or folder) with the given name -- used to warn
+// before an upload would silently overwrite (files) or merge into (folders) an existing entry.
+// dirNode's children are whatever was last listed for it (listFsRootTree), so this is a check
+// against that snapshot, not a fresh round trip.
+export function dirHasEntryNamed(dirNode: FsTreeNode, name: string): boolean {
+    return (dirNode.children ?? []).some((child) => child.name === name);
+}
+
 // Uploads a file into "/local" at the given directory node's path (e.g. "/local" itself, or a
 // subfolder). Writes straight into the main-thread cache -- callers must not allow this while
 // Python is executing (see FileSystemPane.vue): the cache is only resynced with a running worker
