@@ -575,15 +575,19 @@ describe("Asset files", () => {
 });
 
 describe("Local files", () => {
+    // microbit mode has no File system tab at all -- its PEA area shows the micro:bit device panel
+    // instead of the graphics/console/files tabs (see PythonExecutionArea.vue), so there's no
+    // upload UI to seed "/local" with in the first place:
+    if (Cypress.env("mode") === "microbit") {
+        return;
+    }
+
     // Uploads two files into "/local" via the File system tab's upload button, so the tests below
     // can check they show up in string-literal auto-complete alongside the built-in assets above.
     // No cloud drive is connected in these tests, so "/local" is the working directory and the
     // files should be offered without the "/local/" prefix (see AutoCompletion.vue's
     // localFileCompletions()).
     function uploadToLocal(fileName: string): void {
-        // Give the app a long timeout to finish its initial load (microbit mode in particular can
-        // take a while) before we go looking for the Files tab -- the default cy.get() timeout
-        // isn't always enough, unlike in the tests below which call focusEditorAC() first.
         cy.get("#filesPEATab", {timeout: 15 * 1000}).click();
         cy.get(".file-system-tree-upload-input").selectFile({
             contents: Cypress.Buffer.from("content of " + fileName),
