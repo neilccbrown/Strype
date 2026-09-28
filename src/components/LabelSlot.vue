@@ -602,7 +602,7 @@ export default defineComponent({
                     }
                 );
                 
-                if (!this.code || this.code === "\u200B") {
+                if (!this.code || (fromNaturalClick && this.code === "\u200B")) {
                     // If the slot is empty, a click on the placeholder text (shown via CSS content, not
                     // real DOM text) doesn't necessarily give real DOM focus to this slot. On Chrome it
                     // happens to work out anyway, but on Firefox it doesn't -- so we force focus
@@ -613,8 +613,13 @@ export default defineComponent({
                     // LabelSlotsStructure.vue's "the spans don't get focus anymore because the containing
                     // editable div grabs it" and the identical pattern in Commands.vue's
                     // closeSlotShortcutsPane(). An empty slot's code is either "" or a single zero-width
-                    // space (see the empty-content template binding above) -- both must be treated as
-                    // empty here, not just "".
+                    // space (see the empty-content template binding above). The zero-width-space case is
+                    // only treated as empty for a real mouse click (fromNaturalClick): onGetCaret() also runs
+                    // on keyboard navigation and after every reparse (see the updateAC() note below), and an
+                    // expression like "3+(456*789)" is full of zero-width-space slots next to its brackets --
+                    // forcing the selection here then would collapse an in-progress Shift+Arrow/Shift+End
+                    // selection as it crosses them, and textCursorPos can still refer to the slot's previous,
+                    // longer content (so it's clamped below).
                     //
                     // The anchor falls back to the store's current anchorSlotCursorInfos rather than
                     // slotCursorInfo itself only when shift is held (see #282/7220f425): that preserves an
@@ -625,11 +630,13 @@ export default defineComponent({
                     // getFrameLabelSlotsStructureUID's focus() above), so using it unconditionally would
                     // turn a plain click into a spurious multi-slot selection. Matches the identical
                     // shiftKey-gated pattern in LabelSlotsStructure.vue's up/down handling.
-                    const isShiftClick = event instanceof MouseEvent && event.shiftKey;
+                    // Non-click invocations keep the store's anchor, as before this was gated on shiftKey.
+                    const isPlainClick = fromNaturalClick && !(event instanceof MouseEvent && event.shiftKey);
                     this.$nextTick(() => {
                         document.getElementById(getFrameLabelSlotsStructureUID(this.frameId, this.labelSlotsIndex))?.focus();
-                        const slotCursorInfo: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: this.textCursorPos};
-                        const anchorCursorInfo = (isShiftClick ? useStore().anchorSlotCursorInfos : undefined) ?? slotCursorInfo;
+                        const slotLength = document.getElementById(this.UID)?.textContent?.length ?? 0;
+                        const slotCursorInfo: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: Math.min(this.textCursorPos, slotLength)};
+                        const anchorCursorInfo = (isPlainClick ? undefined : useStore().anchorSlotCursorInfos) ?? slotCursorInfo;
                         setDocumentSelection(anchorCursorInfo, slotCursorInfo);
                     });
                 }
