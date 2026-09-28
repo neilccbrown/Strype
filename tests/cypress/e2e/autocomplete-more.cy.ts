@@ -581,7 +581,10 @@ describe("Local files", () => {
     // files should be offered without the "/local/" prefix (see AutoCompletion.vue's
     // localFileCompletions()).
     function uploadToLocal(fileName: string): void {
-        cy.get("#filesPEATab").click();
+        // Give the app a long timeout to finish its initial load (microbit mode in particular can
+        // take a while) before we go looking for the Files tab -- the default cy.get() timeout
+        // isn't always enough, unlike in the tests below which call focusEditorAC() first.
+        cy.get("#filesPEATab", {timeout: 15 * 1000}).click();
         cy.get(".file-system-tree-upload-input").selectFile({
             contents: Cypress.Buffer.from("content of " + fileName),
             fileName: fileName,
@@ -589,6 +592,7 @@ describe("Local files", () => {
     }
 
     beforeEach(() => {
+        focusEditorAC();
         uploadToLocal("my-data.txt");
         uploadToLocal("other-notes.txt");
     });
