@@ -10,7 +10,7 @@ import {AppSPYFullPrefix} from "@/helpers/appContext";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import { actOnGraphicsImport } from "@/helpers/editor";
 // #v-endif
-import {STRYPE_DUMMY_FIELD, STRYPE_EXPRESSION_BLANK, STRYPE_INVALID_OP, STRYPE_INVALID_OPS_WRAPPER, STRYPE_INVALID_SLOT} from "@/helpers/pythonToFrames";
+import {STRYPE_DUMMY_FIELD, STRYPE_EXPRESSION_BLANK, STRYPE_INVALID_FSTRING_WRAPPER, STRYPE_INVALID_OP, STRYPE_INVALID_OPS_WRAPPER, STRYPE_INVALID_SLOT, escapeForPlainStringLiteral} from "@/helpers/pythonToFrames";
 
 const INDENT = "    ";
 const DISABLEDFRAMES_FLAG =  "\"\"\"";
@@ -106,10 +106,65 @@ function interleave<T>(a: T[], b: T[]): T[] {
     return result;
 }
 
+// An f-string's content is stored as plain text (see stringNodeToSlots() in
+// pythonToFramesExpr.ts -- there's no separate structure for the {expr} substitutions), so
+// nothing stops a user typing an unmatched "{" or "}" into one. That's not just a tree-sitter
+// parsing artefact: it's a genuine SyntaxError in real Python too (e.g. f"{x" fails to compile),
+// so it can never be emitted as a real f-string literal. This checks the same brace-balancing
+// rule Python itself applies (an unescaped "{{"/"}}" pair is literal, anything else must nest to
+// zero) to detect that case before it happens, rather than after a failed round-trip:
+function isWellFormedFString(code: string): boolean {
+    let depth = 0;
+    for (let i = 0; i < code.length; i++) {
+        const c = code[i];
+        if (c === "{") {
+            if (depth === 0 && code[i + 1] === "{") {
+                i++;
+                continue;
+            }
+            depth++;
+        }
+        else if (c === "}") {
+            if (depth === 0) {
+                if (code[i + 1] === "}") {
+                    i++;
+                    continue;
+                }
+                return false;
+            }
+            depth--;
+        }
+    }
+    return depth === 0;
+}
+
+// Replaces any [prefix, StringSlot, blank] triple (the shape stringNodeToSlots() produces --
+// see pythonToFramesExpr.ts) that is an f-string with unbalanced braces with a call to
+// STRYPE_INVALID_FSTRING_WRAPPER, so saving never emits Python that's guaranteed to fail to
+// re-parse. The prefix+quote+content is preserved verbatim as an ordinary (non-f) string
+// argument -- braces have no special meaning there, so it's always safely representable -- and
+// unwrapped again on load by replaceMediaLiteralsAndInvalidOps().
+function escapeUnrepresentableFStrings(slots: SlotsStructure): SlotsStructure {
+    for (let i = 0; i + 1 < slots.fields.length; i++) {
+        const prefixField = slots.fields[i];
+        const strField = slots.fields[i + 1];
+        if (isFieldBaseSlot(prefixField) && /^[rRbB]*[fF][rRbB]*$/.test(prefixField.code)
+            && slots.operators[i]?.code === ""
+            && isFieldStringSlot(strField) && !isWellFormedFString(strField.code)) {
+            const raw = prefixField.code + strField.quote + strField.code + strField.quote;
+            slots.fields[i] = {code: STRYPE_INVALID_FSTRING_WRAPPER};
+            slots.fields[i + 1] = {openingBracketValue: "(", operators: [{code: ""}, {code: ""}],
+                fields: [{code: ""}, {code: escapeForPlainStringLiteral(raw), quote: "\""} as StringSlot, {code: ""}]};
+        }
+    }
+    return slots;
+}
+
 // Checks if the level will parse as-is given the arrangement of operators and operands
 // If not, it transforms it into a special call ___strype_invalid_ops([]) where each
 // item in the list is an operand, or a ___strype_operator_uXXXX escaped operator.
 function transformSlotLevel(slots: SlotsStructure, topLevel?: {frameType: string, slotIndex: number}): SlotsStructure {
+    slots = escapeUnrepresentableFStrings(slots);
     // Here's what prevents parsing:
     // - A unary operator (like "not", "~") with something non-blank before it.
     // - Commas at the top-level of most constructs (only assignments, return, for and global allow it)
@@ -942,6 +997,32 @@ export default class Parser {
             code = STRYPE_EXPRESSION_BLANK;
         }
         
-        return {code: code, slotLengths: slotLengths, slotStarts: slotStarts, slotIds: slotIds, slotTypes: slotTypes}; 
+        return {code: code, slotLengths: slotLengths, slotStarts: slotStarts, slotIds: slotIds, slotTypes: slotTypes};
     }
+}
+
+// getCodeWithoutErrors() re-parses and re-type-checks the *whole* document from scratch, which is
+// expensive on large documents -- and it's called from two independent places (AutoCompletion.vue's
+// updateAC(), and acManager.ts's calculateParamPrompt() for dotted-context calls like "ax.plot(...)")
+// that can both run for the same frameId around the same "settle" moment after a keystroke, doing
+// the same work twice. Both callers construct their Parser with identical arguments
+// (new Parser(false, "py", true)), and the method is a pure function of (frameId, document state),
+// so the result can safely be shared between them.
+//
+// Cached against editorLastModificationAt rather than a purpose-built counter: it's already the
+// store's existing "content was modified" signal, bumped by saveStateChanges() *and*
+// applyStateUndoRedoChanges() (undo/redo doesn't go through saveStateChanges, so a cache keyed only
+// on the latter would miss it) and a couple of other content/state-modifying actions -- so this
+// self-invalidates on any edit without needing new invalidation call sites scattered around.
+const codeWithoutErrorsCache = new Map<number, {modifiedAt: number; result: string}>();
+
+export function getCachedCodeWithoutErrors(parser: Parser, frameId: number): string {
+    const modifiedAt = useStore().editorLastModificationAt;
+    const cached = codeWithoutErrorsCache.get(frameId);
+    if (cached !== undefined && cached.modifiedAt === modifiedAt) {
+        return cached.result;
+    }
+    const result = parser.getCodeWithoutErrors(frameId);
+    codeWithoutErrorsCache.set(frameId, {modifiedAt, result});
+    return result;
 }

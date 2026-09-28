@@ -5,6 +5,7 @@ import en from "@/localisation/en/en_main.json";
 import { CollapsedState } from "../../cypress/support/frame-types";
 import { checkFrameXorTextCursor, waitForEditorSettled } from "../support/editor";
 import { setupStrypeTest } from "../support/general";
+import { startRunning } from "../support/execution";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 120_000, fakeClipboard: true});
@@ -22,7 +23,9 @@ async function waitForErrorDetected(page: Page) : Promise<void> {
     await expect(page.locator(".error-count-span")).toBeVisible();
 }
 
-async function clickFoldFor(page: Page, identifyingText: string) : Promise<void> {
+// Returns the folding-control element for identifyingText's frame, having hovered it and
+// confirmed it's actually clickable (cursor: pointer).
+async function getFoldControlFor(page: Page, identifyingText: string) {
     // Find the span with text "top1"
     const header = page.locator("span,div", { hasText: identifyingText });
     // Find its frame header ancestor:
@@ -30,7 +33,42 @@ async function clickFoldFor(page: Page, identifyingText: string) : Promise<void>
     const control = ancestor.locator(":scope > .frame-controls-container > .folding-control");
     await control.hover();
     expect(await control.evaluate((el) => getComputedStyle(el).cursor)).toEqual("pointer");
+    return control;
+}
+
+async function clickFoldFor(page: Page, identifyingText: string) : Promise<void> {
+    const control = await getFoldControlFor(page, identifyingText);
     await control.click();
+}
+
+// Like clickFoldFor, but for callers that know the fold is expected to actually take effect (as
+// opposed to e.g. being legitimately blocked by a syntax error) -- confirms the click actually
+// changed the control's own fold-state class (fold-full/fold-header/fold-doc, from
+// FrameHeader.vue's isFoldDoc/isFoldHeader/isFoldFull) and retries the click if it didn't.
+// Confirmed as a real, consistently-reproducing CI failure on WebKit for "Can fold if there is a
+// runtime error #1" (the saved state came back unfolded on every one of 4 attempts, across
+// multiple separate CI runs) where a plain waitForEditorSettled() beforehand made no difference,
+// since the runtime-error highlighting this races doesn't touch #editor's own focus/cursor/
+// content that waitForEditorSettled tracks -- so the click itself, not a pre-click wait, is what
+// needs to be robust here. Plain clickFoldFor can't safely retry-until-changed itself: some of its
+// callers (e.g. "Cannot fold if there is a syntax error #1") click expecting the fold to be
+// blocked, where a class change would never come and retrying would just waste time before
+// correctly reporting no change.
+async function clickFoldForAndConfirm(page: Page, identifyingText: string) : Promise<void> {
+    const control = await getFoldControlFor(page, identifyingText);
+    const classBefore = await control.evaluate((el) => el.className);
+    for (let attempt = 0; attempt < 3; attempt++) {
+        await control.click();
+        try {
+            await expect(control).not.toHaveClass(classBefore, {timeout: 3000});
+            return;
+        }
+        catch {
+            // Fold didn't register -- loop round and click again.
+        }
+    }
+    // Let the final attempt's own failure surface normally:
+    await expect(control).not.toHaveClass(classBefore);
 }
 
 async function clickFoldChildrenFor(page: Page, identifyingText: string) : Promise<void> {
@@ -380,8 +418,10 @@ test.describe("Frozen state deals with errors", () => {
     });
     test("Can freeze if there is a runtime error #1", async ({page}) => {
         await loadContent(page, inputWhichWillRuntimeError);
-        // Run to provoke the error, and check it is there:
-        await page.getByText("Run").click();
+        // Run to provoke the error, and check it is there. Pyodide can still be initialising at
+        // this point (a raw click on "Run" here was seen to time out waiting for the button under
+        // CI contention), so wait for it to actually be ready to run rather than blindly clicking:
+        await startRunning(page);
         await expect(await page.locator(".fa-exclamation-triangle")).toBeVisible();
         expect(await page.locator("#peaConsole").inputValue()).toContain("object of type 'NoneType' has no len()");
         
@@ -397,18 +437,46 @@ test.describe("Frozen state deals with errors", () => {
         // We should then be frozen, despite there being an error because it is a runtime error:
         await saveAndCheck(page, testState({"class": "Frozen", "__init__": "FoldToHeader"}, inputWhichWillRuntimeError));
         
-        // Run to provoke the error, and check it is there:
-        await page.getByText("Run").click();
+        // Run to provoke the error, and check it is there. Pyodide can still be initialising at
+        // this point (a raw click on "Run" here was seen to time out waiting for the button under
+        // CI contention), so wait for it to actually be ready to run rather than blindly clicking:
+        await startRunning(page);
         await expect(await page.locator(".fa-exclamation-triangle")).toBeVisible();
         expect(await page.locator("#peaConsole").inputValue()).toContain("object of type 'NoneType' has no len()");
     });
     
+    // A mismatched-brace f-string (a genuine SyntaxError in real Python too, not just a
+    // tree-sitter artefact -- e.g. f"{x" fails to compile) can never be emitted as a real f-string
+    // literal, so Strype represents it as a call to ___strype_fstring_wrap() with the original,
+    // otherwise-unparseable f-string source stashed as an ordinary (non-f) string argument -- see
+    // STRYPE_INVALID_FSTRING_WRAPPER's doc comment in pythonSlotsShared.ts. This is the exact
+    // saved/loadable form Strype itself produces and round-trips (confirmed live: loading it
+    // reconstructs an f-string slot with Strype's own "This string is unterminated." error on it,
+    // and saving it back out reproduces this same wrapped text unchanged) -- unlike a raw
+    // mismatched-brace f-string typed directly into this fixture's source text, which tree-sitter
+    // can no longer parse at all (a hard parse failure, not the softer error state this test needs
+    // to reach in order to check that freezing/folding is blocked while it's showing):
     const inputWithTigerPythonError = `#(=> Strype:1:std
 #(=> Section:Imports
 #(=> Section:Definitions
 def foo (name,ID ) :
     # Mismatched format string:
-    print(f"Student: {name} ({ID)") 
+    print(___strype_fstring_wrap("f\\"Student: {name} ({ID)\\"")) 
+#(=> Section:Main
+foo("Anon",7) 
+#(=> Section:End
+`;
+    // The mismatched-brace f-string above loads fine (Skulpt is lenient about it), but saving it
+    // back out now goes through the new escapeUnrepresentableFStrings() check in parser.ts (see
+    // "Make an unbalanced-brace f-string round-trip through save/load"), which wraps it in
+    // ___strype_fstring_wrap(...) rather than re-emitting Python that's guaranteed to fail to
+    // re-parse -- so the *saved* content differs from what was loaded:
+    const expectedSaveWithTigerPythonError = `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+def foo (name,ID ) :
+    # Mismatched format string:
+    print(___strype_fstring_wrap("f\\"Student: {name} ({ID)\\"")) 
 #(=> Section:Main
 foo("Anon",7) 
 #(=> Section:End
@@ -422,7 +490,7 @@ foo("Anon",7)
         // Menu remains though so we need to dismiss it:
         await page.keyboard.press("Escape");
         // We should then not be frozen, so should be unmodified state:
-        await saveAndCheck(page, inputWithTigerPythonError);
+        await saveAndCheck(page, expectedSaveWithTigerPythonError);
     });
 });
 
@@ -442,13 +510,18 @@ test.describe("Folding state deals with errors", () => {
     });
     test("Can fold if there is a runtime error #1", async ({page}) => {
         await loadContent(page, inputWhichWillRuntimeError);
-        // Run to provoke the error, and check it is there:
-        await page.getByText("Run").click();
+        // Run to provoke the error, and check it is there. Pyodide can still be initialising at
+        // this point (a raw click on "Run" here was seen to time out waiting for the button under
+        // CI contention), so wait for it to actually be ready to run rather than blindly clicking:
+        await startRunning(page);
         await expect(await page.locator(".fa-exclamation-triangle")).toBeVisible();
         expect(await page.locator("#peaConsole").inputValue()).toContain("object of type 'NoneType' has no len()");
+        await waitForEditorSettled(page);
 
-        // Then try to fold:
-        await clickFoldFor(page, "class");
+        // Then try to fold. Use clickFoldForAndConfirm (not plain clickFoldFor) here: this fold
+        // is expected to actually succeed, and was seen to silently not register on WebKit --
+        // see that function's comment for why:
+        await clickFoldForAndConfirm(page, "class");
         // We should then be folded, despite there being an error because it is a runtime error:
         await saveAndCheck(page, testState({"class": "FoldToHeader"}, inputWhichWillRuntimeError));
     });
@@ -459,18 +532,42 @@ test.describe("Folding state deals with errors", () => {
         // We should then be folded, despite there being an error because it is a runtime error:
         await saveAndCheck(page, testState({"class": "FoldToHeader"}, inputWhichWillRuntimeError));
 
-        // Run to provoke the error, and check it is there:
-        await page.getByText("Run").click();
+        // Run to provoke the error, and check it is there. Pyodide can still be initialising at
+        // this point (a raw click on "Run" here was seen to time out waiting for the button under
+        // CI contention), so wait for it to actually be ready to run rather than blindly clicking:
+        await startRunning(page);
         await expect(await page.locator(".fa-exclamation-triangle")).toBeVisible();
         expect(await page.locator("#peaConsole").inputValue()).toContain("object of type 'NoneType' has no len()");
     });
 
+    // A mismatched-brace f-string (a genuine SyntaxError in real Python too, not just a
+    // tree-sitter artefact -- e.g. f"{x" fails to compile) can never be emitted as a real f-string
+    // literal, so Strype represents it as a call to ___strype_fstring_wrap() with the original,
+    // otherwise-unparseable f-string source stashed as an ordinary (non-f) string argument -- see
+    // STRYPE_INVALID_FSTRING_WRAPPER's doc comment in pythonSlotsShared.ts. This is the exact
+    // saved/loadable form Strype itself produces and round-trips (confirmed live: loading it
+    // reconstructs an f-string slot with Strype's own "This string is unterminated." error on it,
+    // and saving it back out reproduces this same wrapped text unchanged) -- unlike a raw
+    // mismatched-brace f-string typed directly into this fixture's source text, which tree-sitter
+    // can no longer parse at all (a hard parse failure, not the softer error state this test needs
+    // to reach in order to check that freezing/folding is blocked while it's showing):
     const inputWithTigerPythonError = `#(=> Strype:1:std
 #(=> Section:Imports
 #(=> Section:Definitions
 def foo (name,ID ) :
     # Mismatched format string:
-    print(f"Student: {name} ({ID)") 
+    print(___strype_fstring_wrap("f\\"Student: {name} ({ID)\\"")) 
+#(=> Section:Main
+foo("Anon",7) 
+#(=> Section:End
+`;
+    // See expectedSaveWithTigerPythonError's comment in the describe block above -- same reason:
+    const expectedSaveWithTigerPythonError = `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+def foo (name,ID ) :
+    # Mismatched format string:
+    print(___strype_fstring_wrap("f\\"Student: {name} ({ID)\\"")) 
 #(=> Section:Main
 foo("Anon",7) 
 #(=> Section:End
@@ -485,9 +582,11 @@ foo("Anon",7)
         await page.keyboard.press("Escape");
         await clickFoldFor(page, "def");
         // We should then not be folded, so should be unmodified state:
-        await saveAndCheck(page, inputWithTigerPythonError);
+        await saveAndCheck(page, expectedSaveWithTigerPythonError);
     });
-    
+
+    // See inputWithTigerPythonError's comment above -- same ___strype_fstring_wrap() scheme,
+    // wrapping a different malformed f-string (an unmatched "{" this time rather than a stray ")"):
     const inputWithNestedTigerPythonError = `#(=> Strype:1:std
 #(=> Section:Imports
 #(=> Section:Definitions
@@ -495,7 +594,20 @@ class Alpha  :
     def hasNoError (self, ) :
         return 42 
     def __init__ (self,y ) :
-        self.x  = f"{len(y)" 
+        self.x  = ___strype_fstring_wrap("f\\"{len(y)\\"") 
+#(=> Section:Main
+Alpha(None) 
+#(=> Section:End
+`;
+    // See expectedSaveWithTigerPythonError's comment above -- same reason, different wrapped f-string:
+    const expectedSaveWithNestedTigerPythonError = `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+class Alpha  :
+    def hasNoError (self, ) :
+        return 42 
+    def __init__ (self,y ) :
+        self.x  = ___strype_fstring_wrap("f\\"{len(y)\\"") 
 #(=> Section:Main
 Alpha(None) 
 #(=> Section:End
@@ -507,7 +619,7 @@ Alpha(None)
         // Folding all children should not fold it:
         await clickFoldChildrenFor(page, "class");
         // We should then only have folded the one without an error:
-        await saveAndCheck(page, testState({"hasNoError": "FoldToHeader"}, inputWithNestedTigerPythonError));
+        await saveAndCheck(page, testState({"hasNoError": "FoldToHeader"}, expectedSaveWithNestedTigerPythonError));
     });
 });
 

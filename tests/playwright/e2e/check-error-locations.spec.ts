@@ -6,7 +6,11 @@ import { setupStrypeTest } from "../support/general";
 
 let scssVars: {[varName: string]: string};
 test.beforeEach(async ({ page, browserName }, testInfo) => {
-    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 120000});
+    // 180s, not 120s: this suite's runToFinish() calls can themselves wait up to 120s for
+    // Pyodide to be ready (tests/playwright/support/execution.ts), and a 120s test-level budget
+    // left no headroom for that plus the rest of the test -- confirmed as a real CI failure
+    // ("Test timeout of 120000ms exceeded" racing the inner wait's own 120000ms, run 33729426452):
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 180000});
     scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
 });
 
@@ -77,6 +81,26 @@ except Exception:
         await checkConsoleContent(page, /9\n6\n4\n11\n5\n.*/);
         await checkConsoleContent(page, /.*TypeError: object of type 'NoneType' has no len\(\).*/);
         await expectHasVisibleErrorIcon(page.locator("span", {hasText: "This will cause an error:"}));
+    });
+
+    test("Check error shows on except frame, not try frame, for invalid except clause", async ({page}) => {
+        // Regression test for https://github.com/k-pet-group/Strype/issues/341 :
+        // "except e:" (old Python 2 syntax) is invalid in Python 3, it raises a NameError
+        // for the undefined name "e" while evaluating the except clause itself. The error
+        // used to be (wrongly) shown on the frame inside the try body instead of on the
+        // except frame, and an uncaught "errorElement is undefined" JS exception could occur.
+        const pageErrors: string[] = [];
+        page.on("pageerror", (err) => pageErrors.push(err.message));
+        await enterCode(page, ["", "", `
+try:
+    raise ValueError
+except e:
+    print("Error!")
+`.trimStart()]);
+        await runToFinish(page);
+        expect(pageErrors).toEqual([]);
+        await checkConsoleContent(page, /.*NameError: name 'e' is not defined.*/);
+        await expectHasVisibleErrorIcon(page.locator("div.frame-header-label", {hasText: "except"}));
     });
 
     test("Check error shows correctly when a funcdef with documentation follows a multiline comment", async ({page}) => {

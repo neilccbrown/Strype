@@ -8,7 +8,7 @@
     "defaultText": {
       "condition": "condition ",
       "list": "list ",
-      "identifier": "identifier ",
+      "identifier": "variable ",
       "expression": "expression ",
       "value": "value ",
       "variable": "variable ",
@@ -47,9 +47,11 @@
     "invalidPythonParsePaste": "Invalid Python code pasted: {errorMsg}",
     "wrongPythonStructCopied": "cannot paste else/elif/except/finally and further content in one paste",
     "incompatiblePythonStrypeSection": "the Python code cannot be placed in the target Strype section",
+    "invalidPythonCodeSyntax": "invalid syntax",
     "invalidMatchStmtContent": "this content is not allowed inside a 'match' statement",
     "errorAccessingIndexedDB": "Error accessing browser storage (possibly due to private browsing).  Your project will not be automatically backed up.  (Error: {errorMsg})",
-    "foundRecentUnsavedState": "A recent unsaved project backup (last modified {when}) was found.  Do you want to load it?"
+    "foundRecentUnsavedState": "A recent unsaved project backup (last modified {when}) was found.  Do you want to load it?",
+    "newVersionAvailable": "A new version of Strype is available. Reload the page to update."
   },
   "buttonLabel": {
     "undo": "Undo",
@@ -73,6 +75,7 @@
     "select": "Select",
     "refresh": "refresh",
     "choose": "Choose",
+    "reload": "Reload",
     "renameAllWithShortcut": "Rename all <span class=\"kb-shortcut\">({modifierkey}+R)</span>"
   },
   "errorMessage": {
@@ -235,7 +238,8 @@
     "shareProject": "Share...",
     "needSaveShareProj":"Save your project in the Cloud before sharing it",
     "lang": "Language: ",
-    "homepage": "Strype Homepage", 
+    "frameNumbers": "Frame numbers:",
+    "homepage": "Strype Homepage",
     "apiDocumentation": "Library documentation...",
     "version": "Version",
     "policy": "Privacy policy"
@@ -256,9 +260,9 @@
     "wrapCurlyBrackets": "Wrap in {'{}'}",
     "wrapDoubleQuotes": "Wrap in \"",
     "wrapSingleQuotes": "Wrap in '",
-    "shiftKey": "Shift",
     "recordImageShortcut": "Record image",
-    "recordSoundShortcut": "Record sound"
+    "recordSoundShortcut": "Record sound",
+    "colourPickerShortcut": "Colour picker"
   },
   "commandTabs": {
     "0": "Add Frame"
@@ -319,7 +323,27 @@
     "micPermissionDenied": "Microphone access was denied. Please allow microphone access to record a sound.",
     "noCameraFound": "No camera was found on this device.",
     "noMicFound": "No microphone was found on this device.",
-    "recordingProcessingError": "There was a problem processing the recording. Please try again."
+    "recordingProcessingError": "There was a problem processing the recording. Please try again.",
+    "colourPickerTitle": "Pick a colour"
+  },
+  "colourPicker": {
+    "familyRed": "Red",
+    "familyOrange": "Orange",
+    "familyYellow": "Yellow",
+    "familyGreen": "Green",
+    "familyTeal": "Teal",
+    "familyBlue": "Blue",
+    "familyPurple": "Purple",
+    "familyPink": "Pink",
+    "familyBrown": "Brown",
+    "familyGrey": "Greyscale",
+    "allColours": "Main colours",
+    "hue": "Hue",
+    "shade": "Shade",
+    "fineGrainedSelector": "Spectrum",
+    "tiles": "Tiles",
+    "previous": "Previous:",
+    "alpha": "Alpha"
   },
   "book": {
     "dialogTitle": "Strype textbook"

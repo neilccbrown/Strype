@@ -1,7 +1,25 @@
 name: Playwright Tests
-on: [push,pull_request]
+on:
+  push:
+    # A "no-ci-*" branch (e.g. for a trivial README-only change) skips this trigger entirely --
+    # no run is even created, unlike the pull_request case below where a head_ref check on the
+    # job is the best we can do (there's no equivalent head-branch trigger filter for PRs):
+    branches-ignore: ["no-ci-*"]
+  pull_request:
+# A push to a branch that already has an open PR fires both a push event and a pull_request
+# "synchronize" event for the same commit -- without this, that's two full runs of everything
+# below. Group push and pull_request runs for the same branch together (falling back to ref_name
+# for push events, which don't set head_ref) so the second event to arrive cancels the first
+# rather than both running to completion; genuinely independent branches/PRs don't share a group,
+# so this doesn't reduce coverage, just the redundant duplicate:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 jobs:
   test:
+    # See the branches-ignore comment above -- this is the pull_request-side equivalent (head_ref
+    # is only set for pull_request events; a push that reaches this point already isn't excluded):
+    if: ${{ !startsWith(github.head_ref, 'no-ci-') }}
     timeout-minutes: 125
     # 5 minutes extra to upload videos if we fail the timeout of one hour, below
     strategy:
@@ -36,13 +54,24 @@ jobs:
         # install, Pyodide) twice.
         #
         # ubuntu-latest + firefox is likewise split into two jobs (firefoxPart:
-        # isolated/rest), but for a different reason than webkit's split: there's no known
-        # starvation/flakiness bug for Firefox, console-execution.spec.ts and
-        # storage-model.spec.ts are just the two slowest spec files (by measured CI
-        # duration, ~50 min combined out of the full suite's ~66 min wall-clock at 4
-        # workers) and pulling them into their own concurrent job cuts the main job's
-        # wall-clock by roughly that much. Both jobs keep the normal 4-worker parallelism
-        # (unlike webkit's single-worker isolation) since nothing here needs serialising.
+        # isolated/rest); console-execution.spec.ts and storage-model.spec.ts are the two
+        # slowest spec files (by measured CI duration, ~50 min combined out of the full
+        # suite's ~66 min wall-clock at 4 workers), so pulling them into their own
+        # concurrent job cuts the main job's wall-clock by roughly that much. The "rest"
+        # job keeps the normal 4-worker parallelism (unlike webkit's single-worker
+        # isolation).
+        # Update: the isolated job WAS believed to have no starvation/flakiness bug, but a
+        # real CI run (33719597232) showed every console-execution.spec.ts test failing its
+        # first attempt on this exact job with the Run button stuck on "Initialising..."
+        # past a 60s timeout, then passing comfortably on retry -- consistent with 4
+        # concurrent Firefox instances each doing a cold Pyodide init contending for CPU.
+        # Giving the initial Pyodide-ready wait a flat 120s in
+        # tests/playwright/support/execution.ts (startRunning) helped but wasn't enough on
+        # its own: a follow-up run (33729426452) still hit that 120s ceiling on 3 different
+        # tests in this same job (passing on retry each time). So the isolated job (only)
+        # also now runs at --workers=2 rather than the default 4, halving how many cold
+        # Pyodide inits can contend for CPU at once -- short of webkit's full
+        # single-worker isolation, since nothing here is known to need full serialising.
         include:
           - os: ubuntu-latest
             browser: chromium
@@ -73,7 +102,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: public/pyodide
-        key: ${{ runner.os }}-pyodide-${{ hashFiles('package-lock.json') }}
+        key: ${{ runner.os }}-pyodide-${{ hashFiles('package-lock.json', 'scripts/download-pyodide-libs.cjs') }}
     - name: Install Pyodide
       if: steps.cache-pyodide.outputs.cache-hit != 'true'
       run: npm run build:download-pyodide-libs
@@ -85,7 +114,14 @@ jobs:
       run: |
         ISOLATED_SPECS="tests/playwright/e2e/console-execution.spec.ts,tests/playwright/e2e/storage-model.spec.ts"
         if [ "${{ matrix.browser }}" = "firefox" ] && [ "${{ matrix.firefoxPart }}" = "isolated" ]; then
-          RUN_CMD="SPEC=$ISOLATED_SPECS npx playwright test --project=firefox"
+          # Even with the generous 120s Pyodide-ready timeout added in
+          # tests/playwright/support/execution.ts, run 33729426452 still hit it (just over 2
+          # minutes) on 3 different tests in this job -- 4 workers here means up to 4 concurrent
+          # cold Pyodide inits contending for CPU, since both files in $ISOLATED_SPECS create a
+          # fresh page (and so a fresh Pyodide) per test. Halving the worker count trades some of
+          # this job's wall-clock time for headroom, short of webkit's full single-worker
+          # isolation elsewhere in this matrix:
+          RUN_CMD="SPEC=$ISOLATED_SPECS npx playwright test --project=firefox --workers=2"
         elif [ "${{ matrix.browser }}" = "firefox" ] && [ "${{ matrix.firefoxPart }}" = "rest" ]; then
           RUN_CMD="EXCLUDE_SPEC=$ISOLATED_SPECS npx playwright test --project=firefox"
         else
@@ -123,7 +159,7 @@ jobs:
       run: |
         brew install coreutils
         brew install --quiet jq
-        ISOLATED_SPECS="tests/playwright/e2e/console-execution.spec.ts,tests/playwright/e2e/storage-model.spec.ts"
+        ISOLATED_SPECS="tests/playwright/e2e/console-execution.spec.ts,tests/playwright/e2e/storage-model.spec.ts,tests/playwright/e2e/sound-wait-after-run.spec.ts"
         if [ "${{ matrix.browser }}" = "webkit" ] && [ "${{ matrix.webkitPart }}" = "single" ]; then
           # console-execution.spec.ts and storage-model.spec.ts have both shown CI-only
           # stop-slowness/flakiness on macOS+WebKit, suspected to be main-thread starvation
@@ -131,7 +167,9 @@ jobs:
           # WEBKIT_STOP_INVESTIGATION.md at commit e5c91b29). Run them alone,
           # single-worker, in their own job to test that directly -- separate from (and
           # concurrent with) the rest of the webkit suite below, rather than running both
-          # phases serially in one job.
+          # phases serially in one job. sound-wait-after-run.spec.ts was added here too: it
+          # waits on real-time sound playback finishing on its own, which is exactly the kind
+          # of timing assertion multi-worker main-thread starvation would make flaky.
           RUN_CMD="SPEC=$ISOLATED_SPECS npx playwright test --project=webkit --workers=1"
         elif [ "${{ matrix.browser }}" = "webkit" ] && [ "${{ matrix.webkitPart }}" = "multi" ]; then
           RUN_CMD="EXCLUDE_SPEC=$ISOLATED_SPECS npx playwright test --project=webkit"
@@ -180,3 +218,23 @@ jobs:
         path: resource-monitor.log
         retention-days: 30
         if-no-files-found: ignore
+
+  # Branch protection requires a single check named "Playwright-Tests" to pass, but the matrix
+  # above produces one check per combination (e.g. "test (ubuntu-latest, chromium)"), none of
+  # which is ever named exactly that -- so a required check on any individual combination would
+  # sit pending forever whenever that particular combination is skipped, and no combination on
+  # its own represents "the whole suite passed" anyway. Mirrors run-cypress-tests.yml's
+  # Build-And-Run-Tests gate job. This job depends on the whole matrix via a single job id, so
+  # it stays correct as matrix entries are added or removed, and reports the aggregate result
+  # under the exact name branch protection expects -- without this, GitHub's auto-merge (and any
+  # required-checks gate) only waits for whatever checks *are* required, so a PR could merge
+  # while these jobs were still running (confirmed: this is what happened for PR #1054).
+  Playwright-Tests:
+    name: Playwright-Tests
+    needs: test
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check matrix result
+        if: ${{ needs.test.result != 'success' && needs.test.result != 'skipped' }}
+        run: exit 1

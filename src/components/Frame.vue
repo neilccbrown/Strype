@@ -45,18 +45,20 @@
                 :wasLastRuntimeError="wasLastRuntimeError"
                 :onFocus="showFrameParseErrorPopupOnHeaderFocus"
             />
-            <BPopover
-                v-if="hasRuntimeError || wasLastRuntimeError || hasParsingError"
-                :id="errorPopoverUID"
-                :target="frameHeaderId"
-                :title="errorPopupTitle"
-                hover
-                :content="errorPopupContent"
-                :title-class="{'title-popover': true, 'modified-title-popover': (hasRuntimeError || hasParsingError)}"
-                body-class="error-popover"
-                placement="right"
-            >
-            </BPopover>
+            <teleport to="body">
+                <BPopover
+                    v-if="hasRuntimeError || wasLastRuntimeError || hasParsingError"
+                    :id="errorPopoverUID"
+                    :target="frameHeaderId"
+                    :title="errorPopupTitle"
+                    hover
+                    :content="errorPopupContent"
+                    :title-class="{'title-popover': true, 'modified-title-popover': (hasRuntimeError || hasParsingError)}"
+                    body-class="error-popover"
+                    placement="right"
+                >
+                </BPopover>
+            </teleport>
             <FrameBody
                 v-if="allowChildren && bodyVisible"
                 :ref="getFrameBodyRef"
@@ -229,8 +231,7 @@ export default defineComponent({
                 const parentChildrenIds = this.appStore.frameObjects[parentFrameId].childrenIds;
                 const positionIndex = parentChildrenIds.indexOf(this.frameId);
                 const isBlockFrameStacked = positionIndex > 0 && // there is something above
-                        this.appStore.frameObjects[parentChildrenIds[positionIndex - 1]].frameType.allowChildren && // above is another block
-                        !(this.appStore.currentFrame.id == parentChildrenIds[positionIndex - 1] && this.appStore.currentFrame.caretPosition == CaretPosition.below); // and there is no caret in between
+                        this.appStore.frameObjects[parentChildrenIds[positionIndex - 1]].frameType.allowChildren; // above is another block
                 if(isBlockFrameStacked){
                     return {"margin-top": "-1px", ...baseStylePart};
                 }

@@ -1,5 +1,5 @@
 <template>
-    <ModalDlg :dlgId="dlgId" :dlgTitle="dlgTitle" hideDlgBtns>
+    <ModalDlg dlgId="recordImageDlg" :dlgTitle="$t('media.recordImageTitle')" hideDlgBtns>
         <div v-if="errorMessage" class="RecordImageDlg-error">{{ errorMessage }}</div>
         <div class="RecordImageDlg-video-wrapper">
             <video ref="video" class="RecordImageDlg-video" autoplay muted playsinline></video>
@@ -22,17 +22,15 @@ import { eventBus } from "@/helpers/appContext";
 import { CustomEventTypes } from "@/helpers/editor";
 import { captureVideoFrameToDataURL, stopMediaStreamTracks } from "@/helpers/mediaCapture";
 
+// Only ever one instance of this dialog (see App.vue), so its id is fixed rather than a prop.
+const DLG_ID = "recordImageDlg";
+
 export default defineComponent({
     name: "RecordImageDlg",
 
     components: {
         ModalDlg,
         BButton,
-    },
-
-    props: {
-        dlgId: String,
-        dlgTitle: String,
     },
 
     data: function () {
@@ -68,7 +66,7 @@ export default defineComponent({
 
     methods: {
         onShownModalDlg(event: BvTriggerableEvent) {
-            if (event.componentId != this.dlgId) {
+            if (event.componentId != DLG_ID) {
                 return;
             }
             // Fresh state every time the dialog is (re-)shown, e.g. via "Re-record":
@@ -91,7 +89,7 @@ export default defineComponent({
         },
 
         onHideModalDlg(event: BvTriggerableEvent) {
-            if (event.componentId != this.dlgId) {
+            if (event.componentId != DLG_ID) {
                 return;
             }
             this.clearCountdown();
@@ -124,7 +122,7 @@ export default defineComponent({
             // Release the camera as soon as we have the frame, rather than waiting for the
             // (animated) modal-hide transition to finish:
             this.stopCamera();
-            eventBus.emit(CustomEventTypes.hideStrypeModal, {trigger: "captured", componentId: this.dlgId});
+            eventBus.emit(CustomEventTypes.hideStrypeModal, {trigger: "captured", componentId: DLG_ID});
         },
 
         doRecord() {
@@ -154,7 +152,7 @@ export default defineComponent({
         },
 
         doCancel() {
-            eventBus.emit(CustomEventTypes.hideStrypeModal, {trigger: "cancel", componentId: this.dlgId});
+            eventBus.emit(CustomEventTypes.hideStrypeModal, {trigger: "cancel", componentId: DLG_ID});
         },
     },
 });

@@ -229,11 +229,22 @@ export function calculatePrecedenceTiers(operatorCodes: string[], isUnarySignAt:
                 let tier = (maxLevel === 0)
                     ? (isKeyword ? "keyword-medium" : "medium")
                     : tierForLevel(levels.get(op.index) ?? 0, isKeyword);
-                // A detected unary sign substitutes in "sign-medium" for "medium" so the CSS
-                // layer knows to suppress its leading margin ("high" needs no substitute --
-                // already zero margin on both sides; "low" isn't reachable now that unary
-                // sign binds as tightly as "~", see UNARY_SIGN_PRECEDENCE):
-                if (isUnarySignAt[op.index] && tier === "medium") {
+                // A detected unary sign always substitutes in "sign-medium", regardless of
+                // what tier the generic ladder computation landed on. This used to be guarded
+                // on `tier === "medium"` (the assumption being that "high" needs no substitute,
+                // since it's already zero-margin on both sides -- true for the *CSS* margin,
+                // but that guard also gates a second, unrelated thing: parser.ts's generated
+                // Python text only omits the surrounding spaces around an operator when its
+                // tier is *exactly* "sign-medium" (see getSlotStartsLengthsAndCodeForFrameLabel's
+                // `isUnary` check). A unary sign mixed into a segment with a comparison operator
+                // (e.g. "x < -399", where "<" and "-" land in the same precedence-ladder segment)
+                // computes to "high", not "medium", so the guard never fired and the minus was
+                // saved as a spaced-out binary operator ("x <  - 399") -- a real round-trip bug,
+                // confirmed via a genuine fixture (public/book_projects/chapter12/cheese.spy)
+                // failing CI's load-save-book-demo-projects.spec.ts. Unconditional here fixes
+                // that: every detected unary sign now reliably gets tight (no-space) output,
+                // which is correct regardless of what tier it would otherwise have occupied.
+                if (isUnarySignAt[op.index]) {
                     tier = "sign-medium";
                 }
                 tiers[op.index] = tier;

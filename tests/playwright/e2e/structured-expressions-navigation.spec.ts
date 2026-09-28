@@ -168,7 +168,7 @@ test.describe("Check navigation around grapheme clusters in strings", () => {
         await page.keyboard.press("Backspace");
         await pressFrameShortcut(page, "i");
         await waitForEditorSettled(page);
-        await page.keyboard.type(" \"");
+        await page.keyboard.type("\"");
         await waitForEditorSettled(page);
         await assertStateOfIfFrame(page, "{}_“$”_{}");
         // Types the content of the literal, with some grapheme clusters
@@ -194,7 +194,7 @@ test.describe("Check navigation around grapheme clusters in strings", () => {
         await page.keyboard.press("Backspace");
         await pressFrameShortcut(page, "i");
         await waitForEditorSettled(page);
-        await page.keyboard.type(" \"");
+        await page.keyboard.type("\"");
         await waitForEditorSettled(page);
         await assertStateOfIfFrame(page, "{}_“$”_{}");
         // Types the content of the literal, with some grapheme clusters

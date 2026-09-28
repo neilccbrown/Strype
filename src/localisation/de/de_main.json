@@ -8,7 +8,7 @@
     "defaultText": {
       "condition": "Bedingung ",
       "list": "Liste ",
-      "identifier": "Name ",
+      "identifier": "Variable ",
       "expression": "Ausdruck ",
       "value": "Wert ",
       "variable": "Variable ",

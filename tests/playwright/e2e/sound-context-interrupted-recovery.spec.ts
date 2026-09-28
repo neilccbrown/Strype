@@ -63,7 +63,10 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
         testInfo.skip(true, "Playing sound headless doesn't work in Firefox");
     }
     await installInterruptedFirstAudioContext(page);
-    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 120000});
+    // 180s, not 120s: runToFinish() can itself wait up to 120s for Pyodide to be ready (see
+    // tests/playwright/support/execution.ts) -- see check-error-locations.spec.ts for the CI
+    // failure this fixes:
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 180000});
 });
 
 test.describe("Sound context interrupted recovery", () => {

@@ -1,7 +1,25 @@
 name: Cypress tests
-on: [push,pull_request]
+on:
+  push:
+    # A "no-ci-*" branch (e.g. for a trivial README-only change) skips this trigger entirely --
+    # no run is even created, unlike the pull_request case below where a head_ref check on the
+    # job is the best we can do (there's no equivalent head-branch trigger filter for PRs):
+    branches-ignore: ["no-ci-*"]
+  pull_request:
+# A push to a branch that already has an open PR fires both a push event and a pull_request
+# "synchronize" event for the same commit -- without this, that's two full runs of everything
+# below. Group push and pull_request runs for the same branch together (falling back to ref_name
+# for push events, which don't set head_ref) so the second event to arrive cancels the first
+# rather than both running to completion; genuinely independent branches/PRs don't share a group,
+# so this doesn't reduce coverage, just the redundant duplicate:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 jobs:
-  Build-And-Run-Tests:
+  Build-And-Run-Tests-Matrix:
+    # See the branches-ignore comment above -- this is the pull_request-side equivalent (head_ref
+    # is only set for pull_request events; a push that reaches this point already isn't excluded):
+    if: ${{ !startsWith(github.head_ref, 'no-ci-') }}
     timeout-minutes: 125
     strategy:
       fail-fast: false
@@ -10,7 +28,8 @@ jobs:
           testtype: ["python", "microbit"]
           # Did have Mac here, but it seems to run out of memory so taken it out:
           os: [ ubuntu-latest ]
-          cypress_split: [0, 1, 2] # For parallelising the jobs, length must match the --total arg below
+          # For parallelising the jobs, length must match the SPLIT env var below.
+          cypress_split: [0, 1, 2]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out repository code
@@ -25,7 +44,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: public/pyodide
-          key: ${{ runner.os }}-pyodide-${{ hashFiles('package-lock.json') }}
+          key: ${{ runner.os }}-pyodide-${{ hashFiles('package-lock.json', 'scripts/download-pyodide-libs.cjs') }}
       - name: Install Pyodide
         if: steps.cache-pyodide.outputs.cache-hit != 'true'
         run: npm run build:download-pyodide-libs
@@ -49,4 +68,20 @@ jobs:
               tests/cypress/screenshots
               tests/cypress/videos
             if-no-files-found: ignore
+
+  # Branch protection requires a single check named "Build-And-Run-Tests" to pass, but the matrix
+  # above produces one check per combination (e.g. "Build-And-Run-Tests-Matrix (python,
+  # ubuntu-latest, 0)"), none of which is ever named exactly that -- so the required check would
+  # sit pending forever. This gate job depends on the whole matrix via a single job id, so it
+  # stays correct as matrix entries are added or removed, and reports the aggregate result under
+  # the exact name branch protection expects.
+  Build-And-Run-Tests:
+    name: Build-And-Run-Tests
+    needs: Build-And-Run-Tests-Matrix
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check matrix result
+        if: ${{ needs.Build-And-Run-Tests-Matrix.result != 'success' && needs.Build-And-Run-Tests-Matrix.result != 'skipped' }}
+        run: exit 1
 

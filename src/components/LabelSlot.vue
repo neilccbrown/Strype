@@ -1,12 +1,13 @@
 <template>
-    <div :id="'div_'+UID" :class="{[scssVars.labelSlotContainerClassName]: true, nohover: isDraggingFrame}" :contenteditable="isEditableSlot && !(isDisabled || isFrozen || isPythonExecuting)">
+    <div :id="'div_'+UID" :class="{[scssVars.labelSlotContainerClassName]: true, nohover: isDraggingFrame}" :contenteditable="(isEditableSlot && !(isDisabled || isFrozen || isPythonExecuting)) ? 'true' : 'false'">
         <span
             autocomplete="off"
             spellcheck="false"
-            :disabled="isDisabled"
+            :disabled="isDisabled ? 'true' : 'false'"
             :placeholder="defaultText"
-            :empty-content="!code || code == '\u200B'"
-            :contenteditable="isEditableSlot && !(isDisabled || isFrozen || isPythonExecuting)"
+            :empty-content="(!code || code == '\u200B') ? 'true' : 'false'"
+            :data-param-prompt-pending="paramPromptPending ? 'true' : undefined"
+            :contenteditable="(isEditableSlot && !(isDisabled || isFrozen || isPythonExecuting)) ? 'true' : 'false'"
             @click.stop="onGetCaret($event, true)"
             @slotGotCaret="onGetCaret"
             @slotLostCaret="onLoseCaret"
@@ -67,24 +68,23 @@
             :key="AC_UID"
             :id="AC_UID"
             :AC_UID="AC_UID"
-            :isImportFrame="isImportFrame()"
             @[CustomEventTypes.acItemClicked]="acItemClicked"
         />
     </div>
 </template>
 
 <script lang="ts">
-import { defineComponent, nextTick, PropType } from "vue";
+import { defineComponent, PropType } from "vue";
 import Cache from "timed-cache";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
-import { bumpCaretRequestSeq, closeBracketCharacters, CustomEventTypes, getACLabelSlotUID, getCaretRequestSeq, getFocusedEditableSlotTextSelectionStartEnd, getFrameHeaderUID, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFrameUID, getLabelSlotUID, getMatchingBracket, getNumPrecedingBackslashes, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, keywordOperatorsWithSurroundSpaces, openBracketCharacters, operators, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, simpleSlotStructureToString, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringDoubleQuoteChar, stringQuoteCharacters, stringSingleQuoteChar, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength } from "@/helpers/editor";
-import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, CollapsedState, EditImageInDialogFunction, FieldSlot, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, getFrameDefType, isFieldBracketedSlot, isFieldStringSlot, LoadedMedia, MediaSlot, MessageDefinitions, OptionalSlotType, PythonExecRunningState, RecordNewImageInDialogFunction, RecordNewSoundInDialogFunction, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
+import { bumpCaretRequestSeq, bumpLastSlotCharacterTypedTimestamp, closeBracketCharacters, CustomEventTypes, getACLabelSlotUID, getCaretRequestSeq, getFocusedEditableSlotTextSelectionStartEnd, getFrameHeaderUID, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFrameUID, getLabelSlotUID, getMatchingBracket, getNumPrecedingBackslashes, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, keywordOperatorsWithSurroundSpaces, openBracketCharacters, operators, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, simpleSlotStructureToString, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringDoubleQuoteChar, stringQuoteCharacters, stringSingleQuoteChar, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength } from "@/helpers/editor";
+import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, CollapsedState, EditImageInDialogFunction, FieldSlot, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, getFrameDefType, isFieldBracketedSlot, isFieldStringSlot, LoadedMedia, MediaSlot, MessageDefinitions, OptionalSlotType, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
 import {evaluateSlotType, getFlatNeighbourFieldSlotInfos, getOutmostDisabledAncestorFrameId, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
 import Parser from "@/parser/parser";
-import { cloneDeep } from "lodash";
+import { cloneDeep, debounce, DebouncedFunc } from "lodash";
 import { BPopover, useToggle } from "bootstrap-vue-next";
 import scssVars from "@/assets/style/_export.module.scss";
 import {drawSoundOnCanvas} from "@/helpers/media";
@@ -93,6 +93,7 @@ import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { eventBus, projectDocumentationFrameId } from "@/helpers/appContext";
 import { detectBrowser } from "@/helpers/browser";
 import { PrecedenceTier, UNARY_PREFIX_OPERATORS } from "@/helpers/operatorPrecedence";
+import { drawCheckerboard } from "@/helpers/colour";
 
 // Default time to keep in cache: 5 minutes.
 const soundPreviewImages = new Cache<LoadedMedia>({ defaultTtl: 5 * 60 * 1000 });
@@ -110,23 +111,13 @@ export default defineComponent({
     },
 
     created() {
-        // Expose this component that other components might need.
-        // Vue 3 has deprecated direct access to components.
-        // (we don't set it in setup() because we want to have this accessible, and the component created!)
-        const apiMethods = {
-            handleUpDown: this.handleUpDown,
-        };
-        
-        if(vueComponentsAPIHandler.labelSlotComponentAPI == null){    
-            vueComponentsAPIHandler.labelSlotComponentAPI = {
-                forInstance: {
-                    [this.UID]: apiMethods,
-                },
-            };
-        }
-        else{
-            vueComponentsAPIHandler.labelSlotComponentAPI.forInstance[this.UID] = apiMethods;
-        }
+        // updateAC() triggers a full-document TigerPython parse (via AutoCompletion.vue's
+        // updateAC()) on essentially every keystroke while a slot is focused, which is expensive
+        // on large documents (profiled separately). Debounce it so a burst of typing only pays
+        // that cost once it pauses, rather than on every character. Callers that need results
+        // immediately (explicit Ctrl+Space request, or gaining focus on a slot) call updateAC()
+        // and then flush() it straight after -- see onKeyDown()/onGetCaret().
+        this.updateAC = debounce(this.updateAC, 150);
     },
 
     components: {
@@ -136,6 +127,11 @@ export default defineComponent({
 
     props: {
         defaultText: String,
+        // True while this slot's placeholder text is still being resolved asynchronously (e.g. a
+        // param prompt waiting on library data to load) -- see LabelSlotsStructure.vue's
+        // placeholderText/paramPromptPending. Used purely to show a "still working on it" indicator
+        // instead of a blank/empty placeholder.
+        paramPromptPending: Boolean,
         code: {type: String, required: true},
         labelSlotsIndex: {type: Number, required: true},
         slotId: {type: String, required: true},
@@ -154,7 +150,7 @@ export default defineComponent({
         },
     },
     
-    inject: ["editImageInDialog", "recordNewImageInDialog", "recordNewSoundInDialog"],
+    inject: ["editImageInDialog", "recordNewImageInDialog", "recordNewSoundInDialog", "openColourPickerInDialog"],
 
     mounted(){
         // To make sure the a/c component shows just below the spans, we set its top position here based on the span height.
@@ -172,8 +168,14 @@ export default defineComponent({
         }
     },
 
-    beforeUnmounts() {
+    beforeUnmount() {
         this.appStore.removePreCompileErrors(this.UID);
+        // Cancel any pending debounced updateAC() call -- otherwise it can fire after this slot
+        // (and potentially its whole frame) no longer exists, reading stale/gone state. Concretely
+        // hit as a CI regression: updateACForModuleImport() ran against an import frame that had
+        // since been torn down, ending up with a garbage/empty library address and throwing
+        // "Failed to construct 'URL': Invalid base URL" as an unhandled rejection.
+        (this.updateAC as unknown as DebouncedFunc<() => void>).cancel();
     },
 
     data: function() {
@@ -410,14 +412,6 @@ export default defineComponent({
         doEditImageInDialog() : EditImageInDialogFunction {
             return (this as any).editImageInDialog as EditImageInDialogFunction;
         },
-
-        doRecordNewImageInDialog() : RecordNewImageInDialogFunction {
-            return (this as any).recordNewImageInDialog as RecordNewImageInDialogFunction;
-        },
-
-        doRecordNewSoundInDialog() : RecordNewSoundInDialogFunction {
-            return (this as any).recordNewSoundInDialog as RecordNewSoundInDialogFunction;
-        },
     },
 
     methods: {
@@ -621,6 +615,16 @@ export default defineComponent({
                 document.getElementById(getLabelSlotUID(this.coreSlotInfo))?.scrollIntoView({block: "nearest"});
 
                 this.updateAC();
+                // onGetCaret() is also invoked on essentially every keystroke -- not just real
+                // focus changes -- via checkSlotRefactoring's cursor-repositioning dispatch of
+                // "slotGotCaret" after each reparse (see LabelSlotsStructure.vue), so flushing
+                // unconditionally here would defeat updateAC()'s debounce for normal typing.
+                // fromNaturalClick is only true for an actual mouse click into the slot -- a
+                // one-off event, not a rapid-fire burst -- so it's safe (and desirable, for
+                // responsiveness) to flush immediately in that case only:
+                if (fromNaturalClick) {
+                    (this.updateAC as unknown as DebouncedFunc<() => void>).flush();
+                }
 
                 // As we receive focus, we show the error popover if required. Note that we do it programmatically as it seems the focus trigger on popover isn't working in our configuration
                 if(this.erroneous()){
@@ -705,6 +709,11 @@ export default defineComponent({
         // Event callback equivalent to what would happen for a blur event callback 
         // (the spans don't get focus anymore because the containg editable div grab it)
         onLoseCaret(event: CustomEvent<{keepIgnoreKeyEventFlagOn?: boolean, keepEditingModeOn?: boolean}>): void {
+            // A pending debounced updateAC() call is for whatever was focused before -- once we've
+            // lost the caret, that's no longer relevant (and firing it later, e.g. against a slot
+            // whose frame has since been removed, is a source of stale-state bugs; see the
+            // matching cancel() in beforeUnmount()):
+            (this.updateAC as unknown as DebouncedFunc<() => void>).cancel();
             const {keepIgnoreKeyEventFlagOn, keepEditingModeOn} = event.detail??{};
             this.$nextTick(() => vueComponentsAPIHandler.labelSlotsStructureComponentAPI?.forInstance[getFrameLabelSlotsStructureUID(this.frameId, this.labelSlotsIndex)].updatePrependTextAndCheckErrors());
             // Before anything, we make sure that the current frame still exists,
@@ -731,6 +740,16 @@ export default defineComponent({
                         keepEditingModeOn
                     );
                 }
+                // Give a plain string one last check as we leave it: if its content now matches a hex
+                // colour literal (e.g. the user just typed "#aabbcc"), auto-convert it to a colour swatch.
+                // Mere cursor movement (Tab/click-away/arrow-out) never fires onInput, so this is the only
+                // point such a conversion can happen -- reusing the same reparse pipeline as organic typing
+                // gets cursor repositioning, undo/redo and structural re-rendering for free.
+                if (this.slotType === SlotType.string) {
+                    const stateBeforeChanges = cloneDeep(this.appStore.$state);
+                    this.$emit(CustomEventTypes.requestSlotsRefactoring, this.UID, stateBeforeChanges, {useFlatMediaDataCode: true, treatAsBlurred: true});
+                }
+
                 //reset the flag for first code change
                 this.isFirstChange = true;
 
@@ -927,25 +946,15 @@ export default defineComponent({
 
             // We capture the key shortcut for opening the a/c
             if((event.metaKey || event.ctrlKey) && event.key == " "){
+                // updateAC() is debounced (see created()) so a paused-but-not-yet-fired debounce
+                // could otherwise show stale results here -- force it to run immediately, since
+                // the user explicitly asked for completions right now:
+                this.updateAC();
+                (this.updateAC as unknown as DebouncedFunc<() => void>).flush();
                 this.showAC = true;
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation();
-            }
-
-            // Ctrl-Shift-I / Ctrl-Shift-U record a new image/sound literal from the webcam/microphone
-            // at the current caret position. Not available inside strings or comments (mirrors the
-            // gate used elsewhere for slot-type-sensitive shortcuts, e.g. around line 1239), and not
-            // while any modal (including one of our own) is already open, to avoid re-entrancy.
-            if((event.ctrlKey || event.metaKey) && event.shiftKey
-                    && (event.key.toLowerCase() == "i" || event.key.toLowerCase() == "u")
-                    && this.slotType != SlotType.string && this.slotType != SlotType.comment
-                    && this.frameType != AllFrameTypesIdentifier.comment
-                    && !this.appStore.isModalDlgShown){
-                event.preventDefault();
-                event.stopPropagation();
-                event.stopImmediatePropagation();
-                this.triggerMediaRecording(event.key.toLowerCase() == "i" ? "image" : "sound");
             }
 
             // Manage the handling of home/end and page up/page down keys (see macOS case in method details)
@@ -969,77 +978,6 @@ export default defineComponent({
             
             // All other input events (i.e. typing, no modifiers) are handled by
             // processInput instead.
-        },
-
-        // Captures where to insert the recorded media literal (the slot and the text either side
-        // of the caret) synchronously, at the moment the shortcut is pressed -- NOT re-derived from
-        // DOM/focus later, since focus moves to the record/edit modals for a while before the user
-        // finishes (or cancels). Mirrors the DOM-read logic already used for paste in
-        // onCodePasteImpl below. The record/edit dialogs are true modals that block all editor
-        // interaction while open, so the target slot cannot change or be deleted in the meantime.
-        triggerMediaRecording(kind: "image" | "sound") {
-            const inputSpanField = document.getElementById(this.UID) as HTMLSpanElement;
-            if (!inputSpanField) {
-                return;
-            }
-            const {selectionStart, selectionEnd} = getFocusedEditableSlotTextSelectionStartEnd(this.UID);
-            const lhsCode = (inputSpanField.textContent?.substring(0, selectionStart) ?? "").replace(/\u200B/g, "");
-            const rhsCode = (inputSpanField.textContent?.substring(selectionEnd) ?? "").replace(/\u200B/g, "");
-            const targetSlotInfos = parseLabelSlotUID(this.UID);
-
-            // Suppress the artificial blur about to happen as focus moves to the modal, exactly as
-            // is already done before opening the large-image edit dialog on paste (see onCodePaste):
-            this.appStore.ignoreBlurEditableSlot = true;
-
-            // If the user cancels (at either the record or the edit dialog) instead of confirming,
-            // nothing is inserted -- but real DOM focus has still moved to the modal throughout, so
-            // without this we'd be left showing the frame cursor instead of back in the slot. Restore
-            // the original selection exactly as it was before the shortcut was pressed:
-            const restoreOriginalCursor = () => {
-                const anchorCursorInfo: SlotCursorInfos = {slotInfos: targetSlotInfos, cursorPos: selectionStart};
-                const focusCursorInfo: SlotCursorInfos = {slotInfos: targetSlotInfos, cursorPos: selectionEnd};
-                nextTick(() => {
-                    setDocumentSelection(anchorCursorInfo, focusCursorInfo);
-                    this.appStore.setSlotTextCursors(anchorCursorInfo, focusCursorInfo);
-                    this.appStore.setFocusEditableSlot({
-                        frameSlotInfos: targetSlotInfos,
-                        caretPosition: this.appStore.getAllowedChildren(targetSlotInfos.frameId) ? CaretPosition.body : CaretPosition.below,
-                    });
-                });
-            };
-
-            const commitInsertion = (replacement: {code: string, mediaType: string}) => {
-                this.appStore.addNewSlot(targetSlotInfos, replacement.mediaType, lhsCode, rhsCode, SlotType.media, false, replacement.code);
-                // Explicitly place the cursor in the new trailing (empty) field right after the
-                // inserted media, mirroring the same three calls onGetCaret() uses when a user
-                // clicks into a slot (setDocumentSelection + setSlotTextCursors +
-                // setFocusEditableSlot, see ~line 595 above). We can't rely on leftRightKey()'s
-                // *relative* navigation here (as paste's onCodePasteImpl does) because that
-                // depends on appStore.isEditing/focusSlotCursorInfos reflecting where we were
-                // focused, which is no longer valid after going through the record/edit dialogs:
-                // real DOM focus has been on dialog buttons throughout, not any text slot, so
-                // leftRightKey ends up navigating frame-caret-style from a stale/wrong position
-                // instead of moving within the slot text (observed: caret landing at the very
-                // start of the line rather than after the media).
-                const {parentId, slotIndex} = getSlotParentIdAndIndexSplit(targetSlotInfos.slotId);
-                const rhsSlotInfos: SlotCoreInfos = {...targetSlotInfos, slotId: getSlotIdFromParentIdAndIndexSplit(parentId, slotIndex + 2)};
-                const cursorInfo: SlotCursorInfos = {slotInfos: rhsSlotInfos, cursorPos: 0};
-                nextTick(() => {
-                    setDocumentSelection(cursorInfo, cursorInfo);
-                    this.appStore.setSlotTextCursors(cursorInfo, cursorInfo);
-                    this.appStore.setFocusEditableSlot({
-                        frameSlotInfos: rhsSlotInfos,
-                        caretPosition: this.appStore.getAllowedChildren(rhsSlotInfos.frameId) ? CaretPosition.body : CaretPosition.below,
-                    });
-                });
-            };
-
-            if (kind == "image") {
-                this.doRecordNewImageInDialog(commitInsertion, restoreOriginalCursor);
-            }
-            else {
-                this.doRecordNewSoundInDialog(commitInsertion, restoreOriginalCursor);
-            }
         },
 
         // Removes the given string which has just been entered as part of an input event,
@@ -1094,6 +1032,11 @@ export default defineComponent({
             if (!inputString) {
                 return;
             }
+            // Marks "a character was just typed into a slot", so a Space arriving shortly afterwards
+            // at a blank slot (e.g. one just split off by this very character) is recognised as part
+            // of the same typing burst rather than a deliberate pane-opening press -- see
+            // isSlotShortcutsPaneSpaceDueToDelay()/LabelSlotsStructure.vue's forwardKeyEvent.
+            bumpLastSlotCharacterTypedTimestamp();
             // So in general, there's three different ways input occurs:
             // 1. One is a plain key press, e.g. they press "f" on UK layout.  This arrives as a single input event.
             // 2. Another is a one-off key combination, e.g. pressing alt-5 enters "[" on German layout.  This also arrives as a single input event.
@@ -1108,8 +1051,12 @@ export default defineComponent({
             //   with operators and brackets which can create new slots.
             // - Delete and backspace are not input events so they happen elsewhere.
             
-            const stateBeforeChanges = cloneDeep(this.appStore.$state);
-            
+            // Scoped to this frame only: ordinary character input only ever mutates this.frameId's own slots
+            // (see checkSlotRefactoring()/performKeywordFrameConversion() in LabelSlotsStructure.vue -- the
+            // keyword-frame-conversion path re-widens this to a full clone itself before it reparents/attaches
+            // any other frame, since that's the one case here that can reach beyond this.frameId).
+            const stateBeforeChanges = this.appStore.cloneStateForUndo([this.frameId]);
+
             const inputSpanField = document.getElementById(this.UID) as HTMLSpanElement;
             const inputSpanFieldContent = inputSpanField.textContent ?? "";
             const currentSlot = retrieveSlotFromSlotInfos(this.coreSlotInfo) as BaseSlot;
@@ -1204,7 +1151,10 @@ export default defineComponent({
                     this.doArrowRightNextTick();
                 }
             }
-            // We also prevent start trailing spaces on all slots except comments and string content, to avoid indentation errors
+            // We also prevent start trailing spaces on all slots except comments and string content, to avoid indentation errors.
+            // (Space on a genuinely blank slot is intercepted at keydown instead -- see onKeyDown -- so by the
+            // time we get here it never fires for that case; this only handles a leading space typed before
+            // other, already-present content.)
             else if(inputString === " " && this.frameType !== AllFrameTypesIdentifier.comment && this.slotType != SlotType.string && cursorPos == 0){
                 this.removeLastInput(inputString);
             }
@@ -1955,14 +1905,25 @@ export default defineComponent({
             
             this.showAC = false;
         },
-   
-        isImportFrame(): boolean {
-            return this.appStore.isImportFrame(this.frameId);
-        },
-        
+
         async loadMediaPreview(): Promise<LoadedMedia> {
             let slot = retrieveSlotFromSlotInfos(this.coreSlotInfo) as MediaSlot;
-            if (slot.mediaType.startsWith("image") && !slot.mediaType.startsWith("image/svg+xml")) {
+            if (slot.mediaType === "colour") {
+                const hex = slot.code.replace(/["']/g, "");
+                const canvas = document.createElement("canvas");
+                canvas.width = 32;
+                canvas.height = 32;
+                const ctx = canvas.getContext("2d");
+                if (ctx) {
+                    // Draw a checkerboard first so a non-opaque (8-digit hex) colour shows what's
+                    // "underneath" it, same as the colour picker dialog's own swatches:
+                    drawCheckerboard(ctx, canvas.width, canvas.height, 4);
+                    ctx.fillStyle = hex;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                }
+                return {mediaType: slot.mediaType, imageDataURL: canvas.toDataURL(), hex: hex};
+            }
+            else if (slot.mediaType.startsWith("image") && !slot.mediaType.startsWith("image/svg+xml")) {
                 return {mediaType: slot.mediaType, imageDataURL: "data:" + slot.mediaType + ";" + /base64,[^"']+/.exec(slot.code)?.[0]};
             }
             else if (slot.mediaType.startsWith("audio")) {
@@ -2000,6 +1961,29 @@ export default defineComponent({
         },
     },
     watch: {
+        // Expose this component that other components might need, keyed by its (reactive) UID.
+        // Vue 3 has deprecated direct access to components. Registering only once (e.g. in
+        // created()) is NOT enough: v-for can reuse this same component instance for a different
+        // slot after the slot list is spliced (e.g. inserting a new media literal via the slot
+        // shortcuts pane), which changes UID without recreating the component -- so this must be
+        // reactive, not a one-shot snapshot, or a stale key is left pointing here while the new
+        // UID resolves to nothing (observed with the media/colour shortcut triggers, before they
+        // were moved to App.vue -- see its triggerMediaRecording/triggerColourPicker -- precisely
+        // to sidestep this: a true singleton component can never go stale this way).
+        UID: {
+            immediate: true,
+            handler(newUID: string, oldUID: string | undefined) {
+                if(vueComponentsAPIHandler.labelSlotComponentAPI == null){
+                    vueComponentsAPIHandler.labelSlotComponentAPI = {forInstance: {}};
+                }
+                if(oldUID && oldUID !== newUID){
+                    delete vueComponentsAPIHandler.labelSlotComponentAPI.forInstance[oldUID];
+                }
+                vueComponentsAPIHandler.labelSlotComponentAPI.forInstance[newUID] = {
+                    handleUpDown: this.handleUpDown,
+                };
+            },
+        },
         slotType: function() {
             if (this.isMediaSlot) {
                 this.loadMediaPreview().then((m) => {
@@ -2045,6 +2029,22 @@ export default defineComponent({
     content: attr(placeholder);
     font-style: italic;
     color: var(--prompt-color, #bbb);
+}
+
+// Overrides the rule above (extra attribute selector wins on specificity) while a param prompt is
+// still being resolved asynchronously, so users see a "still working on it" indicator instead of a
+// blank slot -- see LabelSlotsStructure.vue's paramPromptPending.
+.#{$strype-classname-label-slot-input}[empty-content="true"][data-param-prompt-pending="true"]::after {
+    content: "\2022\2022\2022";
+    font-style: normal;
+    letter-spacing: 2px;
+    color: var(--prompt-color, #bbb);
+    animation: strype-param-prompt-pending-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes strype-param-prompt-pending-pulse {
+    0%, 100% { opacity: 0.25; }
+    50% { opacity: 0.9; }
 }
 
 .#{$strype-classname-label-slot-input}.readonly {

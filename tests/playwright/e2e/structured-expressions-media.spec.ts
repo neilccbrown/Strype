@@ -229,7 +229,14 @@ test.describe("Edition in expressions with media",() => {
         const image = fs.readFileSync("src/assetsFilesystem/images/cat-test.jpg").toString("base64");
         const last10B64ImgChars = image.slice(-10);
         await doPagePaste(page, image, "image/jpeg");
-        await page.keyboard.type(" and 5");
+        // No leading space: it would be the very first character typed into the fresh, empty slot
+        // the paste leaves the cursor in, and with nothing typed anywhere yet the slot-shortcuts-pane
+        // delay (isSlotShortcutsPaneSpaceDueToDelay) has nothing to measure against, making it
+        // indistinguishable from deliberately opening the pane -- see LabelSlotsStructure.vue's
+        // forwardKeyEvent. "and" is still recognised as a keyword operator at the very start of a
+        // slot either way (LabelSlot.vue's processInput matches on
+        // potentialOutput.startsWith(textualOperator + " ")).
+        await page.keyboard.type("and 5");
         await assertStateOfIfFrame(page, `{}${MEDIA_SLOT_PARSED_PLACEHOLDER.image}{}and{5$}`, [{mediaType: "img", endOfB64: last10B64ImgChars}]);
     });
 

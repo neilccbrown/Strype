@@ -63,6 +63,12 @@ async function getGithubRepoPaths(
 
 const INDEX_FILE_NAME = "index.txt";
 
+// A library server that's unreachable/hanging shouldn't leave a param prompt (or anything else
+// waiting on this fetch) stuck indefinitely -- see acManager.ts's calculateParamPrompt and the
+// "pending" indicator in LabelSlot.vue, which would otherwise animate forever. 10s is generous
+// enough for a slow-but-working fetch of the small pyi/autocomplete.json files involved.
+const FETCH_TIMEOUT_MS = 10000;
+
 async function attemptFetchFile(address: LibraryAddress, fileName: FilePath) : Promise<FetchResult> {
     let url;
     if (address.startsWith("https:") || address.startsWith("http:")) {
@@ -94,7 +100,7 @@ async function attemptFetchFile(address: LibraryAddress, fileName: FilePath) : P
     }
     
     try {
-        const response = await fetch(url);
+        const response = await fetch(url, {signal: AbortSignal.timeout(FETCH_TIMEOUT_MS)});
         if (response.ok) {
             return {buffer: await response.arrayBuffer(), mimeType: response.headers.get("Content-Type")};
         }
@@ -102,8 +108,13 @@ async function attemptFetchFile(address: LibraryAddress, fileName: FilePath) : P
             return response.status;
         }
     }
-    catch {
-        return 520;
+    catch (e) {
+        // Covers both a genuine network failure and our own timeout above (AbortSignal.timeout()
+        // aborts with a "TimeoutError" DOMException) -- either way we give up on this file. The
+        // caller (getRawFileFromLibraries) caches whatever numeric code we return here in
+        // libraryCache, which -- per the comment on its declaration -- is only ever cleared on a
+        // page reload, so a timed-out fetch won't be silently retried again this session:
+        return (e instanceof DOMException && e.name === "TimeoutError") ? 408 : 520;
     }
 }
 

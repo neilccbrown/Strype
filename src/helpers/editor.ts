@@ -15,6 +15,7 @@ import {toUnicodeEscapes} from "@/parser/parser";
 import { fromUnicodeEscapes, pasteMixedPython } from "@/helpers/pythonToFrames";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { eventBus } from "@/helpers/appContext";
+import { isHexColourLiteral } from "@/helpers/colour";
 
 export const undoMaxSteps = 50;
 export const autoSaveFreqMins = 2; // The number of minutes between each autosave action.
@@ -31,6 +32,26 @@ export function bumpCaretRequestSeq(): number {
 }
 export function getCaretRequestSeq(): number {
     return caretRequestSeq;
+}
+
+// Timestamp (Date.now()) of the last character actually typed into a slot (LabelSlot.vue's
+// processInput, called on every native "input" event). Used to tell a deliberate Space press at a
+// blank slot (opens the slot shortcuts pane -- see LabelSlotsStructure.vue's forwardKeyEvent) apart
+// from a space that's merely the next character of an in-flight typing burst landing in a slot that
+// just became blank (e.g. right after a keyword/symbolic operator split, or after a bracket/media
+// literal insertion) -- those must fall through to being silently discarded like any other leading
+// space, not hijacked into opening the pane. Only Space is gated on this; Tab is a deliberate,
+// distinct keypress that's never produced as a byproduct of typing, so it isn't at risk of this
+// collision and doesn't need the delay.
+let lastSlotCharacterTypedTimestamp = 0;
+export function bumpLastSlotCharacterTypedTimestamp(): void {
+    lastSlotCharacterTypedTimestamp = Date.now();
+}
+// How long, in milliseconds, must have passed since the last character was typed into a slot before
+// a Space at a blank slot is treated as deliberately opening the slot shortcuts pane.
+export const SLOT_SHORTCUTS_PANE_SPACE_DELAY_MS = 500;
+export function isSlotShortcutsPaneSpaceDueToDelay(): boolean {
+    return (Date.now() - lastSlotCharacterTypedTimestamp) >= SLOT_SHORTCUTS_PANE_SPACE_DELAY_MS;
 }
 
 // Constants used for query parameters parsing
@@ -1319,18 +1340,10 @@ export function notifyDragEnded():void {
 /**
  * Operator and brackets related content
  */
-// For Strype, we ignore the following double/triple operators += -= /= *= %= //= **= &= |= ^= >>= <<= 
-export const operators = [".","+","-","/","*","%",":","//","**","&","|","~","^",">>","<<",
-    "==","=","!=",">=","<=","<",">",","];
-// Note that for those textual operator keywords, we only have space surrounding the single words: double words don't need
-// as they will always come from a combination of writing one word then the other (the first will be added as operator);
-// "as" is added in the operator list for imports, but it will be discarded when not dealing with import frames.
-// Important that the longer operators come before the shorter ones with the same prefix:
-// "lambda" is recognised as a plain prefix keyword operator (like "not") so it can be
-// typed/pasted without crashing and gets sensible precedence-based spacing, but Strype
-// gives it no semantic support (no parameter-list awareness) -- it's a pass-through.
-export const keywordOperatorsWithSurroundSpaces = [" and ", " in ", " is not ", " is ", " or ", " not in ", " not ", " as ", " if ", " else ", " for ", " lambda "];
-export const trimmedKeywordOperators = keywordOperatorsWithSurroundSpaces.map((spacedOp) => spacedOp.trim());
+// Defined in pythonOperators.ts (a dependency-free leaf module) and re-exported here so existing
+// importers of editor.ts are unaffected.
+import { operators, keywordOperatorsWithSurroundSpaces, trimmedKeywordOperators } from "@/helpers/pythonOperators";
+export { operators, keywordOperatorsWithSurroundSpaces, trimmedKeywordOperators };
 
 
 // We construct the list of all operator with a specific order: first the spaced keyword operators, 
@@ -1744,7 +1757,18 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
             // When we construct the parts before and after the string, we need to internally set the cursor "fake" position, that is, the cursor offset by the bits we are evaluating
             const {slots: structBeforeString, cursorOffset: beforeStringCursortOffset} = parseCodeLiteral(beforeStringCode, {isInsideString: false, cursorPos: flags?.cursorPos, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
             cursorOffset += beforeStringCursortOffset;
-            const structOfString: StringSlot = {code: stringContentCode, quote: openingQuoteValue};
+            // Auto-convert a plain string matching a hex colour literal (e.g. "#aabbcc") into a colour
+            // MediaSlot, but only once the cursor has genuinely left the string (cursorPos undefined, or
+            // outside the quotes -- sitting exactly on the opening quote's own index means the cursor is
+            // just to its left, i.e. still outside, so that bound is exclusive; sitting on the closing
+            // quote's index means the cursor is just before it, i.e. still inside, so that bound is
+            // inclusive), and only for unprefixed strings (f/r/b-prefixed strings are excluded, since
+            // those are constructed live the same way as a plain string via addNewSlot's string branch).
+            const cursorInsideThisString = flags?.cursorPos !== undefined && flags.cursorPos > openingQuoteIndex && flags.cursorPos <= closingQuoteIndex;
+            const hasStringPrefix = /(^|[^a-zA-Z0-9_])[fFrRbB]{1,2}$/.test(beforeStringCode);
+            const structOfString: StringSlot | MediaSlot = (!cursorInsideThisString && !hasStringPrefix && isHexColourLiteral(stringContentCode))
+                ? {mediaType: "colour", code: openingQuoteValue + stringContentCode.toLowerCase() + openingQuoteValue} as MediaSlot
+                : {code: stringContentCode, quote: openingQuoteValue};
             const {slots: structAfterString, cursorOffset: afterStringCursorOffset} = parseCodeLiteral(afterStringCode, {isInsideString: false, cursorPos: flags?.cursorPos !== undefined ? flags?.cursorPos - closingQuoteIndex + (2*(quoteTokenLength -1)) + stringPlaceholder.length : undefined, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
             cursorOffset += afterStringCursorOffset;
             (structAfterString.fields[0] as BaseSlot).code = removePossibleFieldPlaceholderFromStart((structAfterString.fields[0] as BaseSlot).code);
@@ -2127,57 +2151,48 @@ export function setPythonExecAreaLayoutButtonPos(): void{
 }
 
 /**
- * These methods are used to control the height of the "Add frame" commands,
- * to allow the commands to be displayed in columns when they can't be shown as one column.
- * See Commands.vue for the HTML template logics.
+ * In the ordinary (non-expanded PEA) case, the add-frame-commands list sizes and wraps itself
+ * purely via CSS -- see Commands.vue's ".add-frame-commands-list" grid rules, and the flex-grow
+ * chain feeding it a real height ("min-height: 0" all the way down from the pane that already has
+ * one). That replaced an earlier JS-measured, explicitly-pinned pixel height that was only ever
+ * recomputed on splitter-resize/PEA-expand-collapse events -- and so went stale the moment the
+ * *content* changed instead (e.g. moving the frame cursor to a section with a different number of
+ * available commands), which is what let the list overflow into a column count too wide for the
+ * pane and cut off its right edge.
+ *
+ * The expanded-PEA case still needs computing here: that view pulls the list out of normal flow
+ * (position: absolute, so it can overlay the collapsed commands/PEA splitter) and sizes it against
+ * the editor's "cropped" height, which depends on manuallyResizedEditorHeight -- a runtime value
+ * CSS has no access to.
  */
 export const debounceComputeAddFrameCommandContainerSize = debounce(computeAddFrameCommandContainerSize, 100);
 
 export function computeAddFrameCommandContainerSize(isExpandedPEA?: boolean): void{
-    // Two situations can happen: being or not in expanded PEA view.
-    // If we are in expanded PEA view, the height of the frame commands panel is aligned with the editor's "cropped" size.
-    // If we are in collapsed PEA view, the height of the frame commands is aligned with the commands/PEA splitter pane's size.
+    const addFrameCommandsP = document.querySelector("." + scssVars.addFrameCommandsContainerClassName + " p") as HTMLParagraphElement | null;
     if(isExpandedPEA){
-        const projectNameContainerH = (document.getElementsByClassName(scssVars.strypeProjectNameContainerClassName)[0] as HTMLDivElement).clientHeight;
-        const croppedEditorH = (manuallyResizedEditorHeight) ? manuallyResizedEditorHeight : (document.getElementsByTagName("body")[0].clientHeight / 2);
-        (document.querySelector("." + scssVars.addFrameCommandsContainerClassName + " p") as HTMLParagraphElement).style.height = (croppedEditorH - projectNameContainerH) + "px";
-        // In expanded view, we need to set the frame commmands container to "position: absolute" for the content to overlay the commands/PEA splitter.
-        // However, the width won't align properly, we need to set that width manually.
-        const frameCmdsParagraphContainer =  document.querySelector("." + scssVars.addFrameCommandsContainerClassName) as HTMLDivElement;
-        (document.querySelector("." + scssVars.addFrameCommandsContainerClassName + " p") as HTMLParagraphElement).style.width = frameCmdsParagraphContainer.clientWidth + "px";
+        if(addFrameCommandsP){
+            const projectNameContainerH = (document.getElementsByClassName(scssVars.strypeProjectNameContainerClassName)[0] as HTMLDivElement).clientHeight;
+            const croppedEditorH = (manuallyResizedEditorHeight) ? manuallyResizedEditorHeight : (document.getElementsByTagName("body")[0].clientHeight / 2);
+            addFrameCommandsP.style.height = (croppedEditorH - projectNameContainerH) + "px";
+            // In expanded view, we need to set the frame commmands container to "position: absolute" for the content to overlay the commands/PEA splitter.
+            // However, the width won't align properly, we need to set that width manually.
+            const frameCmdsParagraphContainer = document.querySelector("." + scssVars.addFrameCommandsContainerClassName) as HTMLDivElement;
+            addFrameCommandsP.style.width = frameCmdsParagraphContainer.clientWidth + "px";
+        }
     }
-    else {
-        // Reset the frame commands container's width to natural behaviour (see case above)
-        (document.querySelector("." + scssVars.addFrameCommandsContainerClassName + " p") as HTMLParagraphElement).style.width = "";
+    else if(addFrameCommandsP){
+        // Leaving expanded view (or never having entered it): clear any inline height/width the
+        // branch above may have left behind, so CSS is back in full control of sizing.
+        addFrameCommandsP.style.height = "";
+        addFrameCommandsP.style.width = "";
+    }
 
-        // When the container div overflows, we remove the overflow extra height to the p element containing the commands
-        // so that we can shorten the p height to trigger the commands to be displayed in columns.
-        const scrollContainerH = document.getElementsByClassName(scssVars.noPEACommandsClassName)[0].scrollHeight;
-        const noPEACommandsH =  document.getElementsByClassName(scssVars.noPEACommandsClassName)[0].getBoundingClientRect().height;
-        const addFrameCmdsPH = (document.querySelector("." + scssVars.addFrameCommandsContainerClassName + " p") as HTMLParagraphElement).getBoundingClientRect().height;
-        const commandsFlexContainer = (document.querySelector("." + scssVars.addFrameCommandsContainerClassName + " p") as HTMLParagraphElement);
-        if(noPEACommandsH < scrollContainerH){
-            commandsFlexContainer.style.height = (addFrameCmdsPH - (scrollContainerH - noPEACommandsH)) + "px";
-        }
-        else{
-            // The commands panel is not overflowing, but it could be because it is already collapsed (elements are wrapped) and now we have more space for it to expand:
-            // in the case, we want to increase the commands panel size.
-            if(commandsFlexContainer.childElementCount > 0){
-                const firstCommandLeft = commandsFlexContainer.children[0].getBoundingClientRect().left;
-                const lastCommandLeft =  commandsFlexContainer.children[commandsFlexContainer.childElementCount - 1].getBoundingClientRect().left;
-                if(firstCommandLeft != lastCommandLeft){
-                    const projectNameContainerH = document.getElementsByClassName(scssVars.strypeProjectNameContainerClassName)[0].getBoundingClientRect().height;
-                    (document.querySelector("." + scssVars.addFrameCommandsContainerClassName + " p") as HTMLParagraphElement).style.height = (noPEACommandsH - projectNameContainerH) + "px";
-                }
-            }
-        }
-            
-        // When we are done, we need to check again the min size of the commands/PEA splitter pane 1, since scroll bars
-        // could have been added with the new change (need to wait for it to be effective though).
-        setTimeout(() => {
-            vueComponentsAPIHandler.commandsComponentAPI?.setPEACommandsSplitterPanesMinSize(true);    
-        }, 100);    
-    }
+    // The commands/PEA splitter's minimum pane sizes depend on the frame commands' rendered
+    // height (e.g. whether a horizontal scrollbar has appeared), so they need recomputing whenever
+    // the layout that feeds them might have changed (need to wait for it to be effective though).
+    setTimeout(() => {
+        vueComponentsAPIHandler.commandsComponentAPI?.setPEACommandsSplitterPanesMinSize(true);
+    }, 100);
 }
 // #v-endif
 

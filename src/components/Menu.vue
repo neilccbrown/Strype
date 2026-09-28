@@ -164,14 +164,22 @@
             <div class="flex-padding" />
             <!-- category: preferences / settings -->
             <!-- Localisation -->
-            <div class="appMenu-prefs-div">
-                <div>
-                    <label :for="appLangSelectId">{{$t("appMenu.lang")}}</label>&nbsp;
-                    <select name="lang" :id="appLangSelectId" v-model="appLang" @change="showMenu=false;" :class="scssVars.strypeMenuItemClassName" @click="setCurrentTabIndexFromEltId(appLangSelectId)">
-                        <option v-for="locale in locales" :value="locale.code" :key="locale.code">{{locale.name}}</option>
-                    </select>
-                </div> 
-            </div>
+            <table class="appMenu-prefs-div">
+                <tbody>
+                    <tr>
+                        <td><label :for="frameNumbersCheckboxId">{{$t("appMenu.frameNumbers")}}</label></td>
+                        <td><input type="checkbox" :id="frameNumbersCheckboxId" v-model="frameNumbersEnabled" @change="showMenu=false;" @click="setCurrentTabIndexFromEltId(frameNumbersCheckboxId)"></td>
+                    </tr>
+                    <tr>
+                        <td><label :for="appLangSelectId">{{$t("appMenu.lang")}}</label></td>
+                        <td>
+                            <select name="lang" :id="appLangSelectId" v-model="appLang" @change="showMenu=false;" :class="scssVars.strypeMenuItemClassName" @click="setCurrentTabIndexFromEltId(appLangSelectId)">
+                                <option v-for="locale in locales" :value="locale.code" :key="locale.code">{{locale.name}}</option>
+                            </select>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
             <!-- new section -->
             <div class="menu-separator-div"></div>
             <div></div>
@@ -206,20 +214,26 @@
         </div>
         <div class="menu-icons-div">
             <div class="menu-icon-div">
-                <input 
-                    type="image" 
+                <!-- mousedown.prevent stops the click from blurring a currently-focused editable
+                     slot before the undo/redo below runs -- that blur's own commit path was
+                     corrupting the undo stack for an edit still in flight (Ctrl+Z, which doesn't
+                     blur, was unaffected). -->
+                <input
+                    type="image"
                     :src="undoImagePath"
                     :disabled="isUndoDisabled"
+                    @mousedown.prevent
                     @click="performUndoRedo(true)"
                     class="menu-icon-entry"
                     :title="$t('contextMenu.undo')"
                 />
             </div>
-            <div class="menu-icon-div">   
-                <input 
-                    type="image" 
+            <div class="menu-icon-div">
+                <input
+                    type="image"
                     :src="redoImagePath"
                     :disabled="isRedoDisabled"
+                    @mousedown.prevent
                     @click="performUndoRedo(false)"
                     class="menu-icon-entry"
                     :title="$t('contextMenu.redo')"
@@ -484,6 +498,10 @@ export default defineComponent({
             return getAppLangSelectId();
         },
 
+        frameNumbersCheckboxId(): string {
+            return "frameNumbersCheckboxId";
+        },
+
         locales(): Locale[] {
             // The locale codes are already parts of the i18n messages at this stage, so they are easy to retrieve.
             // We retrieve the corresponding locale's friendly name from i18n directly.
@@ -702,9 +720,18 @@ export default defineComponent({
             get(): string {
                 return this.settingsStore.locale??"en";
             },
-            set(lang: string) {                                
+            set(lang: string) {
                 this.settingsStore.setAppLang(lang);
-            }, 
+            },
+        },
+
+        frameNumbersEnabled: {
+            get(): boolean {
+                return this.settingsStore.frameNumbersEnabled;
+            },
+            set(enabled: boolean) {
+                this.settingsStore.setFrameNumbersEnabled(enabled);
+            },
         },
 
         getAppVersion(): string {
@@ -1361,8 +1388,7 @@ export default defineComponent({
                         // #v-else
                         // For micro:bit, we can simply open a shared the project as an exteral resource since it exists in our public repository.
                         // Of course, this rely on how we expose the projects, and that we have the correct project name set.
-                        const normalisedChapterNumber = selectedProject.chapter.replace(/chapter\s+(\d+)/i, (_, n) => n.padStart(2, "0"));
-                        window.open(`https://strype.org/editor/?${sharedStrypeProjectIdKey}=${encodeURI(`https://strype.org/editor/book_projects/chapter${normalisedChapterNumber}/${projectName}.spy`)}`, "_blank");
+                        window.open(`https://strype.org/editor/?${sharedStrypeProjectIdKey}=${encodeURI(`https://strype.org/editor/${selectedProject.path}/${projectName}.spy`)}`, "_blank");
                         // #v-endif
                     }
                 }
@@ -1782,8 +1808,21 @@ export default defineComponent({
 }
 
 .appMenu-prefs-div {
+    // Override .bm-item-list > * (from vue3-burger-menu's own CSS, and the "flex" rule just
+    // below this) forcing every direct child of the menu to display:flex -- that breaks a
+    // <table>'s row/cell layout, so this needs to explicitly win it back.
+    display: table !important;
     margin-left: 5%;
     color: black;
+    border-collapse: collapse;
+}
+
+.appMenu-prefs-div td {
+    padding: 2px 0;
+}
+
+.appMenu-prefs-div td:first-child {
+    padding-right: 8px;
 }
 
 .menu-icons-div {
@@ -2027,7 +2066,7 @@ div:has(> a.open-menu-embedded-proj-link) {
     height: 100%;
 }
 
-.bm-item-list > :not(.menu-separator-div) {
+.bm-item-list > :not(.menu-separator-div):not(.appMenu-prefs-div) {
       display: flex !important;
       text-decoration: none !important;
       padding: 2px !important;

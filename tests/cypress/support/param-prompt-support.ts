@@ -294,7 +294,7 @@ function testFuncs(funcs: {
                 // We enter first one, then named middle one:
                 cy.get("body").type(func.funcName.replaceAll(/[‘’]/g, "'") + "(");
                 const midName = func.params.positionalOrKeywordArgs[midParam].name;
-                cy.get("body").type("0, " + midName + "=0,");
+                cy.get("body").type("0," + midName + "=0,");
                 // Now it should hide the first param, and the middle one, and show the others as keyword possibilities
                 withFrameId((frameId) => {
                     assertState(frameId,

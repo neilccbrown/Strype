@@ -66,6 +66,8 @@ export interface StringSlot extends BaseSlot {
 // and we can infer the function is "load_image" from the media type.
 // None of this can be edited after the image is initially inserted into the code
 // so there are no problems with keeping the different parts in sync
+// Exception: mediaType "colour" has code equal to a bare quoted string (e.g. "#aabbcc"),
+// not a function call -- there is no underlying function for colour literals.
 export interface MediaSlot extends BaseSlot {
     mediaType: string;
 }
@@ -926,6 +928,7 @@ export const MessageDefinedActions = {
     closeBanner: "close",
     undo: "undo",
     load: "load",
+    reload: "reload",
 };
 
 export enum imagePaths {
@@ -957,6 +960,7 @@ export const MessageTypes = {
     invalidPythonParsePaste: "invalidPythonParsePaste",
     errorAccessingIndexedDB: "errorAccessingIndexedDB",
     foundRecentUnsavedState: "foundRecentUnsavedState",
+    newVersionAvailable: "newVersionAvailable",
 };
 
 //empty message
@@ -1104,6 +1108,17 @@ const FoundRecentUnsavedState: MessageDefinition = {
     path: imagePaths.empty,
 };
 
+// Shown when startVersionCheck() (versionCheck.ts) detects that the deployed build has moved on
+// since this page loaded -- see its comment for why that can happen even in a single session.
+// No timeout: unlike most banners this isn't reacting to something the user just did, so there's
+// no natural moment it stops being relevant -- it should stay until they act or dismiss it.
+const NewVersionAvailable: MessageDefinition = {
+    ...NoMessage,
+    type: MessageTypes.newVersionAvailable,
+    message: "messageBannerMessage.newVersionAvailable",
+    buttons: [{ label: "buttonLabel.reload", action: MessageDefinedActions.reload }],
+};
+
 export const MessageDefinitions = {
     NoMessage,
     UploadSuccessMicrobit,
@@ -1121,6 +1136,7 @@ export const MessageDefinitions = {
     InvalidPythonParsePaste,
     ErrorAccessingIndexedDB,
     FoundRecentUnsavedState,
+    NewVersionAvailable,
 };
 
 //WebUSB listener
@@ -1329,6 +1345,8 @@ export interface LoadedMedia {
     imageDataURL: string,
     // But only sounds have this item:
     audioBuffer?: AudioBuffer,
+    // Only colour literals have this item -- the hex code itself, shown as the popup header text:
+    hex?: string,
 }
 
 export interface MediaDataAndDim {
@@ -1354,4 +1372,10 @@ export type EditSoundInDialogFunction = (sound: AudioBuffer, callback: (replacem
 // (record dialog or edit dialog) -- exactly one of the two is ever called.
 export type RecordNewImageInDialogFunction = (callback: (replacement: { code: string, mediaType: string }) => void, onCancelled: () => void) => void;
 export type RecordNewSoundInDialogFunction = (callback: (replacement: { code: string, mediaType: string }) => void, onCancelled: () => void) => void;
+
+// Opens the colour picker dialog (Ctrl-Shift-L). initialColour, if given, seeds the picker (a hex
+// code or recognised CSS colour name); otherwise the picker starts from an arbitrary default.
+// callback receives the picked colour as a "#rrggbb" hex string only on "OK"; onCancelled is called
+// instead if the user cancels -- exactly one of the two is ever called.
+export type OpenColourPickerInDialogFunction = (initialColour: string | null, callback: (hex: string) => void, onCancelled: () => void) => void;
 
