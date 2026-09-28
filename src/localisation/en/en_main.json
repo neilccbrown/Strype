@@ -251,6 +251,7 @@
     "myClasses": "My classes",
     "importedModules": "Imported modules",
     "builtinFiles": "Built-in files",
+    "yourFiles": "Your files",
     "invalidState": "No completion available",
     "noDocumentation": "No documentation available",
     "codeCompletion": "Code completion",

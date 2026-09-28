@@ -573,3 +573,51 @@ describe("Asset files", () => {
         }, false);
     });
 });
+
+describe("Local files", () => {
+    // Uploads two files into "/local" via the File system tab's upload button, so the tests below
+    // can check they show up in string-literal auto-complete alongside the built-in assets above.
+    // No cloud drive is connected in these tests, so "/local" is the working directory and the
+    // files should be offered without the "/local/" prefix (see AutoCompletion.vue's
+    // localFileCompletions()).
+    function uploadToLocal(fileName: string): void {
+        cy.get("#filesPEATab").click();
+        cy.get(".file-system-tree-upload-input").selectFile({
+            contents: Cypress.Buffer.from("content of " + fileName),
+            fileName: fileName,
+        }, {force: true});
+    }
+
+    beforeEach(() => {
+        uploadToLocal("my-data.txt");
+        uploadToLocal("other-notes.txt");
+    });
+
+    it("Offers auto-complete in string literal for local files, without the /local prefix", () => {
+        focusEditorAC();
+        // Make a print and open a string:
+        cy.get("body").type("p\"");
+        cy.wait(500);
+        // Trigger auto-complete:
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel, frameId) => {
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
+            checkExactlyOneItem(acIDSel, null, "/books/three-men-in-a-boat.txt");
+            checkExactlyOneItem(acIDSel, null, "my-data.txt");
+            checkExactlyOneItem(acIDSel, null, "other-notes.txt");
+            checkNoItems(acIDSel, "/local/my-data.txt");
+        }, false);
+    });
+
+    it("Offers file path auto-complete for a token matching a local file", () => {
+        focusEditorAC();
+        cy.get("body").type("p\"my-dat");
+        cy.wait(500);
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel, frameId) => {
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
+            checkExactlyOneItem(acIDSel, null, "my-data.txt");
+            checkNoItems(acIDSel, "other-notes.txt");
+        }, false);
+    });
+});
