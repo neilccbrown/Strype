@@ -1,3 +1,5 @@
+<!-- Shown when a .zip is uploaded into "/local", asking whether to keep it as a single zip file
+     or unzip its contents into the file system -- see FileSystemPane.vue's onUpload(). -->
 <template>
     <ModalDlg :dlgId="dlgId" :dlgTitle="$t('fileSystemTab.archiveDialogTitle')">
         <span>{{ $t("fileSystemTab.archiveDialogMessage", {name: fileName}) }}</span>

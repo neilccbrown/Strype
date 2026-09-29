@@ -1,3 +1,5 @@
+<!-- Shown when an upload into "/local" would overwrite an existing file of the same name, asking
+     the user to confirm or cancel -- see FileSystemPane.vue's proceedWithUpload(). -->
 <template>
     <ModalDlg :dlgId="dlgId" :dlgTitle="$t('fileSystemTab.overwriteDialogTitle')">
         <span>{{ $t("fileSystemTab.overwriteDialogMessage", {name: fileName}) }}</span>
