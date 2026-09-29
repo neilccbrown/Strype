@@ -147,6 +147,41 @@ print(f'Montmorency is mentioned {count} times.')`]);
     });
 });
 
+// Runs the actual code from public/demos/console/london_temperatures.spy (rather than loading the
+// demo itself, since there's no test helper for that) against the two data files it pins into
+// "/local" plus the "/data/london-temperature-2025.txt" asset it also reads, and checks the output
+// matches what that demo currently prints:
+test.describe("Test London Temperatures demo", () => {
+    test("Check average temperatures are printed correctly", async ({page}) => {
+        await page.click("#filesPEATab");
+        // Mirrors openFilesTab() in file-system-tab.spec.ts: wait for the pane's own load, not a
+        // fixed delay:
+        await expect(page.locator(".file-system-pane-loading")).toHaveCount(0, {timeout: 30000});
+        await page.locator(".file-system-tree-upload-input").setInputFiles("src/assetsFilesystem/data/london-temperature-2005.txt");
+        await page.locator(".file-system-tree-upload-input").setInputFiles("src/assetsFilesystem/data/london-temperature-2015.txt");
+        await expect(page.locator(".file-system-tree-file", {hasText: "london-temperature-2015.txt"})).toBeVisible();
+
+        await enterCode(page, ["", `
+            def average_temperature_for_year(filename):
+                with open(filename) as f:
+                    total = 0
+                    count = 0
+                    for line in f:
+                        if line.strip() != "":
+                            total = total + float(line)
+                            count = count + 1
+                return round(total / count, 2)
+        `, `
+            print("2005:" + str(average_temperature_for_year("london-temperature-2005.txt")))
+            print("2015:" + str(average_temperature_for_year("london-temperature-2015.txt")))
+            print("2025:" + str(average_temperature_for_year("/data/london-temperature-2025.txt")))
+        `]);
+        await runToFinish(page);
+        await checkConsoleContent(page, "2005:10.86\n2015:11.01\n2025:12.87\n");
+        await checkFrameErrorCount(page, 0);
+    });
+});
+
 // Not really a console test, but relies on console output so it can be here:
 test.describe("Test sounds", () => {
     test("Check loading and setting sounds", async ({page}) => {
