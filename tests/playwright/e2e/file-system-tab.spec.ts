@@ -309,6 +309,17 @@ test.describe("File system tab -- /local (writeable scratch area)", () => {
         await checkConsoleContent(page, content + "\n");
     });
 
+    test("a file written by a run appears without leaving the Files tab", async ({ page }) => {
+        await openFilesTab(page);
+        const localSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.local });
+        await expect(localSection).not.toContainText("written-by-run.txt");
+
+        await enterCode(page, ["open(\"written-by-run.txt\", \"w\").write(\"hi\")"]);
+        await runToFinish(page);
+
+        await expect(localSection).toContainText("written-by-run.txt");
+    });
+
     test("upload is disabled while Python is executing", async ({ page }) => {
         await enterCode(page, ["import time", "", "while True:\n    time.sleep(0.1)\n"]);
         const runButton = await startRunning(page);

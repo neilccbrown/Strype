@@ -11,6 +11,7 @@
 //
 // This is plain in-memory state, not IndexedDB or any other persistent store -- it does NOT
 // survive a page reload. Making "/local" survive a reload is explicitly out of scope for now.
+import { ref } from "vue";
 import { FsTreeNode } from "@/stryperuntime/file_system_tree_types";
 
 const files = new Map<string, Uint8Array>();
@@ -47,10 +48,15 @@ export function listPinnedEntries(): Record<string, Uint8Array> {
     return result;
 }
 
+// Bumped whenever a run's snapshot is merged in below, so that a File system tab which is showing
+// at the time (and so isn't remounted) can watch it and re-list "/local" once the run's files land.
+export const snapshotMergeCount = ref(0);
+
 export function mergeSnapshot(entries: Record<string, Uint8Array>): void {
     for (const [path, data] of Object.entries(entries)) {
         files.set(path, data);
     }
+    snapshotMergeCount.value++;
 }
 
 export function listEntries(): Record<string, Uint8Array> {

@@ -127,6 +127,7 @@ import {
 } from "@/helpers/fileSystemTabIO";
 import { FsTreeNode } from "@/stryperuntime/file_system_tree_types";
 import { isZipFile, unzipEntries } from "@/helpers/archive";
+import { snapshotMergeCount } from "@/helpers/localFsCache";
 import { eventBus } from "@/helpers/appContext";
 import { CustomEventTypes } from "@/helpers/editor";
 import { decodeAsTextIfValid, MAX_PREVIEWABLE_FILE_SIZE, mimeTypeForExtension, previewKindForExtension } from "@/helpers/filePreview";
@@ -194,6 +195,10 @@ export default defineComponent({
             return this.appStore.pythonExecRunningState != PythonExecRunningState.NotRunning;
         },
 
+        localSnapshotMergeCount(): number {
+            return snapshotMergeCount.value;
+        },
+
         archiveImportDlgId(): string {
             return "fileSystemArchiveImportDlg";
         },
@@ -215,6 +220,14 @@ export default defineComponent({
 
     mounted() {
         this.refresh();
+    },
+
+    watch: {
+        // A run's files only reach the /local cache after it ends (see terminateAndRestartPyodide()),
+        // so re-list then, in case this pane is showing while the program runs:
+        localSnapshotMergeCount() {
+            void this.refreshLocal();
+        },
     },
 
     methods: {
