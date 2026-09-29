@@ -17,7 +17,7 @@ import {PyodideClient} from "pyodide-worker-runner";
 import * as Comlink from "comlink";
 import {makeServiceWorkerChannel} from "sync-message";
 import {ref} from "vue";
-import {listEntriesForWorker, mergeSnapshot} from "@/helpers/localFsCache";
+import {applyLiveChange, listEntriesForWorker, mergeSnapshot} from "@/helpers/localFsCache";
 
 // Can be re-used. Exported so PythonExecutionArea can health-check it before a run (see
 // isServiceWorkerChannelResponsive in shared_helpers.ts) -- Safari in particular is known to
@@ -114,6 +114,9 @@ function createPyodideSlot() : PyodideSlot | null {
                 console.info(`[Pyodide slot controller ${new Date().toISOString()}] worker now reports controlled=${slot.controlled}`);
             }
             updateReadyFlag(slot);
+        }
+        else if (e.data?.localFsChange != null && slot === activeSlot) {
+            applyLiveChange(e.data.localFsChange.path, e.data.localFsChange.data);
         }
     });
     // Proactively ask for a reclaim as soon as the worker exists, rather than waiting until it's

@@ -48,9 +48,23 @@ export function listPinnedEntries(): Record<string, Uint8Array> {
     return result;
 }
 
-// Bumped whenever a run's snapshot is merged in below, so that a File system tab which is showing
-// at the time (and so isn't remounted) can watch it and re-list "/local" once the run's files land.
-export const snapshotMergeCount = ref(0);
+// Bumped whenever the cache is changed by the running program (a live change from the worker, or a
+// run's final snapshot merged in below), so that a File system tab which is showing at the time (and
+// so isn't remounted) can watch it and re-list "/local".
+export const runChangeCount = ref(0);
+
+// A change the running program made to one file, sent live by the worker (see installLocalFsSync() in
+// python-execution.ts) since the worker can't be asked for its files if it's stuck in a busy loop.
+// data is the file's whole new content, or null if it was deleted.
+export function applyLiveChange(path: string, data: Uint8Array | null): void {
+    if (data == null) {
+        deleteFile(path);
+    }
+    else {
+        writeFile(path, data);
+    }
+    runChangeCount.value++;
+}
 
 // The paths last pushed into a worker's "/local" (see listEntriesForWorker()). A path in here that
 // is missing from that worker's later snapshot was deleted by the program, so mergeSnapshot()
@@ -74,7 +88,7 @@ export function mergeSnapshot(entries: Record<string, Uint8Array>): void {
     for (const [path, data] of Object.entries(entries)) {
         files.set(path, data);
     }
-    snapshotMergeCount.value++;
+    runChangeCount.value++;
 }
 
 export function listEntries(): Record<string, Uint8Array> {

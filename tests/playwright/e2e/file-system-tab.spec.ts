@@ -332,6 +332,50 @@ test.describe("File system tab -- /local (writeable scratch area)", () => {
         await expect(localSection).not.toContainText("doomed.txt");
     });
 
+    // A program stuck in a loop that never waits (no sleep/print/input) can't answer any request from
+    // the main thread, so what it wrote to /local can't be fetched from it when Stop is clicked: the
+    // worker has to have sent each file change as it happened.
+    test.describe("files changed by a busy loop that is then stopped", () => {
+        async function stopBusyProgram(page: Page, code: string[]): Promise<void> {
+            // (enterCode's sections are imports, definitions, main code -- it's all in the main code here)
+            await enterCode(page, ["", "", code.join("\n") + "\nwhile True:\n    pass\n"]);
+            const runButton = await startRunning(page);
+            // Give the program time to reach its loop:
+            await page.waitForTimeout(3000);
+            await runButton.click();
+            await runButtonShowsRun(runButton);
+        }
+
+        test("a flushed file keeps its content", async ({ page }) => {
+            await openFilesTab(page);
+            await stopBusyProgram(page, ["f = open(\"flushed.txt\", \"w\")", "f.write(\"flushed content\")", "f.flush()"]);
+
+            const row = page.locator(".file-system-tree-file", { hasText: "flushed.txt" });
+            await expect(row).toBeVisible();
+            await row.hover();
+            await row.locator(".file-system-tree-view-btn").click();
+            await expect(page.locator("#fileSystemFileViewerDlg-body")).toContainText("flushed content");
+        });
+
+        test("a file that was just created appears", async ({ page }) => {
+            await openFilesTab(page);
+            await stopBusyProgram(page, ["open(\"created.txt\", \"w\")"]);
+
+            await expect(page.locator(".file-system-tree-file", { hasText: "created.txt" })).toBeVisible();
+        });
+
+        test("a deleted file disappears", async ({ page }) => {
+            await openFilesTab(page);
+            const localSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.local });
+            await localUploadInput(page).setInputFiles(testFixturePath(test.info().outputDir, "deleted-by-busy.txt", "bye\n"));
+            await expect(localSection).toContainText("deleted-by-busy.txt");
+
+            await stopBusyProgram(page, ["import os", "os.remove(\"deleted-by-busy.txt\")"]);
+
+            await expect(localSection).not.toContainText("deleted-by-busy.txt");
+        });
+    });
+
     test("upload is disabled while Python is executing", async ({ page }) => {
         await enterCode(page, ["import time", "", "while True:\n    time.sleep(0.1)\n"]);
         const runButton = await startRunning(page);

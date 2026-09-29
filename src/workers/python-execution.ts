@@ -91,6 +91,137 @@ import {createLazyFetchFS} from "@/stryperuntime/pyodide-emscript-fetch-fs";
 // We only specify updatePort here as we don't want other files using it directly:
 declare const self: PyodideWorkerGlobalScope & { updatePort: MessagePort };
 
+// While restoreLocalFs() (below) is filling "/local" from the main-thread cache, its writes must not be
+// echoed back to the main thread as if the program had made them:
+let localFsSyncSuppressed = false;
+
+function isLocalPath(path: string): boolean {
+    return path.startsWith("/local/");
+}
+
+// Every file (not directory) at or under path, as absolute paths; empty if path doesn't exist:
+function listFilesUnder(FS: PyodideInterface["FS"], path: string): string[] {
+    try {
+        if (!FS.isDir(FS.stat(path).mode)) {
+            return [path];
+        }
+        return FS.readdir(path)
+            .filter((entry: string) => entry !== "." && entry !== "..")
+            .flatMap((entry: string) => listFilesUnder(FS, `${path}/${entry}`));
+    }
+    catch {
+        return [];
+    }
+}
+
+// The main thread can't ask this worker for its "/local" contents while a program is stuck in a loop that
+// never waits (no sleep/print/input): the request would never be answered, so anything the program wrote
+// would be lost when Stop is clicked. But a worker can always post a message, so instead we tell the main
+// thread each file's full state as it changes -- on open-for-writing (which creates/truncates), on every
+// write that reaches the file system (that's what flush() does), on close, and on delete, rename and
+// truncate. The main thread applies these to localFsCache.ts straight away.
+function installLocalFsSync(pyodide: PyodideInterface): void {
+    // Emscripten's FS methods are called through the FS object by its own syscall layer, so replacing
+    // them here also catches Python's file I/O. The typings don't allow assigning them, hence the cast:
+    const FS = pyodide.FS as any;
+    // Reading a file back for sending uses FS.open/FS.close itself, which must not trigger more sending:
+    let sending = false;
+
+    const post = (path: string, data: Uint8Array | null) => {
+        (self as unknown as DedicatedWorkerGlobalScope).postMessage({localFsChange: {path, data}}, data == null ? [] : [data.buffer]);
+    };
+    const sendFile = (path: string | null) => {
+        if (sending || localFsSyncSuppressed || path == null || !isLocalPath(path)) {
+            return;
+        }
+        sending = true;
+        try {
+            if (!FS.isDir(FS.stat(path).mode)) {
+                post(path, FS.readFile(path, {encoding: "binary"}));
+            }
+        }
+        catch {
+            // The file has gone or can't be read: nothing to send
+        }
+        finally {
+            sending = false;
+        }
+    };
+    const sendDeleted = (path: string | null) => {
+        if (!localFsSyncSuppressed && path != null && isLocalPath(path)) {
+            post(path, null);
+        }
+    };
+    // FS methods can be given relative paths (the working directory is "/local" when running), so
+    // work out the absolute one -- before an operation that would remove what it points to:
+    const absolutePath = (path: string): string | null => {
+        try {
+            return FS.getPath(FS.lookupPath(path, {follow: false}).node);
+        }
+        catch {
+            return null;
+        }
+    };
+    const isWritable = (stream: {flags: number}) => (stream.flags & 3) !== 0; // O_RDONLY is 0
+
+    const origOpen = FS.open;
+    FS.open = function(...args: unknown[]) {
+        const stream = origOpen.apply(FS, args);
+        if (isWritable(stream)) {
+            sendFile(stream.path);
+        }
+        return stream;
+    };
+    const origWrite = FS.write;
+    FS.write = function(stream: {path: string}, ...args: unknown[]) {
+        const result = origWrite.call(FS, stream, ...args);
+        sendFile(stream.path);
+        return result;
+    };
+    const origClose = FS.close;
+    FS.close = function(stream: {path: string, flags: number}) {
+        const {path, writable} = {path: stream.path, writable: isWritable(stream)};
+        const result = origClose.call(FS, stream);
+        if (writable) {
+            sendFile(path);
+        }
+        return result;
+    };
+    const origTruncate = FS.truncate;
+    FS.truncate = function(path: string, ...args: unknown[]) {
+        const abs = absolutePath(path);
+        const result = origTruncate.call(FS, path, ...args);
+        sendFile(abs);
+        return result;
+    };
+    const origFtruncate = FS.ftruncate;
+    FS.ftruncate = function(fd: number, ...args: unknown[]) {
+        const result = origFtruncate.call(FS, fd, ...args);
+        sendFile(FS.getStream(fd)?.path ?? null);
+        return result;
+    };
+    const origUnlink = FS.unlink;
+    FS.unlink = function(path: string) {
+        const abs = absolutePath(path);
+        const result = origUnlink.call(FS, path);
+        sendDeleted(abs);
+        return result;
+    };
+    const origRename = FS.rename;
+    FS.rename = function(oldPath: string, newPath: string) {
+        // A directory rename moves every file in it, so list them before and after:
+        const oldAbs = absolutePath(oldPath);
+        const oldFiles = oldAbs == null ? [] : listFilesUnder(pyodide.FS, oldAbs);
+        const result = origRename.call(FS, oldPath, newPath);
+        oldFiles.forEach(sendDeleted);
+        const newAbs = absolutePath(newPath);
+        if (newAbs != null) {
+            listFilesUnder(pyodide.FS, newAbs).forEach(sendFile);
+        }
+        return result;
+    };
+}
+
 async function loadOnly() : Promise<PyodideInterface> {
     // The version segment here is deliberate, not incidental: it's what lets the deployed server
     // mark this whole directory as cacheable forever (see scripts/download-pyodide-libs.cjs, which
@@ -113,6 +244,8 @@ async function loadOnly() : Promise<PyodideInterface> {
     pyodide.FS.filesystems.ASSETSFS = createLazyFetchAssetsFS(pyodide);
 
     pyodide.FS.mkdir("/strype_libraries");
+
+    installLocalFsSync(pyodide);
     
     return pyodide;
 }
@@ -218,27 +351,33 @@ async function snapshotLocalFs(): Promise<Record<string, Uint8Array> | null> {
 // at the start of a new run.
 async function restoreLocalFs(entries: Record<string, Uint8Array>): Promise<void> {
     return await reloader.withPyodide(async (pyodide: PyodideInterface) => {
+        localFsSyncSuppressed = true;
         try {
-            pyodide.FS.mkdir("/local");
-        }
-        catch {
-            // Ignore errors because they will come from the dir already existing
-        }
-        // Make "/local" exactly match the entries: remove anything left over from an earlier restore
-        // that has since been deleted from the main-thread cache:
-        const existing: Record<string, Uint8Array> = {};
-        collectFlatFiles(pyodide, "/local", existing);
-        for (const path of Object.keys(existing)) {
-            if (!(path in entries)) {
-                pyodide.FS.unlink(path);
+            try {
+                pyodide.FS.mkdir("/local");
+            }
+            catch {
+                // Ignore errors because they will come from the dir already existing
+            }
+            // Make "/local" exactly match the entries: remove anything left over from an earlier restore
+            // that has since been deleted from the main-thread cache:
+            const existing: Record<string, Uint8Array> = {};
+            collectFlatFiles(pyodide, "/local", existing);
+            for (const path of Object.keys(existing)) {
+                if (!(path in entries)) {
+                    pyodide.FS.unlink(path);
+                }
+            }
+            for (const [path, data] of Object.entries(entries)) {
+                const dir = path.slice(0, path.lastIndexOf("/"));
+                if (dir && dir !== "/local") {
+                    pyodide.FS.mkdirTree(dir);
+                }
+                pyodide.FS.writeFile(path, data);
             }
         }
-        for (const [path, data] of Object.entries(entries)) {
-            const dir = path.slice(0, path.lastIndexOf("/"));
-            if (dir && dir !== "/local") {
-                pyodide.FS.mkdirTree(dir);
-            }
-            pyodide.FS.writeFile(path, data);
+        finally {
+            localFsSyncSuppressed = false;
         }
     });
 }

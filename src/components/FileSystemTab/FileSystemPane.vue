@@ -127,7 +127,7 @@ import {
 } from "@/helpers/fileSystemTabIO";
 import { FsTreeNode } from "@/stryperuntime/file_system_tree_types";
 import { isZipFile, unzipEntries } from "@/helpers/archive";
-import { snapshotMergeCount } from "@/helpers/localFsCache";
+import { runChangeCount } from "@/helpers/localFsCache";
 import { eventBus } from "@/helpers/appContext";
 import { CustomEventTypes } from "@/helpers/editor";
 import { decodeAsTextIfValid, MAX_PREVIEWABLE_FILE_SIZE, mimeTypeForExtension, previewKindForExtension } from "@/helpers/filePreview";
@@ -185,6 +185,8 @@ export default defineComponent({
             pendingOverwrite: null as PendingUpload | null,
             // Set while the "view file" dialog is open (or loading) -- see onView()/FileViewerDlg.vue.
             viewingFile: null as ViewingFile | null,
+            // Pending re-list of /local caused by the running program's file changes -- see the watcher
+            refreshLocalTimer: null as number | null,
         };
     },
 
@@ -195,8 +197,8 @@ export default defineComponent({
             return this.appStore.pythonExecRunningState != PythonExecRunningState.NotRunning;
         },
 
-        localSnapshotMergeCount(): number {
-            return snapshotMergeCount.value;
+        localRunChangeCount(): number {
+            return runChangeCount.value;
         },
 
         archiveImportDlgId(): string {
@@ -222,11 +224,23 @@ export default defineComponent({
         this.refresh();
     },
 
+    beforeUnmount() {
+        if (this.refreshLocalTimer != null) {
+            window.clearTimeout(this.refreshLocalTimer);
+        }
+    },
+
     watch: {
-        // A run's files only reach the /local cache after it ends (see terminateAndRestartPyodide()),
-        // so re-list then, in case this pane is showing while the program runs:
-        localSnapshotMergeCount() {
-            void this.refreshLocal();
+        // The running program's file changes reach the /local cache as they happen, and its final files
+        // when it ends (see localFsCache.ts), so re-list then, in case this pane is showing while the
+        // program runs. A program can change files very rapidly, so at most one re-list per 100ms:
+        localRunChangeCount() {
+            if (this.refreshLocalTimer == null) {
+                this.refreshLocalTimer = window.setTimeout(() => {
+                    this.refreshLocalTimer = null;
+                    void this.refreshLocal();
+                }, 100);
+            }
         },
     },
 
