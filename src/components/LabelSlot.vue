@@ -603,12 +603,42 @@ export default defineComponent({
                     }
                 );
                 
-                if (!this.code) {
-                    // If code is empty, on Firefox we need to force the focus because a click on the placeholder
-                    // text does not actually set the caret into this span:
+                if (!this.code || (fromNaturalClick && this.code === "\u200B")) {
+                    // If the slot is empty, a click on the placeholder text (shown via CSS content, not
+                    // real DOM text) doesn't necessarily give real DOM focus to this slot. On Chrome it
+                    // happens to work out anyway, but on Firefox it doesn't -- so we force focus
+                    // explicitly. Each slot's <span> is contenteditable, but it's nested inside further
+                    // contenteditable ancestors (its own wrapper div, and the whole label row): once
+                    // editing is underway, real DOM focus is always held by that outermost row container
+                    // (getFrameLabelSlotsStructureUID), never by any individual span -- see
+                    // LabelSlotsStructure.vue's "the spans don't get focus anymore because the containing
+                    // editable div grabs it" and the identical pattern in Commands.vue's
+                    // closeSlotShortcutsPane(). An empty slot's code is either "" or a single zero-width
+                    // space (see the empty-content template binding above). The zero-width-space case is
+                    // only treated as empty for a real mouse click (fromNaturalClick): onGetCaret() also runs
+                    // on keyboard navigation and after every reparse (see the updateAC() note below), and an
+                    // expression like "3+(456*789)" is full of zero-width-space slots next to its brackets --
+                    // forcing the selection here then would collapse an in-progress Shift+Arrow/Shift+End
+                    // selection as it crosses them, and textCursorPos can still refer to the slot's previous,
+                    // longer content (so it's clamped below).
+                    //
+                    // The anchor falls back to the store's current anchorSlotCursorInfos rather than
+                    // slotCursorInfo itself only when shift is held (see #282/7220f425): that preserves an
+                    // in-progress shift-click/drag selection that happens to land on an empty slot instead
+                    // of collapsing it. For a plain click there's no such selection to preserve, and the
+                    // store's anchorSlotCursorInfos can be stale (e.g. left over from the browser's own,
+                    // momentarily-wrong native caret placement on this same click on Firefox -- see
+                    // getFrameLabelSlotsStructureUID's focus() above), so using it unconditionally would
+                    // turn a plain click into a spurious multi-slot selection. Matches the identical
+                    // shiftKey-gated pattern in LabelSlotsStructure.vue's up/down handling.
+                    // Non-click invocations keep the store's anchor, as before this was gated on shiftKey.
+                    const isPlainClick = fromNaturalClick && !(event instanceof MouseEvent && event.shiftKey);
                     this.$nextTick(() => {
-                        const slotCursorInfo: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: this.textCursorPos};
-                        setDocumentSelection(useStore().anchorSlotCursorInfos ?? slotCursorInfo, slotCursorInfo);
+                        document.getElementById(getFrameLabelSlotsStructureUID(this.frameId, this.labelSlotsIndex))?.focus();
+                        const slotLength = document.getElementById(this.UID)?.textContent?.length ?? 0;
+                        const slotCursorInfo: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: Math.min(this.textCursorPos, slotLength)};
+                        const anchorCursorInfo = (isPlainClick ? undefined : useStore().anchorSlotCursorInfos) ?? slotCursorInfo;
+                        setDocumentSelection(anchorCursorInfo, slotCursorInfo);
                     });
                 }
 

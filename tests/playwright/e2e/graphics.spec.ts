@@ -71,7 +71,20 @@ async function checkGraphicsAreaContent(page: Page, expectedImageFileName : stri
         return PNG.sync.read(screenshotBuffer);
     };
     
-    await checkImageMatch(expectedImageFileName, takeScreenshot, comparison);
+    if (comparison == ImageComparison.COMPARE_TO_EXISTING) {
+        // waitForGraphicsSettled() cannot be fully trusted to mean "the expected content has been drawn":
+        // it counts redraws of the canvas, and a redraw can be triggered by a layout change before the
+        // program has drawn anything (on a slow CI runner, Pyodide can take over a second to get going).
+        // Turtle's WebGL canvas is opaque black until it is first rendered, so such an early redraw can leave
+        // us "settled" on a black canvas (which then differs from the baseline by 99.9%).  So we keep
+        // re-taking the screenshot until it matches (or we give up and report the last mismatch).
+        await expect(async () => {
+            await checkImageMatch(expectedImageFileName, takeScreenshot, comparison);
+        }).toPass({timeout: 15000, intervals: [250]});
+    }
+    else {
+        await checkImageMatch(expectedImageFileName, takeScreenshot, comparison);
+    }
     // Make sure we don't leave in the screenshot creation by making the tests fail:
     if (comparison == ImageComparison.WRITE_NEW_EXPECTED_DO_NOT_COMMIT_USE_OF_THIS) {
         throw new Error("Tests writing new screenshot; did you leave in WRITE_NEW_EXPECTED_DO_NOT_COMMIT_USE_OF_THIS ?");
