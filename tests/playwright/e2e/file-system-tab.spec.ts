@@ -955,3 +955,33 @@ async function testZipFixturePath(outputDir: string, fileName: string, entries: 
     writeFileSync(filePath, data);
     return filePath;
 }
+
+test.describe("File system tab -- scrolling", () => {
+    test("wheel-scrolling over the files pane doesn't also scroll the main code area", async ({ page }) => {
+        await openFilesTab(page);
+        // Make sure the main code area has something to scroll, whatever the window size:
+        const codeDiv = page.locator(".editor-code-div");
+        await codeDiv.evaluate((el) => {
+            const spacer = document.createElement("div");
+            spacer.style.height = "5000px";
+            el.appendChild(spacer);
+        });
+        expect(await codeDiv.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+        // Expand every root so the pane has plenty of content, then scroll it to its end -- that's
+        // where an unconstrained scroll would chain through to the code area:
+        const chevrons = page.locator(".file-system-pane .file-system-tree-chevron");
+        for (let i = 0; i < await chevrons.count(); i++) {
+            await chevrons.nth(i).click();
+        }
+        const pane = page.locator(".file-system-pane");
+        await pane.evaluate((el) => { el.scrollTop = el.scrollHeight; });
+        const box = (await pane.boundingBox())!;
+        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+        for (let i = 0; i < 5; i++) {
+            await page.mouse.wheel(0, 300);
+        }
+        // Give any (unwanted) scroll chaining time to show up, then check the code area stayed put:
+        await page.waitForTimeout(500);
+        expect(await codeDiv.evaluate((el) => el.scrollTop)).toBe(0);
+    });
+});

@@ -1,5 +1,7 @@
 <template>
-    <div class="file-system-pane">
+    <!-- @wheel.stop: like the console/graphics areas, stop Commands.vue's handleAppScroll from forwarding
+         wheel scrolling over this pane to the main editor (it listens on an ancestor of the whole PEA) -->
+    <div class="file-system-pane" @wheel.stop>
         <div v-if="loading" class="file-system-pane-loading">{{ $t("fileSystemTab.loading") }}</div>
         <template v-else>
             <div v-if="isPythonExecuting" class="file-system-pane-running-note">
