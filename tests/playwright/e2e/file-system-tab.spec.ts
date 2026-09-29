@@ -697,6 +697,7 @@ test.describe("File system tab -- viewing a file", () => {
         const smallRow = page.locator(".file-system-tree-file", { hasText: "view-me-small.png" });
         await clickView(smallRow);
         const smallImg = viewerBody(page).locator("img");
+        await expect(smallImg).toBeVisible();
         const smallBox = await smallImg.boundingBox();
         const smallNatural = await smallImg.evaluate((el: HTMLImageElement) => ({ w: el.naturalWidth, h: el.naturalHeight }));
         // Never upscaled -- a 1x1 image stays 1x1, it doesn't get stretched up to fill the dialog:
