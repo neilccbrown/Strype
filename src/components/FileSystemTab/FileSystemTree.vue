@@ -384,6 +384,22 @@ export default defineComponent({
     // separation, and FileSystemPane.vue's standalone "Local files" upload row (not preceded by a
     // label/spacer at all) needs this to be flush left, matching the "(empty)" message above it.
     flex-shrink: 0;
+    // Flat (no border/shading) lozenge, light background with dark text:
+    border: none;
+    border-radius: 999px;
+    background-color: #e8e8e8;
+    color: #222;
+    padding: 0.1em 0.9em;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+        background-color: #fff;
+    }
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: default;
+    }
 }
 
 .file-system-tree-empty {
