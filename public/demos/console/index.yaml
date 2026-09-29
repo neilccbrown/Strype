@@ -7,3 +7,8 @@
   description: A rock-paper-scissors game
   image: rps.png
   file: rps.spy
+
+- name: London Temperatures
+  description: Calculate average London temperatures from data files
+  image: london_temperatures.png
+  file: london_temperatures.spy
