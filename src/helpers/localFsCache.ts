@@ -52,7 +52,25 @@ export function listPinnedEntries(): Record<string, Uint8Array> {
 // at the time (and so isn't remounted) can watch it and re-list "/local" once the run's files land.
 export const snapshotMergeCount = ref(0);
 
+// The paths last pushed into a worker's "/local" (see listEntriesForWorker()). A path in here that
+// is missing from that worker's later snapshot was deleted by the program, so mergeSnapshot()
+// removes it from the cache too. Paths added to the cache *after* the push (e.g. an upload) aren't
+// in here, so a snapshot from a worker that never saw them can't wrongly drop them.
+let pushedToWorker = new Set<string>();
+
+// Same as listEntries(), for handing to a worker's restoreLocalFs(): also records what was pushed.
+export function listEntriesForWorker(): Record<string, Uint8Array> {
+    pushedToWorker = new Set(files.keys());
+    return listEntries();
+}
+
 export function mergeSnapshot(entries: Record<string, Uint8Array>): void {
+    for (const path of pushedToWorker) {
+        if (!(path in entries)) {
+            deleteFile(path);
+        }
+    }
+    pushedToWorker = new Set();
     for (const [path, data] of Object.entries(entries)) {
         files.set(path, data);
     }

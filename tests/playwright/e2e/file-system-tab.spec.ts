@@ -320,6 +320,18 @@ test.describe("File system tab -- /local (writeable scratch area)", () => {
         await expect(localSection).toContainText("written-by-run.txt");
     });
 
+    test("a file deleted by a run disappears without leaving the Files tab", async ({ page }) => {
+        await openFilesTab(page);
+        const localSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.local });
+        await localUploadInput(page).setInputFiles(testFixturePath(test.info().outputDir, "doomed.txt", "bye\n"));
+        await expect(localSection).toContainText("doomed.txt");
+
+        await enterCode(page, ["import os", "os.remove(\"doomed.txt\")"]);
+        await runToFinish(page);
+
+        await expect(localSection).not.toContainText("doomed.txt");
+    });
+
     test("upload is disabled while Python is executing", async ({ page }) => {
         await enterCode(page, ["import time", "", "while True:\n    time.sleep(0.1)\n"]);
         const runButton = await startRunning(page);
@@ -985,8 +997,13 @@ test.describe("File system tab -- scrolling", () => {
             await chevrons.nth(i).click();
         }
         const pane = page.locator(".file-system-pane");
-        await pane.evaluate((el) => { el.scrollTop = el.scrollHeight; });
-        const box = (await pane.boundingBox())!;
+        await pane.evaluate((el) => {
+            el.scrollTop = el.scrollHeight;
+        });
+        const box = await pane.boundingBox();
+        if (box == null) {
+            throw new Error("Files pane has no bounding box");
+        }
         await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
         for (let i = 0; i < 5; i++) {
             await page.mouse.wheel(0, 300);

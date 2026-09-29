@@ -17,7 +17,7 @@ import {PyodideClient} from "pyodide-worker-runner";
 import * as Comlink from "comlink";
 import {makeServiceWorkerChannel} from "sync-message";
 import {ref} from "vue";
-import {listEntries, mergeSnapshot} from "@/helpers/localFsCache";
+import {listEntriesForWorker, mergeSnapshot} from "@/helpers/localFsCache";
 
 // Can be re-used. Exported so PythonExecutionArea can health-check it before a run (see
 // isServiceWorkerChannelResponsive in shared_helpers.ts) -- Safari in particular is known to
@@ -261,7 +261,7 @@ export async function terminateAndRestartPyodide() : Promise<void> {
     if (client != null) {
         try {
             const snapshot = await Promise.race([
-                client.workerProxy.snapshotLocalFs() as Promise<Record<string, Uint8Array>>,
+                client.workerProxy.snapshotLocalFs() as Promise<Record<string, Uint8Array> | null>,
                 new Promise<null>((resolve) => setTimeout(() => resolve(null), 1000)),
             ]);
             if (snapshot != null) {
@@ -304,7 +304,7 @@ export async function terminateAndRestartPyodide() : Promise<void> {
     // time would miss any snapshot merged in after that (e.g. from the very run this function is
     // handling right now):
     if (nextSlot != null) {
-        void nextSlot.client.workerProxy.restoreLocalFs(listEntries());
+        void nextSlot.client.workerProxy.restoreLocalFs(listEntriesForWorker());
     }
     activateSlot(nextSlot);
     // Line up the next spare in the background (a no-op if the device isn't deemed capable of one):

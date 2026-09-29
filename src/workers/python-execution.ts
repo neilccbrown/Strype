@@ -198,7 +198,7 @@ function collectFlatFiles(pyodide: PyodideInterface, path: string, out: Record<s
 // discarded, so the main-thread cache (localFsCache.ts) can carry its contents over to the next
 // run's worker (see restoreLocalFs below). Plain MEMFS, no lazy fetch involved, so -- unlike
 // readFsFile -- this needs no pyodideExpose/sync bridge.
-async function snapshotLocalFs(): Promise<Record<string, Uint8Array>> {
+async function snapshotLocalFs(): Promise<Record<string, Uint8Array> | null> {
     return await reloader.withPyodide(async (pyodide: PyodideInterface) => {
         const out: Record<string, Uint8Array> = {};
         try {
@@ -206,6 +206,8 @@ async function snapshotLocalFs(): Promise<Record<string, Uint8Array>> {
         }
         catch {
             // "/local" doesn't exist -- this run was in /cloud mode, so there's nothing to snapshot
+            // (null rather than {}, so the caller doesn't mistake it for "everything was deleted"):
+            return null;
         }
         return out;
     });
@@ -221,6 +223,15 @@ async function restoreLocalFs(entries: Record<string, Uint8Array>): Promise<void
         }
         catch {
             // Ignore errors because they will come from the dir already existing
+        }
+        // Make "/local" exactly match the entries: remove anything left over from an earlier restore
+        // that has since been deleted from the main-thread cache:
+        const existing: Record<string, Uint8Array> = {};
+        collectFlatFiles(pyodide, "/local", existing);
+        for (const path of Object.keys(existing)) {
+            if (!(path in entries)) {
+                pyodide.FS.unlink(path);
+            }
         }
         for (const [path, data] of Object.entries(entries)) {
             const dir = path.slice(0, path.lastIndexOf("/"));

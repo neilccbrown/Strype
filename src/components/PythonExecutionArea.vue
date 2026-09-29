@@ -100,7 +100,7 @@ import {getPythonClient, isPythonWorkerReady, renderer, serviceWorkerChannel, te
 import { TurtlePixiHandler } from "@/stryperuntime/turtle_pixi_handler";
 import {closeAudioContext, createOrGetAudioContext} from "@/helpers/audioContext";
 import {clearAllRuntimeErrors, computeFrameSnapshot} from "@/helpers/storeMethods";
-import {listEntries} from "@/helpers/localFsCache";
+import {listEntriesForWorker} from "@/helpers/localFsCache";
 import html2canvas from "html2canvas";
 import FileSystemPane from "@/components/FileSystemTab/FileSystemPane.vue";
 
@@ -773,7 +773,7 @@ export default defineComponent({
                 // before one -- so a file uploaded via the File system tab since the last swap would
                 // otherwise be invisible to this run. Push the cache into the current worker first;
                 // this is cheap and idempotent when nothing has changed.
-                await client.workerProxy.restoreLocalFs(listEntries());
+                await client.workerProxy.restoreLocalFs(listEntriesForWorker());
 
                 (client.call(
                     client.workerProxy.executePython,
