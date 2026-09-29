@@ -279,6 +279,7 @@
     "loading": "Initialising...",
     "runtimeErrorConsole": "Runtime error",
     "console": "Console",
+    "output": "Output",
     "Graphics": "Graphics",
     "importTurtleOrGraphics": "Import 'strype.graphics' or 'turtle' to use Graphics.",
     "PEA-layout-tabs-collapsed": "Collapsed and tabs layout",

@@ -2,16 +2,24 @@
     <div :id="peaComponentId" :class="{'pea-component': true, [scssVars.expandedPEAClassName]: isExpandedPEA, 'no-43-ratio-collapsed-PEA': !hasDefault43Ratio && !isExpandedPEA}" ref="peaComponent" @mousedown="handlePEAMouseDown">
         <div :id="controlsDivId" :class="{'pea-controls-div': true, 'expanded-PEA-controls': isExpandedPEA}">           
             <BTabs v-model:index="peaDisplayTabIndex" no-key-nav>
-                <BTab v-show="isTabsLayout" :button-id="graphicsTabId" :title="'\uD83D\uDC22 '+$t('PEA.Graphics')" title-link-class="pea-display-tab"></BTab>
-                <BTab v-show="isTabsLayout" :button-id="consoleTabId" :title="'\u2771\u23BD '+$t('PEA.console')" title-link-class="pea-display-tab"></BTab>
+                <!-- v-show on a BTab doesn't hide its header, and removing it (v-if) would shift the other tabs' indexes, so
+                     in the split layouts the graphics header is hidden by class instead (see .pea-hidden-tab) -->
+                <BTab :button-id="graphicsTabId" :title="'\uD83D\uDC22 '+$t('PEA.Graphics')" :title-link-class="{'pea-display-tab': true, 'pea-hidden-tab': !isTabsLayout}"></BTab>
+                <!-- In the split layouts, graphics and console are both always visible, so there's no separate
+                     graphics tab: this (console) tab's header becomes a merged "Output" one showing both icons.
+                     peaDisplayTabIndex is then never left on "graphics" (see setDisplayTab()). -->
+                <BTab :button-id="consoleTabId" title-link-class="pea-display-tab">
+                    <template #title>
+                        <img v-if="!isTabsLayout" :src="turtleImgURL" :alt="$t('PEA.Graphics')" class="pea-turtle-img" />
+                        {{ '\u2771\u23BD ' + $t(isTabsLayout ? 'PEA.console' : 'PEA.output') }}
+                    </template>
+                </BTab>
                 <!-- Files doesn't participate in the graphics/console split-vs-tabs layout at all (see
                      isFilesAreaShowing) -- it's always reachable as its own tab regardless of layout mode. -->
                 <BTab :button-id="filesTabId" :title="'📁 '+$t('PEA.fileSystem')" title-link-class="pea-display-tab"></BTab>
             </BTabs>
-            <!-- IMPORTANT: keep this div with "invisible" text for proper layout rendering, it replaces the graphics/console tabs -->
-            <span v-if="!isTabsLayout" :class="scssVars.peaNoTabsPlaceholderSpanClassName">c+g</span>
             <div class="flex-padding"/>            
-            <span v-if="peaDisplayTabIndex == 0 && !isPythonExecuting && mouseCoordsToShow" class="pea-hover-coords">{{mouseCoordsToShow}}</span>
+            <span v-if="isGraphicsAreaShowing && !isPythonExecuting && mouseCoordsToShow" class="pea-hover-coords">{{mouseCoordsToShow}}</span>
             <div class="flex-padding"/>
             <button id="runButton" ref="runButton" class="pea-controls-button" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'" :class="{highlighted: highlightPythonRunningState}" :disabled="!isPythonWorkerReady">
                 <img v-if="!isPythonExecuting" :src="faviconURL" class="pea-play-img">
@@ -229,6 +237,7 @@ export default defineComponent({
     data: function() {
         return {
             scssVars, // just to be able to use in template
+            turtleImgURL, // same
             isExpandedPEA: false,
             isTabsLayout: true, // flag to indicate the PEA's layout - tabs by default
             graphicsTemporaryHidden: false, //flag to use when we need to temporary hide the graphics for UI reasons (like before a layout of the PEA is performed, so we can compute things right)
@@ -483,6 +492,10 @@ export default defineComponent({
             // When we change tab, we also check the position of the expand/collapse button
             setPythonExecAreaLayoutButtonPos();
         },
+        isTabsLayout(){
+            // The split layouts have no graphics tab (see setDisplayTab()), so move off it:
+            this.setDisplayTab(this.peaDisplayTabIndex);
+        },
         isPythonExecuting(nowExecuting: boolean){
             // Once execution (including any trailing sounds -- see waitingForSoundsAfterNormalCompletion)
             // has fully finished, close the shared AudioContext rather than leaving it running
@@ -523,9 +536,17 @@ export default defineComponent({
             document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
         },
         
+        // All changes to peaDisplayTabIndex to a graphics/console tab should go through here (or be
+        // console/files, which are always valid). In the split layouts, graphics and console are shown
+        // together under the single "Output" header (the console tab), so "graphics" maps to that:
+        // otherwise the index would point at the hidden graphics tab and no header would look selected.
+        setDisplayTab(tabIndex: PEATabIndexes) {
+            this.peaDisplayTabIndex = (!this.isTabsLayout && tabIndex == PEATabIndexes.graphics) ? PEATabIndexes.console : tabIndex;
+        },
+
         switchToGraphicsTab(condition: "always" | "ifFirstCallDuringExecute") {
             if (condition == "always" || !switchedToGraphicsTabAlreadyThisExecute) {
-                this.peaDisplayTabIndex = PEATabIndexes.graphics;
+                this.setDisplayTab(PEATabIndexes.graphics);
                 switchedToGraphicsTabAlreadyThisExecute = true;
             }
         },
@@ -915,7 +936,7 @@ export default defineComponent({
             // This method is responsible for handling what to do after the console input (Python) has been invoked.
             // If there was a Turtle being shown, we get back to it. If not, we just stay on the console.
             if(this.graphicsImported != "none" && switchedToGraphicsTabAlreadyThisExecute){
-                this.peaDisplayTabIndex = PEATabIndexes.graphics;
+                this.setDisplayTab(PEATabIndexes.graphics);
             }
         },
 
@@ -1493,11 +1514,6 @@ export default defineComponent({
         border-color: lightgray !important;
     }
 
-    .#{$strype-classname-pea-no-tabs-placeholder-span} {
-        color: transparent;
-        padding: 9px 0 8px 0px;
-    }
-    
     .expanded-PEA-controls {
         border-top: black 1px solid;
     }
@@ -1583,6 +1599,11 @@ export default defineComponent({
         // Slightly tighter than Bootstrap's 1rem default, so the tab bar (now with a third,
         // Files, tab) doesn't feel as spread out:
         --bs-nav-link-padding-x: 0.65rem;
+    }
+
+    .pea-hidden-tab {
+        // !important: Bootstrap's own nav-link display rule is at least as specific as this one
+        display: none !important;
     }
 
     .pea-display-tab:hover {
