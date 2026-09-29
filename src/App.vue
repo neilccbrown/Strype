@@ -1796,7 +1796,7 @@ export default defineComponent({
                     // Restore any files pinned into this project (see load-save.ts's
                     // savePinnedLocalFiles()) into "/local" -- see loadPinnedLocalFiles()'s own
                     // comment. Only relevant here, not micro:bit mode, since that has no Files tab.
-                    loadPinnedLocalFiles(s.headers["pinnedLocalFiles"]);
+                    loadPinnedLocalFiles(s.headers);
                     // #v-endif
                     
                     this.appStore.setDividerStates(
