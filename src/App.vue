@@ -2037,6 +2037,14 @@ export default defineComponent({
         // Applied both immediately and again after a short delay: bootstrap-vue-next's modal can
         // itself restore focus (to whatever had it before the modal opened) slightly *after* its
         // "hidden" event fires, which would otherwise silently undo an immediate-only restore.
+        // That restore comes from the vendored focus-trap library's own "returnFocusOnDeactivate"
+        // behaviour (see createFocusTrap's defaults) and isn't tied to a fixed delay -- a single
+        // 100ms-later re-check isn't always late enough (confirmed via a real, reproducible failure:
+        // `npx playwright test tests/playwright/e2e/colour-picker.spec.ts --repeat-each` left real
+        // DOM focus permanently stuck outside the slot, on the button that had triggered the
+        // dialog, because the library's own restore landed *after* that single re-check). Re-check
+        // a few times over a longer window instead of just once, on the same "only if focus never
+        // actually landed here, and nothing newer has superseded this request" guard as before.
         //
         // Lives here (rather than on LabelSlot.vue, where the media/colour shortcuts used to live
         // before the slot shortcuts pane) because App.vue is a true singleton -- unlike a LabelSlot
@@ -2061,11 +2069,13 @@ export default defineComponent({
             // Only re-apply if real focus never actually landed in the container AND nothing newer
             // has happened since (see comment above) -- otherwise this would clobber anything the
             // user typed, or any subsequent action, in the meantime.
-            setTimeout(() => {
-                if (myCaretRequestSeq === getCaretRequestSeq() && document.activeElement?.id !== containerUID) {
-                    apply();
-                }
-            }, 100);
+            for (const delayMs of [100, 300, 600]) {
+                setTimeout(() => {
+                    if (myCaretRequestSeq === getCaretRequestSeq() && document.activeElement?.id !== containerUID) {
+                        apply();
+                    }
+                }, delayMs);
+            }
         },
 
         // Captures where to insert the recorded media literal (the slot and the text either side
@@ -2115,14 +2125,10 @@ export default defineComponent({
                 const {parentId, slotIndex} = getSlotParentIdAndIndexSplit(targetSlotInfos.slotId);
                 const rhsSlotInfos: SlotCoreInfos = {...targetSlotInfos, slotId: getSlotIdFromParentIdAndIndexSplit(parentId, slotIndex + 2)};
                 const cursorInfo: SlotCursorInfos = {slotInfos: rhsSlotInfos, cursorPos: 0};
-                this.$nextTick(() => {
-                    setDocumentSelection(cursorInfo, cursorInfo);
-                    this.appStore.setSlotTextCursors(cursorInfo, cursorInfo);
-                    this.appStore.setFocusEditableSlot({
-                        frameSlotInfos: rhsSlotInfos,
-                        caretPosition: this.appStore.getAllowedChildren(rhsSlotInfos.frameId) ? CaretPosition.body : CaretPosition.below,
-                    });
-                });
+                // Same focus-restore race as restoreOriginalCursor above (bootstrap-vue-next's modal
+                // can itself steal focus back asynchronously after "hidden" fires) -- go through
+                // restoreSlotFocusAndSelection's retries rather than a bare, unguarded $nextTick:
+                this.restoreSlotFocusAndSelection(cursorInfo, cursorInfo);
             };
 
             if (kind == "image") {
@@ -2174,14 +2180,10 @@ export default defineComponent({
                     const {parentId, slotIndex} = getSlotParentIdAndIndexSplit(targetSlotInfos.slotId);
                     const rhsSlotInfos: SlotCoreInfos = {...targetSlotInfos, slotId: getSlotIdFromParentIdAndIndexSplit(parentId, slotIndex + 1)};
                     const cursorInfo: SlotCursorInfos = {slotInfos: rhsSlotInfos, cursorPos: 0};
-                    this.$nextTick(() => {
-                        setDocumentSelection(cursorInfo, cursorInfo);
-                        this.appStore.setSlotTextCursors(cursorInfo, cursorInfo);
-                        this.appStore.setFocusEditableSlot({
-                            frameSlotInfos: rhsSlotInfos,
-                            caretPosition: this.appStore.getAllowedChildren(rhsSlotInfos.frameId) ? CaretPosition.body : CaretPosition.below,
-                        });
-                    });
+                    // Same focus-restore race as restoreOriginalCursor above -- see
+                    // restoreSlotFocusAndSelection's own comment for why this needs its retries
+                    // rather than a bare, unguarded $nextTick:
+                    this.restoreSlotFocusAndSelection(cursorInfo, cursorInfo);
                 };
 
                 this.openColourPickerInDialog(currentCode, commitReplacement, restoreOriginalCursor);
@@ -2237,14 +2239,10 @@ export default defineComponent({
                     const {parentId, slotIndex} = getSlotParentIdAndIndexSplit(targetSlotInfos.slotId);
                     const rhsSlotInfos: SlotCoreInfos = {...targetSlotInfos, slotId: getSlotIdFromParentIdAndIndexSplit(parentId, slotIndex + 2)};
                     const cursorInfo: SlotCursorInfos = {slotInfos: rhsSlotInfos, cursorPos: 0};
-                    this.$nextTick(() => {
-                        setDocumentSelection(cursorInfo, cursorInfo);
-                        this.appStore.setSlotTextCursors(cursorInfo, cursorInfo);
-                        this.appStore.setFocusEditableSlot({
-                            frameSlotInfos: rhsSlotInfos,
-                            caretPosition: this.appStore.getAllowedChildren(rhsSlotInfos.frameId) ? CaretPosition.body : CaretPosition.below,
-                        });
-                    });
+                    // Same focus-restore race as restoreOriginalCursor above -- see
+                    // restoreSlotFocusAndSelection's own comment for why this needs its retries
+                    // rather than a bare, unguarded $nextTick:
+                    this.restoreSlotFocusAndSelection(cursorInfo, cursorInfo);
                 };
 
                 this.openColourPickerInDialog(null, commitInsertion, restoreOriginalCursor);
