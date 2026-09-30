@@ -161,21 +161,19 @@ test.describe("Test Busiest Tube Stations demo", () => {
         await expect(page.locator(".file-system-pane-loading")).toHaveCount(0, {timeout: 30000});
         mkdirSync(testInfo.outputDir, {recursive: true});
         const filePath = path.join(testInfo.outputDir, "london-underground-passengers-2025.txt");
+        // A small real subset (not the full ~269-station file the demo itself pins) -- enough to
+        // exercise sorting/slicing against genuine TfL 2025 annualised entry/exit figures (millions),
+        // including some low-traffic outer stations so the "top 5" slice is a meaningful test rather
+        // than trivial with only 5 rows to sort:
         writeFileSync(filePath, [
-            "Bank and Monument,40.53",
-            "Bond Street,41.69",
-            "Canary Wharf,32.08",
-            "Euston,32.83",
-            "Farringdon,41.43",
-            "King's Cross St Pancras,72.51",
-            "Liverpool Street,59.21",
-            "London Bridge,55.38",
-            "Oxford Circus,51.58",
-            "Paddington,57.13",
-            "Stratford,52.43",
-            "Tottenham Court Road,59.94",
-            "Victoria,59.29",
-            "Waterloo,69.77",
+            "Chigwell,0.31",
+            "King's Cross St. Pancras,73.57",
+            "Liverpool Street,60.08",
+            "Oxford Circus,52.34",
+            "Roding Valley,0.2",
+            "Tottenham Court Road,60.81",
+            "Victoria,60.16",
+            "Waterloo,74.48",
         ].join("\n") + "\n");
         await page.locator(".file-system-tree-upload-input").setInputFiles(filePath);
         await expect(page.locator(".file-system-tree-file", {hasText: "london-underground-passengers-2025.txt"})).toBeVisible();
@@ -198,11 +196,11 @@ test.describe("Test Busiest Tube Stations demo", () => {
         `]);
         await runToFinish(page);
         await checkConsoleContent(page,
-            "King's Cross St Pancras: 72.51m\n" +
-            "Waterloo: 69.77m\n" +
-            "Tottenham Court Road: 59.94m\n" +
-            "Victoria: 59.29m\n" +
-            "Liverpool Street: 59.21m\n");
+            "Waterloo: 74.48m\n" +
+            "King's Cross St. Pancras: 73.57m\n" +
+            "Tottenham Court Road: 60.81m\n" +
+            "Victoria: 60.16m\n" +
+            "Liverpool Street: 60.08m\n");
         await checkFrameErrorCount(page, 0);
     });
 });
