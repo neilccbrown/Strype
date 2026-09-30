@@ -1,4 +1,6 @@
 import { test, expect } from "@playwright/test";
+import { mkdirSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import { enterCode } from "../support/editor";
 import { checkConsoleContent, checkFrameErrorCount, runButtonShowsRun, runToFinish, setupGraphicsRedrawObserver, startRunning, waitForConsoleSettled } from "../support/execution";
 import { setupStrypeTest } from "../support/general";
@@ -147,37 +149,60 @@ print(f'Montmorency is mentioned {count} times.')`]);
     });
 });
 
-// Runs the actual code from public/demos/console/london_temperatures.spy (rather than loading the
-// demo itself, since there's no test helper for that) against the two data files it pins into
-// "/local" plus the "/data/london-temperature-2025.txt" asset it also reads, and checks the output
-// matches what that demo currently prints:
-test.describe("Test London Temperatures demo", () => {
-    test("Check average temperatures are printed correctly", async ({page}) => {
+// Runs the actual code from public/demos/console/busiest_stations.spy (rather than loading the
+// demo itself, since there's no test helper for that) against the same pinned "/local" data file
+// the demo itself pins into the project, and checks the output matches what that demo currently
+// prints:
+test.describe("Test Busiest Tube Stations demo", () => {
+    test("Check the five busiest stations are printed correctly, in descending order", async ({page}, testInfo) => {
         await page.click("#filesPEATab");
         // Mirrors openFilesTab() in file-system-tab.spec.ts: wait for the pane's own load, not a
         // fixed delay:
         await expect(page.locator(".file-system-pane-loading")).toHaveCount(0, {timeout: 30000});
-        await page.locator(".file-system-tree-upload-input").setInputFiles("src/assetsFilesystem/data/london-temperature-2005.txt");
-        await page.locator(".file-system-tree-upload-input").setInputFiles("src/assetsFilesystem/data/london-temperature-2015.txt");
-        await expect(page.locator(".file-system-tree-file", {hasText: "london-temperature-2015.txt"})).toBeVisible();
+        mkdirSync(testInfo.outputDir, {recursive: true});
+        const filePath = path.join(testInfo.outputDir, "london-underground-passengers-2025.txt");
+        writeFileSync(filePath, [
+            "Bank and Monument,40.53",
+            "Bond Street,41.69",
+            "Canary Wharf,32.08",
+            "Euston,32.83",
+            "Farringdon,41.43",
+            "King's Cross St Pancras,72.51",
+            "Liverpool Street,59.21",
+            "London Bridge,55.38",
+            "Oxford Circus,51.58",
+            "Paddington,57.13",
+            "Stratford,52.43",
+            "Tottenham Court Road,59.94",
+            "Victoria,59.29",
+            "Waterloo,69.77",
+        ].join("\n") + "\n");
+        await page.locator(".file-system-tree-upload-input").setInputFiles(filePath);
+        await expect(page.locator(".file-system-tree-file", {hasText: "london-underground-passengers-2025.txt"})).toBeVisible();
 
         await enterCode(page, ["", `
-            def average_temperature_for_year(filename):
+            def read_passenger_counts(filename):
                 with open(filename) as f:
-                    total = 0
-                    count = 0
+                    stations = []
                     for line in f:
                         if line.strip() != "":
-                            total = total + float(line)
-                            count = count + 1
-                return round(total / count, 2)
+                            name, millions = line.strip().split(",")
+                            stations.append((float(millions), name))
+                return stations
         `, `
-            print("2005:" + str(average_temperature_for_year("london-temperature-2005.txt")))
-            print("2015:" + str(average_temperature_for_year("london-temperature-2015.txt")))
-            print("2025:" + str(average_temperature_for_year("/data/london-temperature-2025.txt")))
+            stations = read_passenger_counts("london-underground-passengers-2025.txt")
+            stations.sort(reverse=True)
+            busiest_five = stations[:5]
+            for millions, name in busiest_five:
+                print(name + ": " + str(millions) + "m")
         `]);
         await runToFinish(page);
-        await checkConsoleContent(page, "2005:10.86\n2015:11.01\n2025:12.87\n");
+        await checkConsoleContent(page,
+            "King's Cross St Pancras: 72.51m\n" +
+            "Waterloo: 69.77m\n" +
+            "Tottenham Court Road: 59.94m\n" +
+            "Victoria: 59.29m\n" +
+            "Liverpool Street: 59.21m\n");
         await checkFrameErrorCount(page, 0);
     });
 });

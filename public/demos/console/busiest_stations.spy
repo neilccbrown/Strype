@@ -1,0 +1,21 @@
+#(=> Strype:1:std
+'''This project uses file reading, sorting and list slicing to find London\'s five busiest Underground stations in 2025. Data: Powered by TfL Open Data, licensed under the Transport for London Open Data licence (based on the Open Government Licence v2.0).'''
+#(=> Section:Imports
+#(=> Section:Definitions
+def read_passenger_counts (filename ) :
+    '''Reads a file of "station,passengers in millions" lines and returns a list of (passengers, station) tuples'''
+    with open(filename)  as f  :
+        stations  = [] 
+        for line  in f  :
+            if line.strip() != ""  :
+                name,millions  = line.strip().split(",") 
+                stations.append((float(millions),name)) 
+    return stations 
+#(=> Section:Main
+#The passenger data is supplied with Strype -- see the Files tab on the bottom right pane:
+stations  = read_passenger_counts("/data/london-underground-passengers-2025.txt") 
+stations.sort(reverse=True) 
+busiest_five  = stations[:5] 
+for millions,name  in busiest_five  :
+    print(name + ": " + str(millions) + "m") 
+#(=> Section:End
