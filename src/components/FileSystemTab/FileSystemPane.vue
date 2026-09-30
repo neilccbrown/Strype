@@ -119,11 +119,9 @@ import {
     togglePinLocal,
     uploadEntriesToCloud,
     uploadEntriesToLocal,
-    uploadToCloud,
-    uploadToLocal,
 } from "@/helpers/fileSystemTabIO";
+import { ArchiveEntry, isZipFile, unzipEntries } from "@/helpers/archive";
 import { FsTreeNode } from "@/stryperuntime/file_system_tree_types";
-import { isZipFile, unzipEntries } from "@/helpers/archive";
 import { runChangeCount } from "@/helpers/localFsCache";
 import { eventBus } from "@/helpers/appContext";
 import { CustomEventTypes } from "@/helpers/editor";
@@ -419,15 +417,23 @@ export default defineComponent({
             void this.uploadPlainFile(dirNode, file, root);
         },
 
-        async uploadPlainFile(dirNode: FsTreeNode, file: File, root: "/local" | "/cloud"): Promise<void> {
+        // Shared by uploadPlainFile() (a single-entry array) and onUnzipContents() (an archive's
+        // whole entry list) -- both just need "write these entries under dirNode, then refresh
+        // whichever root they went into" and otherwise differ only in where the entries came from.
+        async uploadEntries(dirNode: FsTreeNode, entries: ArchiveEntry[], root: "/local" | "/cloud"): Promise<void> {
             if (root === "/local") {
-                await uploadToLocal(dirNode, file);
+                await uploadEntriesToLocal(dirNode, entries);
                 await this.refreshLocal();
             }
             else {
-                await uploadToCloud(dirNode, file);
+                await uploadEntriesToCloud(dirNode, entries);
                 await this.refreshCloud();
             }
+        },
+
+        async uploadPlainFile(dirNode: FsTreeNode, file: File, root: "/local" | "/cloud"): Promise<void> {
+            const data = new Uint8Array(await file.arrayBuffer());
+            await this.uploadEntries(dirNode, [{path: file.name, data}], root);
         },
 
         async onKeepAsZip(): Promise<void> {
@@ -445,14 +451,7 @@ export default defineComponent({
                 return;
             }
             const entries = await unzipEntries(pending.file);
-            if (pending.root === "/local") {
-                await uploadEntriesToLocal(pending.dirNode, entries);
-                await this.refreshLocal();
-            }
-            else {
-                await uploadEntriesToCloud(pending.dirNode, entries);
-                await this.refreshCloud();
-            }
+            await this.uploadEntries(pending.dirNode, entries, pending.root);
         },
     },
 });

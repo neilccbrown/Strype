@@ -32,7 +32,23 @@ export const assetsFilePrefixes = Array.from(new Set(Object.keys(assetsFileIndex
 // file-system-tab.spec.ts). Building the tree from this static, build-time glob avoids the worker
 // entirely for listing; readFsFile (python-execution.ts) still mounts the relevant root itself,
 // lazily, the first time a file under it is actually downloaded or read.
+//
+// assetsFileIndex never changes at runtime, so each root's tree is built once and cached here --
+// FileSystemPane.vue's refresh() otherwise re-runs this (scanning the whole glob, not just this
+// root's slice of it) every time the Files tab is opened.
+const assetTreeCache = new Map<string, FsTreeNode>();
+
 export function buildAssetTree(prefix: string): FsTreeNode {
+    const cached = assetTreeCache.get(prefix);
+    if (cached) {
+        return cached;
+    }
+    const tree = buildAssetTreeUncached(prefix);
+    assetTreeCache.set(prefix, tree);
+    return tree;
+}
+
+function buildAssetTreeUncached(prefix: string): FsTreeNode {
     const rootPath = "/" + prefix;
     const root: FsTreeNode = {name: prefix, path: rootPath, isDir: true, children: []};
     const dirNodes = new Map<string, FsTreeNode>([[rootPath, root]]);

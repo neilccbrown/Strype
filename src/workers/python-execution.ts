@@ -360,10 +360,11 @@ async function restoreLocalFs(entries: Record<string, Uint8Array>): Promise<void
                 // Ignore errors because they will come from the dir already existing
             }
             // Make "/local" exactly match the entries: remove anything left over from an earlier restore
-            // that has since been deleted from the main-thread cache:
-            const existing: Record<string, Uint8Array> = {};
-            collectFlatFiles(pyodide, "/local", existing);
-            for (const path of Object.keys(existing)) {
+            // that has since been deleted from the main-thread cache. Only the paths matter here, so
+            // list them (listFilesUnder, also used by installLocalFsSync's rename handling above) rather
+            // than reading every file's bytes just to throw them away (collectFlatFiles, used below where
+            // the bytes are actually needed, is overkill for this):
+            for (const path of listFilesUnder(pyodide.FS, "/local")) {
                 if (!(path in entries)) {
                     pyodide.FS.unlink(path);
                 }

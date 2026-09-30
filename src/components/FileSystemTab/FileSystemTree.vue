@@ -247,26 +247,25 @@ export default defineComponent({
             this.justCopied = true;
         },
 
-        // Shared guard for every action button below other than upload (which needs the same
-        // check before it opens the native file picker -- see clickUploadInput()): while Python is
-        // executing, the button stays clickable (not disabled/greyed) but does nothing except
-        // flash the run/stop button red, reusing the same "highlightPythonRunningState" mechanism
-        // Menu.vue uses for shortcuts blocked while running -- see PythonExecutionArea.vue's
-        // doHighlightPythonRunningState()/#runButton.highlighted CSS.
-        guardedEmit(event: "download" | "downloadDir" | "delete" | "pin" | "view", node: FsTreeNode): void {
+        // Shared guard for every action below: while Python is executing, the triggering button
+        // stays clickable (not disabled/greyed) but does nothing except flash the run/stop button
+        // red, reusing the same "highlightPythonRunningState" mechanism Menu.vue uses for shortcuts
+        // blocked while running -- see PythonExecutionArea.vue's doHighlightPythonRunningState()/
+        // #runButton.highlighted CSS. Otherwise runs the given action normally.
+        guardedAction(action: () => void): void {
             if (this.executing) {
                 document.dispatchEvent(new Event(CustomEventTypes.highlightPythonRunningState));
                 return;
             }
-            this.$emit(event, node);
+            action();
+        },
+
+        guardedEmit(event: "download" | "downloadDir" | "delete" | "pin" | "view", node: FsTreeNode): void {
+            this.guardedAction(() => this.$emit(event, node));
         },
 
         clickUploadInput(): void {
-            if (this.executing) {
-                document.dispatchEvent(new Event(CustomEventTypes.highlightPythonRunningState));
-                return;
-            }
-            (this.$refs.uploadInput as HTMLInputElement).click();
+            this.guardedAction(() => (this.$refs.uploadInput as HTMLInputElement).click());
         },
 
         onFileSelected(event: Event): void {

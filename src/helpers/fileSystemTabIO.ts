@@ -205,17 +205,6 @@ export function dirHasEntryNamed(dirNode: FsTreeNode, name: string): boolean {
     return (dirNode.children ?? []).some((child) => child.name === name);
 }
 
-// Uploads a file into "/local" at the given directory node's path (e.g. "/local" itself, or a
-// subfolder). Writes straight into the main-thread cache -- callers must not allow this while
-// Python is executing (see FileSystemPane.vue): the cache is only resynced with a running worker
-// at the start/end of a run (see terminateAndRestartPyodide(), main_thread_python_handler.ts), so
-// a write made mid-run here would silently be lost when that run's own snapshot is taken at the end.
-export async function uploadToLocal(dirNode: FsTreeNode, file: File): Promise<void> {
-    const data = new Uint8Array(await file.arrayBuffer());
-    const path = dirNode.path === "/local" ? `/local/${file.name}` : `${dirNode.path}/${file.name}`;
-    localFsCache.writeFile(path, data);
-}
-
 // Deletes a file, or every file under a directory, from "/local". Directories aren't stored as
 // entries of their own in localFsCache.ts (they're purely implicit in the files' paths), so
 // "deleting" one just means deleting every file whose path falls under it.
@@ -247,25 +236,15 @@ export function togglePinLocal(node: FsTreeNode): void {
     localFsCache.setPinned(node.path, !currentlyPinned);
 }
 
-// Uploads a file into "/cloud" at the given directory node (its cloudFileId is the parent folder
-// to create the new file in). Goes straight through cloudFileIO.ts's main-thread functions --
-// create, write the actual content, then close (which awaits the write actually landing, the same
-// way a Python open()/write()/close() would via the worker's sync bridge -- see cloudCloseFile's
-// own comment for why closing is what forces/awaits the flush).
-export async function uploadToCloud(dirNode: FsTreeNode, file: File): Promise<void> {
-    if (dirNode.cloudFileId == null) {
-        return;
-    }
-    const data = new Uint8Array(await file.arrayBuffer());
-    const filePath = `${dirNode.path}/${file.name}`;
-    const newFileId = await cloudCreate({cloudFileId: dirNode.cloudFileId}, file.name, false, filePath);
-    await cloudWriteFile(newFileId, data, 0, filePath, true);
-    await cloudCloseFile(newFileId);
-}
-
-// Uploads a set of extracted archive entries (see archive.ts's unzipEntries()) into "/local",
-// preserving each entry's subfolder structure -- localFsCache.listTree() already builds nested
-// directories from flat paths, so no special-casing is needed here beyond joining the path.
+// Uploads a set of files (a single plain upload becomes a one-entry array -- see
+// FileSystemPane.vue's uploadPlainFile()/onUnzipContents(), the only two callers) into "/local" at
+// the given directory node's path (e.g. "/local" itself, or a subfolder), preserving each entry's
+// own subfolder structure -- localFsCache.listTree() already builds nested directories from flat
+// paths, so no special-casing is needed here beyond joining the path. Writes straight into the
+// main-thread cache -- callers must not allow this while Python is executing (see
+// FileSystemPane.vue): the cache is only resynced with a running worker at the start/end of a run
+// (see terminateAndRestartPyodide(), main_thread_python_handler.ts), so a write made mid-run here
+// would silently be lost when that run's own snapshot is taken at the end.
 export async function uploadEntriesToLocal(dirNode: FsTreeNode, entries: ArchiveEntry[]): Promise<void> {
     for (const entry of entries) {
         const path = dirNode.path === "/local" ? `/local/${entry.path}` : `${dirNode.path}/${entry.path}`;
@@ -273,12 +252,17 @@ export async function uploadEntriesToLocal(dirNode: FsTreeNode, entries: Archive
     }
 }
 
-// Uploads a set of extracted archive entries into "/cloud". Unlike /local, entries are flattened
-// into the target folder using just their base file name: cloudCreate() (cloudFileIO.ts) can't
-// create directories at all (Strype's cloud file IO only ever creates files, never folders), so
-// there's no way to recreate an archive's subfolder structure in the cloud drive. Sequential
-// (not parallelised) to keep this simple and avoid hammering the cloud API with a burst of
-// concurrent create+write+close calls for a large archive.
+// Uploads a set of files (a single plain upload becomes a one-entry array -- see
+// FileSystemPane.vue's uploadPlainFile()/onUnzipContents()) into "/cloud" at the given directory
+// node (its cloudFileId is the parent folder to create the new file(s) in). Goes straight through
+// cloudFileIO.ts's main-thread functions -- create, write the actual content, then close (which
+// awaits the write actually landing, the same way a Python open()/write()/close() would via the
+// worker's sync bridge -- see cloudCloseFile's own comment for why closing is what forces/awaits
+// the flush). Unlike /local, entries are flattened into the target folder using just their base
+// file name: cloudCreate() (cloudFileIO.ts) can't create directories at all (Strype's cloud file IO
+// only ever creates files, never folders), so there's no way to recreate an archive's subfolder
+// structure in the cloud drive. Sequential (not parallelised) to keep this simple and avoid
+// hammering the cloud API with a burst of concurrent create+write+close calls for a large archive.
 export async function uploadEntriesToCloud(dirNode: FsTreeNode, entries: ArchiveEntry[]): Promise<void> {
     if (dirNode.cloudFileId == null) {
         return;
