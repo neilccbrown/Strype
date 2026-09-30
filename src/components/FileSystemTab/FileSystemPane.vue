@@ -4,9 +4,6 @@
     <div class="file-system-pane" @wheel.stop>
         <div v-if="loading" class="file-system-pane-loading">{{ $t("fileSystemTab.loading") }}</div>
         <template v-else>
-            <div v-if="isPythonExecuting" class="file-system-pane-running-note">
-                {{ $t("fileSystemTab.programRunning") }}
-            </div>
             <!-- Deliberately no FileSystemTree for "local" itself (unlike cloudRoot/assetRoots below):
                  its children are listed flat, straight under this heading, rather than behind a
                  redundant bold "local" row that just repeats what the heading above it already says. -->
@@ -25,7 +22,7 @@
                     allow-upload
                     allow-delete
                     allow-pin
-                    :upload-disabled="isPythonExecuting"
+                    :executing="isPythonExecuting"
                     @download="(n) => onDownload(n, '/local')"
                     @downloadDir="(n) => onDownloadDir(n, '/local')"
                     @upload="(n, file) => onUpload(n, file, '/local')"
@@ -36,7 +33,6 @@
                 <div class="file-system-pane-flat-item">
                     <button
                         class="file-system-tree-upload-btn"
-                        :disabled="isPythonExecuting"
                         :title="$t('fileSystemTab.upload')"
                         @click="clickLocalUploadInput"
                     >
@@ -51,7 +47,7 @@
                     :node="cloudRoot"
                     start-expanded
                     allow-upload
-                    :upload-disabled="isPythonExecuting"
+                    :executing="isPythonExecuting"
                     :is-cwd="cwdRoot === '/cloud'"
                     @download="(n) => onDownload(n, '/cloud')"
                     @downloadDir="(n) => onDownloadDir(n, '/cloud')"
@@ -66,6 +62,7 @@
                     :key="entry.root"
                     :node="entry.tree"
                     :label-override="entry.root + '/'"
+                    :executing="isPythonExecuting"
                     @download="(n) => onDownload(n, entry.root)"
                     @downloadDir="(n) => onDownloadDir(n, entry.root)"
                     @view="(n) => onView(n, entry.root)"
@@ -370,6 +367,15 @@ export default defineComponent({
         // instance there to own an upload button/input, so this pane owns one directly instead,
         // uploading to localRoot itself (the same target the old root row's own upload button had).
         clickLocalUploadInput(): void {
+            if (this.isPythonExecuting) {
+                // Uploading while the program runs could race with it reading/writing the same
+                // "/local" cache -- rather than disabling the button (see FileSystemTree.vue's
+                // identical reasoning for its own upload/delete/etc buttons), just flash the
+                // run/stop button red as a hint, reusing the same mechanism Menu.vue uses for
+                // shortcuts blocked while running.
+                document.dispatchEvent(new Event(CustomEventTypes.highlightPythonRunningState));
+                return;
+            }
             (this.$refs.localUploadInput as HTMLInputElement).click();
         },
 
@@ -476,12 +482,6 @@ export default defineComponent({
 .file-system-pane::-webkit-scrollbar-thumb {
     background: #888;
     border-radius: 5px;
-}
-
-.file-system-pane-running-note {
-    opacity: 0.7;
-    font-style: italic;
-    margin-bottom: 0.5em;
 }
 
 .file-system-pane-root {

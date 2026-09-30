@@ -292,7 +292,6 @@
     "builtIn": "Built-in files",
     "cloud": "Cloud",
     "local": "Local files",
-    "programRunning": "Uploads are disabled while your program is running.",
     "cwd": "This is the current working directory when your code runs",
     "download": "Download",
     "downloadZip": "Download as a zip file",

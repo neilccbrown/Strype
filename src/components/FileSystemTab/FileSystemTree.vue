@@ -14,7 +14,6 @@
                 <button
                     v-if="allowUpload"
                     class="file-system-tree-upload-btn"
-                    :disabled="uploadDisabled"
                     :title="$t('fileSystemTab.upload')"
                     @click="clickUploadInput"
                 >
@@ -31,16 +30,15 @@
                 <button
                     v-if="allowDelete"
                     class="file-system-tree-delete-btn"
-                    :disabled="uploadDisabled"
                     :title="$t('fileSystemTab.deleteDir')"
-                    @click="$emit('delete', node)"
+                    @click="guardedEmit('delete', node)"
                 >
                     <i class="fa fa-trash"></i>
                 </button>
                 <button
                     class="file-system-tree-download-btn"
                     :title="$t('fileSystemTab.downloadZip')"
-                    @click="$emit('downloadDir', node)"
+                    @click="guardedEmit('downloadDir', node)"
                 >
                     <i class="fa fa-download"></i>
                 </button>
@@ -61,9 +59,8 @@
                 <button
                     v-if="allowDelete"
                     class="file-system-tree-delete-btn"
-                    :disabled="uploadDisabled"
                     :title="$t('fileSystemTab.delete')"
-                    @click="$emit('delete', node)"
+                    @click="guardedEmit('delete', node)"
                 >
                     <i class="fa fa-trash"></i>
                 </button>
@@ -73,14 +70,14 @@
                     :class="{ 'file-system-tree-pin-btn-pinned': node.isPinned }"
                     :disabled="pinDisabled"
                     :title="pinTitle"
-                    @click="$emit('pin', node)"
+                    @click="guardedEmit('pin', node)"
                 >
                     <i class="fa fa-thumbtack"></i>
                 </button>
-                <button class="file-system-tree-view-btn" :title="$t('fileSystemTab.view')" @click="$emit('view', node)">
+                <button class="file-system-tree-view-btn" :title="$t('fileSystemTab.view')" @click="guardedEmit('view', node)">
                     <i class="fa fa-eye"></i>
                 </button>
-                <button class="file-system-tree-download-btn" :title="$t('fileSystemTab.download')" @click="$emit('download', node)">
+                <button class="file-system-tree-download-btn" :title="$t('fileSystemTab.download')" @click="guardedEmit('download', node)">
                     <i class="fa fa-download"></i>
                 </button>
             </span>
@@ -95,7 +92,7 @@
                     :allow-upload="allowUpload"
                     :allow-delete="allowDelete"
                     :allow-pin="allowPin"
-                    :upload-disabled="uploadDisabled"
+                    :executing="executing"
                     :invisible-prefix="childInvisiblePrefix"
                     @download="(n) => $emit('download', n)"
                     @downloadDir="(n) => $emit('downloadDir', n)"
@@ -112,6 +109,7 @@
 <script lang="ts">
 import { defineComponent, PropType } from "vue";
 import { FsTreeNode } from "@/stryperuntime/file_system_tree_types";
+import { CustomEventTypes } from "@/helpers/editor";
 
 // Kept in sync with the identical MAX_PINNABLE_FILE_SIZE in fileSystemTabIO.ts (which actually
 // enforces it) -- duplicated rather than imported so this purely-presentational component doesn't
@@ -140,10 +138,12 @@ export default defineComponent({
         // savePinnedLocalFiles()), which only makes sense for /local's otherwise-ephemeral cache,
         // not the read-only asset roots or (not yet supported) /cloud.
         allowPin: { type: Boolean, default: false },
-        // Uploads/deletes are disabled while Python is executing (see FileSystemPane.vue): /local's
+        // Whether Python is currently executing: every action button in this subtree stays
+        // enabled and clickable regardless (see guardedEmit()/clickUploadInput() below), but while
+        // this is true, clicking one does nothing except flash the run/stop button red -- /local's
         // main-thread cache (and, for uploads only, /cloud's cache in cloudFileIO.ts) are only meant
         // to be touched between runs, not while a run might also be reading/writing the same files.
-        uploadDisabled: { type: Boolean, default: false },
+        executing: { type: Boolean, default: false },
         // Whether this node is the directory that will be the current working directory when the
         // code is next run. Only ever true for the root node passed in by FileSystemPane.vue --
         // it's deliberately not forwarded to the recursive FileSystemTree below, since the cwd is
@@ -247,7 +247,25 @@ export default defineComponent({
             this.justCopied = true;
         },
 
+        // Shared guard for every action button below other than upload (which needs the same
+        // check before it opens the native file picker -- see clickUploadInput()): while Python is
+        // executing, the button stays clickable (not disabled/greyed) but does nothing except
+        // flash the run/stop button red, reusing the same "highlightPythonRunningState" mechanism
+        // Menu.vue uses for shortcuts blocked while running -- see PythonExecutionArea.vue's
+        // doHighlightPythonRunningState()/#runButton.highlighted CSS.
+        guardedEmit(event: "download" | "downloadDir" | "delete" | "pin" | "view", node: FsTreeNode): void {
+            if (this.executing) {
+                document.dispatchEvent(new Event(CustomEventTypes.highlightPythonRunningState));
+                return;
+            }
+            this.$emit(event, node);
+        },
+
         clickUploadInput(): void {
+            if (this.executing) {
+                document.dispatchEvent(new Event(CustomEventTypes.highlightPythonRunningState));
+                return;
+            }
             (this.$refs.uploadInput as HTMLInputElement).click();
         },
 

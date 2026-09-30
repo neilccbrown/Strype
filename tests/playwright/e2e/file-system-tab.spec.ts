@@ -376,13 +376,22 @@ test.describe("File system tab -- /local (writeable scratch area)", () => {
         });
     });
 
-    test("upload is disabled while Python is executing", async ({ page }) => {
+    test("uploading does nothing while Python is executing, other than flashing the run/stop button", async ({ page }) => {
         await enterCode(page, ["import time", "", "while True:\n    time.sleep(0.1)\n"]);
         const runButton = await startRunning(page);
         await openFilesTab(page);
 
-        await expect(page.locator(".file-system-pane-running-note")).toHaveText(en.fileSystemTab.programRunning);
-        await expect(page.locator(".file-system-tree-upload-btn")).toBeDisabled();
+        // The upload button stays enabled (not greyed out) even while running -- clicking it does
+        // nothing but flash the run/stop button red instead, the same mechanism Menu.vue reuses for
+        // shortcuts blocked while running (see PythonExecutionArea.vue's #runButton.highlighted CSS):
+        const uploadButton = page.locator(".file-system-tree-upload-btn");
+        await expect(uploadButton).toBeEnabled();
+        await expect(runButton).not.toHaveClass(/highlighted/);
+        await uploadButton.click();
+        await expect(runButton).toHaveClass(/highlighted/);
+
+        const localSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.local });
+        await expect(localSection).toContainText(en.fileSystemTab.emptyFolder);
 
         // Clean up: stop the program so it doesn't bleed into the next test:
         await runButton.click();
