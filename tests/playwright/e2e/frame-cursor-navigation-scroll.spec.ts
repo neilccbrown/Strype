@@ -72,10 +72,12 @@ async function checkBoundedScrollOnNavigation(page: Page, key: "ArrowUp" | "Arro
     for (let i = 0; i < times; i++) {
         const before = await getEditorScrollTop(page);
         await page.keyboard.press(key);
-        await waitForEditorSettled(page);
-        // The actual scroll (CaretContainer.vue's putCaretContainerInView) fires from a 100ms
-        // setTimeout after the caret has moved, so it can still be pending once the editor
-        // otherwise looks settled -- wait past that before reading the final scroll position.
+        // Plain cursor navigation doesn't trigger the kind of restructuring debounce
+        // waitForEditorSettled exists for (see the "Undo scrolls location into view" tests'
+        // rationale in scroll-into-view.spec.ts), and calling it after every single arrow press
+        // here is expensive enough to blow the test timeout over 90 repeats. The actual scroll
+        // (CaretContainer.vue's putCaretContainerInView) fires from a 100ms setTimeout after the
+        // caret has moved, so just wait past that before reading the final scroll position.
         await page.waitForTimeout(200);
         const after = await getEditorScrollTop(page);
         if (after === before) {

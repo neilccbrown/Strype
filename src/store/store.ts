@@ -942,7 +942,10 @@ export const useStore = defineStore("app", {
             
             // In order to keep a coherence between our state's focus information and the internal browser active element,
             // we explicitly set the focus on the frame cursor that holds it now.
-            document.getElementById(getCaretContainerUID(nextCaret.caretPosition, nextCaret.id))?.focus();
+            // preventScroll avoids the browser's own (inconsistent, and sometimes far too large --
+            // e.g. jumping the caret to the vertical centre of the viewport) native scroll-into-view
+            // on focus; scrolling is instead handled deliberately below via scrollCaretIntoView.
+            document.getElementById(getCaretContainerUID(nextCaret.caretPosition, nextCaret.id))?.focus({preventScroll: true});
 
             // Scroll caret into view when navigating with keyboard:
             nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));
@@ -2487,7 +2490,8 @@ export const useStore = defineStore("app", {
                 // inside it, which handleDocumentSelectionChange() (App.vue) then reads as the user having
                 // moved the caret back into the slot we just left, immediately undoing this navigation.
                 if(wasEditing){
-                    document.getElementById(getCaretContainerUID(nextPosition.caretPosition as CaretPosition, nextPosition.frameId))?.focus();
+                    // preventScroll: see the equivalent focus() call in changeCaretWithKeyboard().
+                    document.getElementById(getCaretContainerUID(nextPosition.caretPosition as CaretPosition, nextPosition.frameId))?.focus({preventScroll: true});
                 }
 
                 // Scroll it into view:
