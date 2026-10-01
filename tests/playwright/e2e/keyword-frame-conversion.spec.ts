@@ -36,6 +36,46 @@ test.beforeEach(async ({page, browserName}, testInfo) => {
     await waitForEditorSettled(page);
 });
 
+// Asserts that the given frame ends up (at any depth) inside the given top-level container.
+async function expectFrameInContainer(page: Page, frameId: number, containerId: number): Promise<void> {
+    await expect.poll(async () => await page.evaluate((frameId) => {
+        const app = (document.getElementById("app") as unknown as {__vue_app__: {config: {globalProperties: {$pinia: {_s: Map<string, any>}}}}}).__vue_app__;
+        const store = app.config.globalProperties.$pinia._s.get("app");
+        let id = frameId;
+        while (id > 0) {
+            const f = store.frameObjects[id];
+            id = f.jointParentId > 0 ? f.jointParentId : f.parentId;
+        }
+        return id;
+    }, frameId)).toBe(containerId);
+}
+
+// Returns the ids of the children of the given frame/container, read from the store.
+async function getChildrenIds(page: Page, parentId: number): Promise<number[]> {
+    return await page.evaluate((parentId) => {
+        const app = (document.getElementById("app") as unknown as {__vue_app__: {config: {globalProperties: {$pinia: {_s: Map<string, any>}}}}}).__vue_app__;
+        const store = app.config.globalProperties.$pinia._s.get("app");
+        return [...store.frameObjects[parentId].childrenIds] as number[];
+    }, parentId);
+}
+
+// Creates a class in Definitions (which comes with a default "__init__" method), then moves the
+// caret into that method's (empty) body, ready for a func-call frame to be typed there.
+// The caret starts in Main (see beforeEach), so this first steps back up to Definitions.
+// Returns the ids of the class and of its method.
+async function createClassAndEnterMethodBody(page: Page): Promise<{classId: number, methodId: number}> {
+    await page.keyboard.press("ArrowUp"); // Main -> Definitions
+    await waitForEditorSettled(page);
+    await page.keyboard.press(" ");
+    await page.keyboard.press("c");
+    await waitForEditorSettled(page);
+    const classId = await getFocusedFrameId(page);
+    const methodId = (await getChildrenIds(page, classId))[0];
+    await page.locator(`#frameBodyId_${methodId}`).click();
+    await waitForEditorSettled(page);
+    return {classId, methodId};
+}
+
 // Creates a function definition in Definitions ("space" then "f" -- unambiguous there, since
 // Definitions offers no "for"), then moves the caret into its (empty) body, ready for a
 // func-call frame to be typed there. The caret starts in Main (see beforeEach), so this first
@@ -92,9 +132,9 @@ async function createIfAndEnterBody(page: Page): Promise<number> {
     return ifId;
 }
 
-// Creates a throwaway func-call frame in Main, relocates it into the given container (a
-// placement no real typing can reach directly -- see the callers below), then clears its
-// content so it's a blank slate ready for typeKeywordConversionTrigger. Returns its frame ID.
+// Creates a func-call frame in the given Imports/Definitions container by bare typing, then
+// clears its content so it's a blank slate ready for typeKeywordConversionTrigger. Returns its
+// frame ID.
 async function createFuncCallFrameIn(page: Page, containerId: number): Promise<number> {
     // Caret starts in Main (see beforeEach) -- step up into the target container's own blank-line
     // caret first: 1x ArrowUp for Definitions, 2x for Imports.
@@ -104,8 +144,7 @@ async function createFuncCallFrameIn(page: Page, containerId: number): Promise<n
         await waitForEditorSettled(page);
     }
     // Neither container offers func-call as a pane command (only their own fixed shortcuts), but
-    // bare typing still creates one there as the generic "type anything, error later if it's
-    // wrong here" fallback -- see Commands.vue's bare-typed-char handler.
+    // bare typing still creates one there as the generic "type anything" fallback -- see Commands.vue's bare-typed-char handler.
     await page.keyboard.type("x");
     await waitForEditorSettled(page);
     const frameId = await getFocusedFrameId(page);
@@ -158,31 +197,11 @@ test.describe("Keyword-triggered frame conversion -- shapes", () => {
         expect(text).toContain("y");
     });
 
-    test.skip("2-slot bracket-split: \"def foo(a, b)\" splits name from params", async ({page}) => {
-        // def is never reachable through typing in this app version: Definitions is the only
-        // container that allows funcdef as a child, but its blank-line caret offers a fixed menu
-        // of shortcuts (function/class definition, comment, assignment) with no plain func-call
-        // fallback -- and a nested funcdef isn't allowed inside another block's body either (see
-        // BlockDefinition.forbiddenChildrenTypes in src/types/types.ts). So this shape can only be
-        // exercised by placing a func-call frame in Definitions directly, via
-        // relocateFrameToContainer -- the same way the two location-gating tests below construct
-        // otherwise-unreachable placements.
-        //
-        // SKIPPED: relocateFrameToContainer's raw store-mutation move doesn't reliably put the
-        // relocated frame's FrameHeader component back through Vue's mount lifecycle -- observed
-        // as vueComponentsAPIHandler.frameHeaderComponentAPI.forInstance[frameId] staying
-        // undefined afterwards (even after an extra wait), which throws inside
-        // checkSlotRefactoring the moment this test types into it, silently swallowing the
-        // keystroke (see the Vue "Unhandled error during execution of component event handler"
-        // warning this produces). The conversion mechanism itself (that a func-call frame
-        // starting with "def "+brackets splits into name/params once it's actually inside
-        // Definitions) was verified by hand instead. Fixing this would need either a real
-        // frame-move helper that goes through the app's own (reactive, not raw-array) move logic
-        // -- e.g. whatever the drag-and-drop code path uses -- or a proper exposed test hook for
-        // constructing this placement outright.
-        const frameId = await createFuncCallFrameIn(page, DEFS_CONTAINER_ID);
-        await typeKeywordConversionTrigger(page, "def", "foo(a, b)");
+    test("2-slot bracket-split: \"def foo(a, b)\" splits name from params, and moves to Definitions", async ({page}) => {
+        // Typed in Main, where a funcdef isn't allowed: it converts, then relocates to Definitions.
+        const frameId = await typeKeywordConversionTrigger(page, "def", "foo(a, b)");
         await assertFrameType(page, frameId, AllFrameTypesIdentifier.funcdef);
+        await expectFrameInContainer(page, frameId, DEFS_CONTAINER_ID);
         expect(await getFrameHeaderText(page, frameId)).toContain("foo");
     });
 });
@@ -235,9 +254,23 @@ test.describe("Keyword-triggered frame conversion -- location gating", () => {
         await assertConversionDidNotHappen(page, frameId);
     });
 
-    test("class does NOT convert directly in Main", async ({page}) => {
+    test("class typed in Main converts and moves to Definitions", async ({page}) => {
         const frameId = await typeKeywordConversionTrigger(page, "class");
-        await assertConversionDidNotHappen(page, frameId);
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.classdef);
+        await expectFrameInContainer(page, frameId, DEFS_CONTAINER_ID);
+    });
+
+    test("import typed in Main converts and moves to Imports", async ({page}) => {
+        const frameId = await typeKeywordConversionTrigger(page, "import");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.import);
+        await expectFrameInContainer(page, frameId, IMPORTS_CONTAINER_ID);
+    });
+
+    test("import typed inside a function body converts and moves to Imports", async ({page}) => {
+        await createFunctionAndEnterBody(page);
+        const frameId = await typeKeywordConversionTrigger(page, "import");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.import);
+        await expectFrameInContainer(page, frameId, IMPORTS_CONTAINER_ID);
     });
 
     test("class converts when the func-call frame is in Definitions", async ({page}) => {
@@ -246,8 +279,90 @@ test.describe("Keyword-triggered frame conversion -- location gating", () => {
         await assertFrameType(page, frameId, AllFrameTypesIdentifier.classdef);
     });
 
-    test("library does NOT convert directly in Main", async ({page}) => {
+    test("import typed inside a method of a class converts and moves to Imports", async ({page}) => {
+        await createClassAndEnterMethodBody(page);
+        const frameId = await typeKeywordConversionTrigger(page, "import", "os");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.import);
+        expect(await getChildrenIds(page, IMPORTS_CONTAINER_ID)).toEqual([frameId]);
+    });
+
+    test("from-import typed inside a method of a class converts and moves to Imports", async ({page}) => {
+        await createClassAndEnterMethodBody(page);
+        const frameId = await typeKeywordConversionTrigger(page, "from", "os import path");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.fromimport);
+        expect(await getChildrenIds(page, IMPORTS_CONTAINER_ID)).toEqual([frameId]);
+    });
+
+    test("import typed inside an if inside a method of a class moves to Imports", async ({page}) => {
+        await createClassAndEnterMethodBody(page);
+        await createIfAndEnterBody(page);
+        const frameId = await typeKeywordConversionTrigger(page, "import", "os");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.import);
+        expect(await getChildrenIds(page, IMPORTS_CONTAINER_ID)).toEqual([frameId]);
+    });
+
+    test("class typed inside a method of a class converts and moves to the top level of Definitions", async ({page}) => {
+        const {classId} = await createClassAndEnterMethodBody(page);
+        const frameId = await typeKeywordConversionTrigger(page, "class", "Inner");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.classdef);
+        // Moved to the top of Definitions, not nested in the outer class:
+        expect(await getChildrenIds(page, DEFS_CONTAINER_ID)).toEqual([frameId, classId]);
+    });
+
+    test("def typed inside a method of a class (a function inside a function inside a class) converts and moves to the top level of Definitions", async ({page}) => {
+        const {classId} = await createClassAndEnterMethodBody(page);
+        const frameId = await typeKeywordConversionTrigger(page, "def", "helper()");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.funcdef);
+        expect(await getChildrenIds(page, DEFS_CONTAINER_ID)).toEqual([frameId, classId]);
+        expect(await getFrameHeaderText(page, frameId)).toContain("helper");
+    });
+
+    test("def typed inside a top-level function converts and moves to the top level of Definitions", async ({page}) => {
+        await createFunctionAndEnterBody(page);
+        const outerId = (await getChildrenIds(page, DEFS_CONTAINER_ID))[0];
+        const frameId = await typeKeywordConversionTrigger(page, "def", "helper()");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.funcdef);
+        expect(await getChildrenIds(page, DEFS_CONTAINER_ID)).toEqual([frameId, outerId]);
+    });
+
+    test("class typed inside a top-level function converts and moves to the top level of Definitions", async ({page}) => {
+        await createFunctionAndEnterBody(page);
+        const outerId = (await getChildrenIds(page, DEFS_CONTAINER_ID))[0];
+        const frameId = await typeKeywordConversionTrigger(page, "class", "Inner");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.classdef);
+        expect(await getChildrenIds(page, DEFS_CONTAINER_ID)).toEqual([frameId, outerId]);
+    });
+
+    test("an if typed inside a method of a class converts and stays in the method", async ({page}) => {
+        const {methodId} = await createClassAndEnterMethodBody(page);
+        const frameId = await typeKeywordConversionTrigger(page, "if", "x");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.if);
+        expect(await getChildrenIds(page, methodId)).toEqual([frameId]);
+    });
+
+    test("library typed in Main converts and moves to Imports", async ({page}) => {
         const frameId = await typeKeywordConversionTrigger(page, "library");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.library);
+        await expectFrameInContainer(page, frameId, IMPORTS_CONTAINER_ID);
+    });
+
+    test("if typed in Imports converts and moves to Main", async ({page}) => {
+        const frameId = await createFuncCallFrameIn(page, IMPORTS_CONTAINER_ID);
+        await typeKeywordConversionTrigger(page, "if", "x");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.if);
+        await expectFrameInContainer(page, frameId, MAIN_CONTAINER_ID);
+    });
+
+    test("for typed in Definitions converts and moves to Main", async ({page}) => {
+        const frameId = await createFuncCallFrameIn(page, DEFS_CONTAINER_ID);
+        await typeKeywordConversionTrigger(page, "for", "x");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.for);
+        await expectFrameInContainer(page, frameId, MAIN_CONTAINER_ID);
+    });
+
+    test("return typed in Imports does NOT convert (not valid at the top level of Main either)", async ({page}) => {
+        const frameId = await createFuncCallFrameIn(page, IMPORTS_CONTAINER_ID);
+        await typeKeywordConversionTrigger(page, "return");
         await assertConversionDidNotHappen(page, frameId);
     });
 

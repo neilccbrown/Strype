@@ -337,16 +337,12 @@ export async function insertBlankFuncCallAfter(page: Page, afterFrameId: number,
 // Directly relocates a frame to a different parent container by mutating the Pinia store from
 // the page context, then waits for the app to re-render and settle.
 //
-// This exists ONLY for scenarios this test file needs to construct that are not reachable
-// through any real user interaction: e.g. a func-call frame sitting inside the Imports or
-// Definitions containers, which the app's own frame-insertion menu never offers there (so a
-// keyword-conversion trigger typed by a user can never land on one -- confirmed by hand: typing
-// at the Imports/Definitions top-level blank-line caret only ever offers their fixed set of
-// frame-type shortcuts, never a plain func-call fallback the way Main and block bodies do).
-// Such placements CAN still arise in production through other paths not modelled by typing at
-// all -- an older saved project, or some other bug -- which is exactly the scenario both
-// isKeywordFrameConversionValid's location gating and the "frame not allowed here" check exist
-// to handle, so it's worth constructing them directly here rather than leaving them untested.
+// This exists for placements that are awkward to reach by typing: the Imports/Definitions
+// containers don't offer func-call as a frame-insertion command, although bare typing at their
+// blank-line caret does still create one (see createFuncCallFrameIn in the spec). Such frames can
+// also arise through other paths not modelled by typing -- an older saved project, say -- which is
+// what isKeywordFrameConversionValid's location gating and the "frame not allowed here" check
+// handle, so it's worth being able to construct them directly.
 //
 // This reaches into Vue/Pinia internals (the #app element's __vue_app__ instance) rather than a
 // stable, intentionally-exposed test hook -- compare src/helpers/sharedIdCssWithTests.ts, the
