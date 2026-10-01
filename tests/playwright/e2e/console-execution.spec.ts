@@ -1,4 +1,6 @@
 import { test, expect } from "@playwright/test";
+import { mkdirSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import { enterCode } from "../support/editor";
 import { checkConsoleContent, checkFrameErrorCount, runButtonShowsRun, runToFinish, setupGraphicsRedrawObserver, startRunning, waitForConsoleSettled } from "../support/execution";
 import { setupStrypeTest } from "../support/general";
@@ -143,6 +145,62 @@ count = content.count("Montmorency")
 print(f'Montmorency is mentioned {count} times.')`]);
         await runToFinish(page);
         await checkConsoleContent(page, "Montmorency is mentioned 59 times.\n");
+        await checkFrameErrorCount(page, 0);
+    });
+});
+
+// Runs the actual code from public/demos/console/busiest_stations.spy (rather than loading the
+// demo itself, since there's no test helper for that) against the same pinned "/local" data file
+// the demo itself pins into the project, and checks the output matches what that demo currently
+// prints:
+test.describe("Test Busiest Tube Stations demo", () => {
+    test("Check the five busiest stations are printed correctly, in descending order", async ({page}, testInfo) => {
+        await page.click("#filesPEATab");
+        // Mirrors openFilesTab() in file-system-tab.spec.ts: wait for the pane's own load, not a
+        // fixed delay:
+        await expect(page.locator(".file-system-pane-loading")).toHaveCount(0, {timeout: 30000});
+        mkdirSync(testInfo.outputDir, {recursive: true});
+        const filePath = path.join(testInfo.outputDir, "london-underground-passengers-2025.txt");
+        // A small real subset (not the full ~269-station file the demo itself pins) -- enough to
+        // exercise sorting/slicing against genuine TfL 2025 annualised entry/exit figures (millions),
+        // including some low-traffic outer stations so the "top 5" slice is a meaningful test rather
+        // than trivial with only 5 rows to sort:
+        writeFileSync(filePath, [
+            "Chigwell,0.31",
+            "King's Cross St. Pancras,73.57",
+            "Liverpool Street,60.08",
+            "Oxford Circus,52.34",
+            "Roding Valley,0.2",
+            "Tottenham Court Road,60.81",
+            "Victoria,60.16",
+            "Waterloo,74.48",
+        ].join("\n") + "\n");
+        await page.locator(".file-system-tree-upload-input").setInputFiles(filePath);
+        await expect(page.locator(".file-system-tree-file", {hasText: "london-underground-passengers-2025.txt"})).toBeVisible();
+
+        await enterCode(page, ["", `
+            def read_passenger_counts(filename):
+                with open(filename) as f:
+                    stations = []
+                    for line in f:
+                        if line.strip() != "":
+                            name, millions = line.strip().split(",")
+                            stations.append((float(millions), name))
+                return stations
+        `, `
+            stations = read_passenger_counts("london-underground-passengers-2025.txt")
+            stations.sort(reverse=True)
+            busiest_five = stations[:5]
+            for millions, name in busiest_five:
+                print(name + ": " + str(millions) + "m")
+        `]);
+        await runToFinish(page);
+        await checkConsoleContent(page,
+            "Waterloo: 74.48m\n" +
+            "King's Cross St. Pancras: 73.57m\n" +
+            "Tottenham Court Road: 60.81m\n" +
+            "Victoria: 60.16m\n" +
+            "Liverpool Street: 60.08m\n");
         await checkFrameErrorCount(page, 0);
     });
 });

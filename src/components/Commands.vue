@@ -15,7 +15,7 @@
                                 <span class="gdrive-sync-label" v-if="!isProjectNotSourced && !isEditorContentModifiedFlag">{{ $t("appMessage.saved") }}</span>
                                 <span class="gdrive-sync-label" v-else-if="isEditorContentModifiedFlag" :class="{'modifed-label-span': isProjectNotSourced}">{{ $t("appMessage.modified") }}</span>
                             </div>
-                        </div>     
+                        </div>
                         <div class="commands-flex-fill" @mousedown.prevent.stop @mouseup.prevent.stop>
                             <!-- #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE -->
                             <!-- no-fade: opening the frame commands pane (Tab/Space at a frame caret) switches
@@ -180,6 +180,7 @@ import { findCurrentStrypeLocation, STRYPE_LOCATION } from "@/helpers/pythonToFr
 import { clamp } from "lodash";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { eventBus } from "@/helpers/appContext";
+import { BTab, BTabs } from "bootstrap-vue-next";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import {Splitpanes, Pane} from "splitpanes";
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
@@ -190,7 +191,6 @@ import { flash } from "@/helpers/webUSB";
 import { downloadHex, getPythonContent } from "@/helpers/download";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import { useBrowserDetect } from "vue3-detect-browser";
-import { BTab, BTabs } from "bootstrap-vue-next";
 // #v-endif
 
 // #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
@@ -211,13 +211,13 @@ export default defineComponent({
 
     components: {
         AddFrameCommand,
+        BTabs, BTab,
         // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
         Splitpanes, Pane,
-        PythonExecutionArea, 
+        PythonExecutionArea,
         // #v-else
         APIDiscovery,
         SimpleMsgModalDlg,
-        BTabs, BTab,
         // #v-endif
     },
 

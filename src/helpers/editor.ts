@@ -2102,8 +2102,8 @@ export function setPythonExecutionAreaTabsContentMaxHeight(): void {
     // (defined above) with the correct value. If not, we use the default 50vh (50% of body) value directly.
     const editorNewMaxHeight = manuallyResizedEditorHeight ?? (fullAppHeight / 2);
     // For the tabs' height, we can't rely on the container as the tabs may stack on top of each other (small browser window)
-    // so we get the first element of the tab section that is not having a 0 height (because tabs are hidden when we are in split layout)
-    const pythonExecAreaTabsAreaHeight = [...document.querySelectorAll("#" + getPEAControlsDivId() + " li, ." + scssVars.peaNoTabsPlaceholderSpanClassName)]
+    // so we get the first element of the tab section that is not having a 0 height (the graphics tab is hidden when we are in split layout)
+    const pythonExecAreaTabsAreaHeight = [...document.querySelectorAll("#" + getPEAControlsDivId() + " li")]
         .find((element) => element.getBoundingClientRect().height != 0)
         ?.getBoundingClientRect().height;    
     (document.querySelector("#"+getPEATabContentContainerDivId()) as HTMLDivElement).style.maxHeight = ((fullAppHeight - editorNewMaxHeight - (pythonExecAreaTabsAreaHeight??0)) + "px");

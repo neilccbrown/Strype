@@ -160,6 +160,7 @@
     "expand": "展开",
     "collapse": "折叠",
     "console": "控制台",
+    "output": "输出",
     "TurtleGraphics": "海龟绘图"
   }
 }

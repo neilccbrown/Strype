@@ -147,6 +147,7 @@
     "expand": "Vergrößern",
     "collapse": "Verkleinern",
     "console": "Konsole",
+    "output": "Ausgabe",
     "Graphics": "Graphics",
     "importTurtleOrGraphics": "Importiere 'strype.graphics' oder 'turtle' um Graphics zu benutzen."
   }
