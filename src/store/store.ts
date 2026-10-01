@@ -6,7 +6,7 @@ import {calculateNextCollapseState, checkCodeErrors, checkStateDataIntegrity, ev
 import { AppPlatform, AppVersion, eventBus, projectDocumentationFrameId } from "@/helpers/appContext";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
-import { bumpCaretRequestSeq, CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, getCaretContainerUID, AutoSaveKeyNames, isFullyInViewport, copyFrameTextReadyForClipboard, waitForElementId } from "@/helpers/editor";
+import { bumpCaretRequestSeq, CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, getCaretContainerUID, focusCaretContainerInput, AutoSaveKeyNames, isFullyInViewport, copyFrameTextReadyForClipboard, waitForElementId } from "@/helpers/editor";
 import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
@@ -941,11 +941,9 @@ export const useStore = defineStore("app", {
             this.frameObjects[nextCaret.id].caretVisibility = nextCaret.caretPosition;
             
             // In order to keep a coherence between our state's focus information and the internal browser active element,
-            // we explicitly set the focus on the frame cursor that holds it now.
-            // preventScroll avoids the browser's own (inconsistent, and sometimes far too large --
-            // e.g. jumping the caret to the vertical centre of the viewport) native scroll-into-view
-            // on focus; scrolling is instead handled deliberately below via scrollCaretIntoView.
-            document.getElementById(getCaretContainerUID(nextCaret.caretPosition, nextCaret.id))?.focus({preventScroll: true});
+            // we explicitly set the focus on the frame cursor's invisible paste-focus input (see CaretContainer.vue)
+            // that holds it now.
+            focusCaretContainerInput(nextCaret.caretPosition, nextCaret.id);
 
             // Scroll caret into view when navigating with keyboard:
             nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));
@@ -2490,8 +2488,7 @@ export const useStore = defineStore("app", {
                 // inside it, which handleDocumentSelectionChange() (App.vue) then reads as the user having
                 // moved the caret back into the slot we just left, immediately undoing this navigation.
                 if(wasEditing){
-                    // preventScroll: see the equivalent focus() call in changeCaretWithKeyboard().
-                    document.getElementById(getCaretContainerUID(nextPosition.caretPosition as CaretPosition, nextPosition.frameId))?.focus({preventScroll: true});
+                    focusCaretContainerInput(nextPosition.caretPosition as CaretPosition, nextPosition.frameId);
                 }
 
                 // Scroll it into view:

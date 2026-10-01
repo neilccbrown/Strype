@@ -526,6 +526,35 @@ export function getCaretContainerUID(caretPos: CaretPosition, frameId: number): 
     return "caret_" + caretPos + "_of_frame_" + frameId;
 }
 
+// The id of the invisible <input> that actually receives DOM focus for a frame cursor (see CaretContainer.vue).
+// Real DOM focus must land on this input (rather than the caret container div) so that browsers -- Safari/WebKit
+// in particular -- recognise the location as a legitimate paste target and dispatch native clipboard events.
+export function getCaretContainerFocusInputUID(caretPos: CaretPosition, frameId: number): string {
+    return getCaretContainerUID(caretPos, frameId) + "_focusInput";
+}
+
+// Focuses a frame cursor's invisible paste-focus <input> (see CaretContainer.vue). Giving DOM focus to
+// that <input> -- a form control nested inside the (non-editable) caret container div -- makes Chromium
+// and Firefox leave behind a stray, zero-length document Selection collapsed on the container div itself,
+// even though no text is actually selected anywhere. Left alone, that spurious selection makes any
+// hasTextCursor-style check (document.getSelection()?.focusNode != null), including App.vue's
+// handleDocumentSelectionChange, wrongly believe the user is editing a text slot. So we always clear the
+// selection right after focusing this input.
+export function focusCaretContainerInput(caretPos: CaretPosition, frameId: number): void {
+    // preventScroll avoids the browser's own native scroll-into-view on focus; scrolling is handled
+    // deliberately by callers via scrollCaretIntoView.
+    document.getElementById(getCaretContainerFocusInputUID(caretPos, frameId))?.focus({preventScroll: true});
+    document.getSelection()?.removeAllRanges();
+}
+
+const caretContainerFocusInputUIDRegex = /caret_(.+)_of_frame_(-?\d*)_focusInput/;
+// Whether the given element id is a frame cursor's invisible paste-focus <input> (see getCaretContainerFocusInputUID
+// and focusCaretContainerInput above). Used to recognise -- and discard -- the phantom Selection that browsers
+// manufacture when this input gains focus (see the selectionchange handler in App.vue).
+export function isCaretContainerFocusInputElement(id: string): boolean {
+    return caretContainerFocusInputUIDRegex.test(id);
+}
+
 export function isCaretContainerElement(id: string): boolean {
     return caretContainerUIDRegex.test(id);
 }

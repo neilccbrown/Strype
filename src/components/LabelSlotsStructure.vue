@@ -60,7 +60,7 @@ import { computed, defineComponent, ref } from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
-import { bumpCaretRequestSeq, CustomEventTypes, getEditableSelectionText, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFunctionCallDefaultText, getLabelSlotUID, getMatchingBracket, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, isSlotShortcutsPaneSpaceDueToDelay, openBracketCharacters, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringQuoteCharacters, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength, getFrameHeaderUID, getLastCaretPosInsideParent, getFlatCodeSlotsInLabelStruct, getCaretContainerUID, closeRenameIdentifierPopups, getImportFrameNameBindings, waitForElementId } from "@/helpers/editor";
+import { bumpCaretRequestSeq, CustomEventTypes, getEditableSelectionText, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFunctionCallDefaultText, getLabelSlotUID, getMatchingBracket, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, isSlotShortcutsPaneSpaceDueToDelay, openBracketCharacters, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringQuoteCharacters, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength, getFrameHeaderUID, getLastCaretPosInsideParent, getFlatCodeSlotsInLabelStruct, focusCaretContainerInput, closeRenameIdentifierPopups, getImportFrameNameBindings, waitForElementId } from "@/helpers/editor";
 import { checkCodeErrors, evaluateSlotType, filterAllowedJointChildrenAfter, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos, getParentId, getFrameSectionIdFromFrameId, areSlotStructuresIsomorphic, getAncestorFrameOfTypeId, findSlotsWithIndentifierName, isAncestorGatedFrameTypeAllowed } from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import Parser from "@/parser/parser";
@@ -812,7 +812,7 @@ export default defineComponent({
             const buffered = this.pendingConversionBuffer;
             this.pendingConversionBuffer = "";
             if (targetSlotInfos && buffered) {
-                document.getElementById(getLabelSlotUID(targetSlotInfos))?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: {type: "text", content: buffered}}));
+                document.getElementById(getLabelSlotUID(targetSlotInfos))?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: {type: "text", content: buffered, skipStateSave: true}}));
             }
         },
 
@@ -1210,7 +1210,7 @@ export default defineComponent({
                         this.appStore.setSlotTextCursors(undefined, undefined);
                         this.appStore.isEditing = false;
                         this.appStore.toggleCaret({id: this.frameId, caretPosition: caretOnlyTargetPosition});
-                        document.getElementById(getCaretContainerUID(caretOnlyTargetPosition, this.frameId))?.focus();
+                        focusCaretContainerInput(caretOnlyTargetPosition, this.frameId);
                         options?.doAfterCursorSet?.();
                         this.appStore.saveStateChanges(stateBeforeChanges);
                         this.finishPendingConversion(undefined);
@@ -1644,15 +1644,15 @@ export default defineComponent({
                     this.appStore.toggleCaret({id: this.frameId, caretPosition: CaretPosition.below});
                     // In order to keep a coherence between our state's focus information and the internal browser active element,
                     // we explicitly set the focus on the frame cursor that holds it now.
-                    document.getElementById(getCaretContainerUID(CaretPosition.below, this.frameId))?.focus();
+                    focusCaretContainerInput(CaretPosition.below, this.frameId);
                 }
                 else {
                     // Restore the caret visibility
                     this.appStore.frameObjects[this.appStore.currentFrame.id].caretVisibility = this.appStore.currentFrame.caretPosition;
                     this.$nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));
                     // In order to keep a coherence between our state's focus information and the internal browser active element,
-                    // we explicitly set the focus on the frame cursor that holds it now.                    
-                    document.getElementById(getCaretContainerUID(this.appStore.currentFrame.caretPosition, this.frameId))?.focus();
+                    // we explicitly set the focus on the frame cursor that holds it now.
+                    focusCaretContainerInput(this.appStore.currentFrame.caretPosition, this.frameId);
                 }
             }
         },
