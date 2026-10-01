@@ -1479,7 +1479,7 @@ export default defineComponent({
                         if (focusSlotCursorInfos && !(focusSlotCursorInfos && anchorSlotCursorInfos &&
                                 (!areSlotCoreInfosEqual(focusSlotCursorInfos.slotInfos, anchorSlotCursorInfos.slotInfos) || focusSlotCursorInfos.cursorPos != anchorSlotCursorInfos.cursorPos))) {
                             document.getElementById(getLabelSlotUID(focusSlotCursorInfos.slotInfos))
-                                ?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: event.detail}));
+                                ?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: {...event.detail, skipStateSave: true}}));
                         }
                     }});
                 });
@@ -1491,16 +1491,19 @@ export default defineComponent({
                 if (event.detail.type.startsWith("image/") && (event.detail.width >= 1000 || event.detail.height >= 1000)) {
                     this.appStore.ignoreBlurEditableSlot = true;
                     this.doEditImageInDialog(/"([^"]+)"/.exec(event.detail.content)?.[1] ?? "", () => {}, (replacement : {code: string, mediaType: string}) => {
-                        this.onCodePasteImpl(replacement.code, replacement.mediaType);
+                        this.onCodePasteImpl(replacement.code, replacement.mediaType, undefined, !!event.detail.skipStateSave);
                     });
                 }
                 else {
-                    this.onCodePasteImpl(event.detail.content, event.detail.type);
+                    this.onCodePasteImpl(event.detail.content, event.detail.type, undefined, !!event.detail.skipStateSave);
                 }
             }
         },
         
-        onCodePasteImpl(content : string, type : string, stateBeforeChanges?: any) {
+        // skipStateSave: the caller has already saved, or will save, an undo/redo state covering this paste (e.g. it
+        // replaces a selection that was just deleted, which saved its own state, or it is part of creating a frame from
+        // a typed character), so we must not save a second one. Otherwise, the paste is its own undoable step.
+        onCodePasteImpl(content : string, type : string, stateBeforeChanges?: any, skipStateSave?: boolean) {
             // Save the current state
             stateBeforeChanges = stateBeforeChanges ?? cloneDeep(this.appStore.$state);
 
@@ -1611,7 +1614,7 @@ export default defineComponent({
                 this.appStore.setSlotTextCursors({slotInfos: this.coreSlotInfo, cursorPos: newPos}, {slotInfos: this.coreSlotInfo, cursorPos: newPos});
 
                 // part 4
-                this.$emit(CustomEventTypes.requestSlotsRefactoring, this.UID, stateBeforeChanges, {skipStateSaveOnly: true});     
+                this.$emit(CustomEventTypes.requestSlotsRefactoring, this.UID, stateBeforeChanges, {skipStateSaveOnly: !!skipStateSave});     
             }
         },
 

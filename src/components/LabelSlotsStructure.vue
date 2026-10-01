@@ -809,7 +809,7 @@ export default defineComponent({
             const buffered = this.pendingConversionBuffer;
             this.pendingConversionBuffer = "";
             if (targetSlotInfos && buffered) {
-                document.getElementById(getLabelSlotUID(targetSlotInfos))?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: {type: "text", content: buffered}}));
+                document.getElementById(getLabelSlotUID(targetSlotInfos))?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: {type: "text", content: buffered, skipStateSave: true}}));
             }
         },
 
