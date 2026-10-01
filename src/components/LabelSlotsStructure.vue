@@ -55,13 +55,13 @@
 </template>
 
 <script lang="ts">
-import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FieldSlot, FlatSlotBase, FrameObject, getFrameDefType, isSlotBracketType, isSlotQuoteType, LabelSlotsContent, MediaDataAndDim, OptionalSlotType, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType } from "@/types/types";
+import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, CollapsedState, CurrentFrame, FieldSlot, FlatSlotBase, FrameObject, getFrameDefType, isSlotBracketType, isSlotQuoteType, LabelSlotsContent, MediaDataAndDim, OptionalSlotType, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType } from "@/types/types";
 import { computed, defineComponent, ref } from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
-import { bumpCaretRequestSeq, CustomEventTypes, getEditableSelectionText, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFunctionCallDefaultText, getLabelSlotUID, getMatchingBracket, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, isSlotShortcutsPaneSpaceDueToDelay, openBracketCharacters, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringQuoteCharacters, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength, getFrameHeaderUID, getFlatCodeSlotsInLabelStruct, focusCaretContainerInput, closeRenameIdentifierPopups, getImportFrameNameBindings, waitForElementId } from "@/helpers/editor";
-import { checkCodeErrors, evaluateSlotType, filterAllowedJointChildrenAfter, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos, getParentId, areSlotStructuresIsomorphic, getAncestorFrameOfTypeId, findSlotsWithIndentifierName, isAncestorGatedFrameTypeAllowed } from "@/helpers/storeMethods";
+import { bumpCaretRequestSeq, CustomEventTypes, getEditableSelectionText, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFunctionCallDefaultText, getLabelSlotUID, getMatchingBracket, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, isSlotShortcutsPaneSpaceDueToDelay, openBracketCharacters, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringQuoteCharacters, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength, getFrameHeaderUID, getLastCaretPosInsideParent, getFlatCodeSlotsInLabelStruct, focusCaretContainerInput, closeRenameIdentifierPopups, getImportFrameNameBindings, waitForElementId } from "@/helpers/editor";
+import { checkCodeErrors, evaluateSlotType, filterAllowedJointChildrenAfter, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos, getParentId, getFrameSectionIdFromFrameId, areSlotStructuresIsomorphic, getAncestorFrameOfTypeId, findSlotsWithIndentifierName, isAncestorGatedFrameTypeAllowed } from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import Parser from "@/parser/parser";
 import { calculateParamPrompt, invalidateParamPromptCache, prefetchImportedLibraryData } from "@/autocompletion/acManager";
@@ -111,6 +111,9 @@ interface JointAttachmentPoint {
 // additionally require being a valid *joint continuation* of a preceding block -- a check sharing its
 // core "RULE FOR THE JOINTS" narrowing with generateAvailableFrameCommands (store.ts) via
 // filterAllowedJointChildrenAfter, in isJointKeywordFrameConversionValid().
+// A type that isn't allowed at the frame's current location still converts when it belongs to a
+// different section (imports, function/class definitions, or main code statements): the converted
+// frame is then moved to that section, as if it had been pasted -- see getSectionRelocationTarget().
 const keywordFrameConversions: KeywordFrameConversionDef[] = [
     {keyword: "if", targetType: AllFrameTypesIdentifier.if, slots: 1},
     {keyword: "while", targetType: AllFrameTypesIdentifier.while, slots: 1},
@@ -824,16 +827,75 @@ export default defineComponent({
             // for "this frame's real containing parent" -- see its own doc comment for the negative-ID
             // container-frame subtlety it already handles).
             const parentId = getParentOrJointParent(this.frameId);
-            if(parentId === 0 || this.appStore.frameObjects[parentId].frameType.forbiddenChildrenTypes.includes(targetType)){
+            if(parentId === 0){
                 return false;
             }
+            if(this.appStore.frameObjects[parentId].frameType.forbiddenChildrenTypes.includes(targetType)){
+                // Not allowed right here, but if the type belongs in another section we still convert
+                // and then move the frame to where it belongs, as if it had been pasted here --
+                // see getSectionRelocationTarget().
+                return this.getSectionRelocationTarget(targetType) !== undefined;
+            }
             // A plain forbiddenChildrenTypes check (above) already correctly encodes every container
-            // restriction that matters for every OTHER type in the table (Imports/Defs-only types,
-            // case-inside-match, etc: see the container definitions in types.ts). return/global/
+            // restriction that matters for every OTHER type in the table (case-inside-match, and the
+            // section-specific types, which get relocated rather than refused: see the container
+            // definitions in types.ts). return/global/
             // break/continue are the only ones gated by something else (an ancestor check, not
             // forbiddenChildrenTypes) -- isAncestorGatedFrameTypeAllowed is the shared rule for those,
             // also used by generateAvailableFrameCommands (store.ts).
             return isAncestorGatedFrameTypeAllowed(this.frameId, CaretPosition.below, targetType);
+        },
+
+        // For the frame types that belong in a specific section (imports; function/class definitions;
+        // main code statements) but aren't allowed at the funccall frame's current location, returns the
+        // caret position (in the section they do belong in) where the converted frame should be moved
+        // to. Uses the same destinations as pasteMixedPython (pythonToFrames.ts) does for pasted frames.
+        // Returns undefined if the type has no such section (e.g. return/global/break/continue, which
+        // depend on an enclosing function/loop rather than a section, or case/joint frames, which
+        // depend on their parent frame).
+        getSectionRelocationTarget(targetType: string): CurrentFrame | undefined {
+            const importTypes: string[] = [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.library];
+            if(importTypes.includes(targetType)){
+                // Imports go at the end of the imports section:
+                return getLastCaretPosInsideParent(this.appStore.getImportsFrameContainerId);
+            }
+            if(targetType === AllFrameTypesIdentifier.funcdef || targetType === AllFrameTypesIdentifier.classdef){
+                // From the main section, the definitions go at the bottom of the definitions section;
+                // from anywhere else (imports, inside a function or class) the closest point is the top:
+                return (getFrameSectionIdFromFrameId(this.frameId) === this.appStore.getMainCodeFrameContainerId)
+                    ? getLastCaretPosInsideParent(this.appStore.getDefsFrameContainerId)
+                    : {id: this.appStore.getDefsFrameContainerId, caretPosition: CaretPosition.body};
+            }
+            const mainTypes: string[] = [AllFrameTypesIdentifier.if, AllFrameTypesIdentifier.while, AllFrameTypesIdentifier.for, AllFrameTypesIdentifier.with,
+                AllFrameTypesIdentifier.try, AllFrameTypesIdentifier.match, AllFrameTypesIdentifier.raise];
+            if(mainTypes.includes(targetType)){
+                // We only get here when we're outside of main (imports/definitions), and the closest
+                // point of main is its top:
+                return {id: this.appStore.getMainCodeFrameContainerId, caretPosition: CaretPosition.body};
+            }
+            return undefined;
+        },
+
+        // Moves the (already converted) frame at this.frameId to the given caret position, which is
+        // in a different container than its current parent.
+        relocateFrameToCaretPosition(target: CurrentFrame): void {
+            const frame = this.appStore.frameObjects[this.frameId];
+            const oldParent = this.appStore.frameObjects[frame.parentId];
+            oldParent.childrenIds.splice(oldParent.childrenIds.indexOf(this.frameId), 1);
+            let newParentId: number;
+            let newIndex: number;
+            if(target.caretPosition === CaretPosition.body){
+                newParentId = target.id;
+                newIndex = 0;
+            }
+            else{
+                newParentId = this.appStore.frameObjects[target.id].parentId;
+                newIndex = this.appStore.frameObjects[newParentId].childrenIds.indexOf(target.id) + 1;
+            }
+            this.appStore.frameObjects[newParentId].childrenIds.splice(newIndex, 0, this.frameId);
+            frame.parentId = newParentId;
+            // The destination section may be collapsed, and the user needs to see the moved frame:
+            this.appStore.frameObjects[getFrameSectionIdFromFrameId(this.frameId)].collapsedState = CollapsedState.FULLY_VISIBLE;
         },
 
         // Computes what a new joint frame could be, and where in its root's jointFrameIds it would
@@ -1012,6 +1074,20 @@ export default defineComponent({
             // the FrameType object otherwise undo/redo makes weird changes in the commands)
             this.appStore.frameObjects[this.frameId].frameType = cloneDeep(getFrameDefType(def.targetType));
             this.appStore.trackFrameConvert(def.targetType);
+
+            // If this type isn't allowed where the frame currently is (e.g. "import" typed in the main
+            // section), move it to the section it belongs in, as if it had been pasted here:
+            const currentParentId = this.appStore.frameObjects[this.frameId].parentId;
+            if(!def.isJoint && this.appStore.frameObjects[currentParentId].frameType.forbiddenChildrenTypes.includes(def.targetType)){
+                const relocationTarget = this.getSectionRelocationTarget(def.targetType);
+                if(relocationTarget){
+                    this.relocateFrameToCaretPosition(relocationTarget);
+                    // Keep the moved frame in view once it has been rendered in its new place
+                    // (a caret to focus into may not exist yet, so we scroll to the frame's header):
+                    const movedFrameId = this.frameId;
+                    waitForElementId(getFrameHeaderUID(movedFrameId)).then(() => document.getElementById(getFrameHeaderUID(movedFrameId))?.scrollIntoView({block: "nearest"}));
+                }
+            }
 
             const rawRemainder = uiLiteralCode.slice(keywordLen + separatorLength);
 
