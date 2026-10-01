@@ -1,14 +1,25 @@
 <template>
     <div :id="peaComponentId" :class="{'pea-component': true, [scssVars.expandedPEAClassName]: isExpandedPEA, 'no-43-ratio-collapsed-PEA': !hasDefault43Ratio && !isExpandedPEA}" ref="peaComponent" @mousedown="handlePEAMouseDown">
         <div :id="controlsDivId" :class="{'pea-controls-div': true, 'expanded-PEA-controls': isExpandedPEA}">           
-            <BTabs v-show="isTabsLayout" v-model:index="peaDisplayTabIndex" no-key-nav>
-                <BTab v-show="isTabsLayout" :button-id="graphicsTabId" :title="'\uD83D\uDC22 '+$t('PEA.Graphics')" title-link-class="pea-display-tab"></BTab>
-                <BTab v-show="isTabsLayout" :button-id="consoleTabId" :title="'\u2771\u23BD '+$t('PEA.console')" title-link-class="pea-display-tab"></BTab>
+            <BTabs v-model:index="peaDisplayTabIndex" no-key-nav>
+                <!-- v-show on a BTab doesn't hide its header, and removing it (v-if) would shift the other tabs' indexes, so
+                     in the split layouts the graphics header is hidden by class instead (see .pea-hidden-tab) -->
+                <BTab :button-id="graphicsTabId" :title="'\uD83D\uDC22 '+$t('PEA.Graphics')" :title-link-class="{'pea-display-tab': true, 'pea-hidden-tab': !isTabsLayout}"></BTab>
+                <!-- In the split layouts, graphics and console are both always visible, so there's no separate
+                     graphics tab: this (console) tab's header becomes a merged "Output" one showing both icons.
+                     peaDisplayTabIndex is then never left on "graphics" (see setDisplayTab()). -->
+                <BTab :button-id="consoleTabId" title-link-class="pea-display-tab">
+                    <template #title>
+                        <img v-if="!isTabsLayout" :src="turtleImgURL" :alt="$t('PEA.Graphics')" class="pea-turtle-img" />
+                        {{ '\u2771\u23BD ' + $t(isTabsLayout ? 'PEA.console' : 'PEA.output') }}
+                    </template>
+                </BTab>
+                <!-- Files doesn't participate in the graphics/console split-vs-tabs layout at all (see
+                     isFilesAreaShowing) -- it's always reachable as its own tab regardless of layout mode. -->
+                <BTab :button-id="filesTabId" :title="'📁 '+$t('PEA.fileSystem')" title-link-class="pea-display-tab"></BTab>
             </BTabs>
-            <!-- IMPORTANT: keep this div with "invisible" text for proper layout rendering, it replaces the tabs -->
-            <span v-if="!isTabsLayout" :class="scssVars.peaNoTabsPlaceholderSpanClassName">c+g</span>
             <div class="flex-padding"/>            
-            <span v-if="peaDisplayTabIndex == 0 && !isPythonExecuting && mouseCoordsToShow" class="pea-hover-coords">{{mouseCoordsToShow}}</span>
+            <span v-if="isGraphicsAreaShowing && !isPythonExecuting && mouseCoordsToShow" class="pea-hover-coords">{{mouseCoordsToShow}}</span>
             <div class="flex-padding"/>
             <button id="runButton" ref="runButton" class="pea-controls-button" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'" :class="{highlighted: highlightPythonRunningState}" :disabled="!isPythonWorkerReady">
                 <img v-if="!isPythonExecuting" :src="faviconURL" class="pea-play-img">
@@ -16,10 +27,10 @@
                 <span>{{runCodeButtonLabel}}</span>
             </button>
         </div>
-        <div :id="tabContentContainerDivId" :class="{'pea-tab-content-container': true, 'flex-padding': true, 'pea-43-ratio': hasDefault43Ratio}">
+        <div :id="tabContentContainerDivId" :class="{'pea-tab-content-container': true, 'flex-padding': true, 'pea-43-ratio': hasDefault43Ratio, 'pea-files-showing': isFilesAreaShowing}">
             <!-- the SplitPanes is used in all layout configurations: for tabs, we only show 1 of the panes and disable moving the divider, and for stacked window it acts as normal -->
             <!-- the container div is only here because the new version of Splitpanes doesn't get the classes -->
-            <div :class="{'strype-PEA-split-theme': true, 'with-expanded-PEA': isExpandedPEA, 'tabs-PEA': isTabsLayout}">
+            <div v-show="!isFilesAreaShowing" :class="{'strype-PEA-split-theme': true, 'with-expanded-PEA': isExpandedPEA, 'tabs-PEA': isTabsLayout}">
                 <Splitpanes :horizontal="!isExpandedPEA" @resize="onSplitterPane1Resize">
                     <pane :id="graphicsSplitPaneId" key="1" v-show="isGraphicsAreaShowing" :size="(isTabsLayout) ? 100 : currentSplitterPane1Size" min-size="5">
                         <div :id="graphicsContainerDivId" @wheel.stop :class="{'pea-graphics-container': true, hidden: graphicsTemporaryHidden}" @contextmenu="handleContextMenu">
@@ -27,9 +38,9 @@
                         </div>
                     </pane>
                     <pane key="2" v-show="isConsoleAreaShowing" :size="(isTabsLayout) ? 100 : (100 - currentSplitterPane1Size)" min-size="5" style="position: relative;">
-                    <div v-if="isConsoleAreaShowing" :class="{'console-copy-btn far fa-copy': true, 'flash-background': copyConsoleTextBtnClicked, hidden: !isTabContentHovered}" 
-                        @click="copyConsoleText" @animationend="copyConsoleTextBtnClicked=false"></div> 
-                    <textarea 
+                    <div v-if="isConsoleAreaShowing" :class="{'console-copy-btn far fa-copy': true, 'flash-background': copyConsoleTextBtnClicked, hidden: !isTabContentHovered}"
+                        @click="copyConsoleText" @animationend="copyConsoleTextBtnClicked=false"></div>
+                    <textarea
                             :id="pythonConsoleId"
                             ref="pythonConsole"
                             class="pea-console"
@@ -48,8 +59,12 @@
                     </pane>
                 </Splitpanes>
             </div>
-            <div :class="{[scssVars.peaToggleLayoutButtonsContainerClassName]: true, hidden: (!isTabContentHovered || isPythonExecuting)}">
-                <div v-for="(layoutData, index) in PEALayoutsData" :key="'strype-PEA-Layout-'+index" 
+            <!-- Unmounts/remounts on every switch to/from the Files tab (v-if, not v-show), matching
+                 how it always behaved as a frame-shortcuts-pane tab before it moved here: the pane's
+                 own mounted() -> refresh() is what re-fetches "/local" from localFsCache.ts's cache. -->
+            <FileSystemPane v-if="isFilesAreaShowing" class="pea-files-container" />
+            <div :class="{[scssVars.peaToggleLayoutButtonsContainerClassName]: true, hidden: (!isTabContentHovered || isPythonExecuting || isFilesAreaShowing)}">
+                <div v-for="(layoutData, index) in PEALayoutsData" :key="'strype-PEA-Layout-'+index"
                     @click="togglePEALayout(layoutData.mode, true)" :title="$t('PEA.'+layoutData.iconName)">
                     <SVGIcon :name="layoutData.iconName" :customClass="{'pea-toggle-layout-button': true, 'pea-toggle-layout-button-selected': layoutData.mode === currentPEALayoutMode}"/>
                 </div>
@@ -93,10 +108,12 @@ import {getPythonClient, isPythonWorkerReady, renderer, serviceWorkerChannel, te
 import { TurtlePixiHandler } from "@/stryperuntime/turtle_pixi_handler";
 import {closeAudioContext, createOrGetAudioContext} from "@/helpers/audioContext";
 import {clearAllRuntimeErrors, computeFrameSnapshot} from "@/helpers/storeMethods";
+import {listEntriesForWorker} from "@/helpers/localFsCache";
 import html2canvas from "html2canvas";
+import FileSystemPane from "@/components/FileSystemTab/FileSystemPane.vue";
 
 // Helper to keep indexed tabs (for maintenance if we add some tabs etc)
-const enum PEATabIndexes {graphics, console}
+const enum PEATabIndexes {graphics, console, files}
 
 // It is awkward to have complex non-reactive types as members of the PythonExecutionArea component, and since
 // there is only ever one component, we can just have them as top-level members:
@@ -180,6 +197,7 @@ export default defineComponent({
         Pane,
         SVGIcon,
         BTabs, BTab,
+        FileSystemPane,
     },
 
     props:{
@@ -219,6 +237,7 @@ export default defineComponent({
     data: function() {
         return {
             scssVars, // just to be able to use in template
+            turtleImgURL, // same
             isExpandedPEA: false,
             isTabsLayout: true, // flag to indicate the PEA's layout - tabs by default
             graphicsTemporaryHidden: false, //flag to use when we need to temporary hide the graphics for UI reasons (like before a layout of the PEA is performed, so we can compute things right)
@@ -390,6 +409,10 @@ export default defineComponent({
             return "consolePEATab";
         },
 
+        filesTabId(): string {
+            return "filesPEATab";
+        },
+
         tabContentContainerDivId(): string {
             return getPEATabContentContainerDivId();
         },
@@ -406,12 +429,19 @@ export default defineComponent({
             return getPEAConsoleId();
         },
 
+        // Files is reachable regardless of the graphics/console split-vs-tabs layout mode (isTabsLayout) --
+        // selecting it overrides whatever that mode would otherwise show, via the !isFilesAreaShowing
+        // checks in isConsoleAreaShowing/isGraphicsAreaShowing below.
+        isFilesAreaShowing(): boolean {
+            return this.peaDisplayTabIndex == PEATabIndexes.files;
+        },
+
         isConsoleAreaShowing(): boolean {
-            return !this.isTabsLayout || (this.isTabsLayout && this.peaDisplayTabIndex == PEATabIndexes.console);
+            return !this.isFilesAreaShowing && (!this.isTabsLayout || (this.isTabsLayout && this.peaDisplayTabIndex == PEATabIndexes.console));
         },
 
         isGraphicsAreaShowing(): boolean {
-            return !this.isTabsLayout || (this.isTabsLayout && this.peaDisplayTabIndex == PEATabIndexes.graphics);
+            return !this.isFilesAreaShowing && (!this.isTabsLayout || (this.isTabsLayout && this.peaDisplayTabIndex == PEATabIndexes.graphics));
         },
 
         isPythonExecuting(): boolean {
@@ -462,6 +492,10 @@ export default defineComponent({
             // When we change tab, we also check the position of the expand/collapse button
             setPythonExecAreaLayoutButtonPos();
         },
+        isTabsLayout(){
+            // The split layouts have no graphics tab (see setDisplayTab()), so move off it:
+            this.setDisplayTab(this.peaDisplayTabIndex);
+        },
         isPythonExecuting(nowExecuting: boolean){
             // Once execution (including any trailing sounds -- see waitingForSoundsAfterNormalCompletion)
             // has fully finished, close the shared AudioContext rather than leaving it running
@@ -502,9 +536,17 @@ export default defineComponent({
             document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
         },
         
+        // All changes to peaDisplayTabIndex to a graphics/console tab should go through here (or be
+        // console/files, which are always valid). In the split layouts, graphics and console are shown
+        // together under the single "Output" header (the console tab), so "graphics" maps to that:
+        // otherwise the index would point at the hidden graphics tab and no header would look selected.
+        setDisplayTab(tabIndex: PEATabIndexes) {
+            this.peaDisplayTabIndex = (!this.isTabsLayout && tabIndex == PEATabIndexes.graphics) ? PEATabIndexes.console : tabIndex;
+        },
+
         switchToGraphicsTab(condition: "always" | "ifFirstCallDuringExecute") {
             if (condition == "always" || !switchedToGraphicsTabAlreadyThisExecute) {
-                this.peaDisplayTabIndex = PEATabIndexes.graphics;
+                this.setDisplayTab(PEATabIndexes.graphics);
                 switchedToGraphicsTabAlreadyThisExecute = true;
             }
         },
@@ -746,7 +788,14 @@ export default defineComponent({
                         console.error("Error in serialized function:", err);
                     });
                 }
-                
+
+                // The active worker's "/local" is only refreshed from localFsCache when a worker is
+                // swapped in (see terminateAndRestartPyodide()), which happens after a run/stop, not
+                // before one -- so a file uploaded via the File system tab since the last swap would
+                // otherwise be invisible to this run. Push the cache into the current worker first;
+                // this is cheap and idempotent when nothing has changed.
+                await client.workerProxy.restoreLocalFs(listEntriesForWorker());
+
                 (client.call(
                     client.workerProxy.executePython,
                     userCode,
@@ -874,8 +923,8 @@ export default defineComponent({
             // This method is responsible for handling when a focus on the console (textarea) is requrested programmatically
             // (typically when the Python input() function is encountered)
             
-            //First we switch between Graphics and the console shall the Turtle be showing at the moment
-            if(this.peaDisplayTabIndex == PEATabIndexes.graphics){
+            //First we switch to the console if Graphics or Files was showing instead
+            if(this.peaDisplayTabIndex == PEATabIndexes.graphics || this.peaDisplayTabIndex == PEATabIndexes.files){
                 this.peaDisplayTabIndex = PEATabIndexes.console;
             }
 
@@ -887,7 +936,7 @@ export default defineComponent({
             // This method is responsible for handling what to do after the console input (Python) has been invoked.
             // If there was a Turtle being shown, we get back to it. If not, we just stay on the console.
             if(this.graphicsImported != "none" && switchedToGraphicsTabAlreadyThisExecute){
-                this.peaDisplayTabIndex = PEATabIndexes.graphics;
+                this.setDisplayTab(PEATabIndexes.graphics);
             }
         },
 
@@ -1465,11 +1514,6 @@ export default defineComponent({
         border-color: lightgray !important;
     }
 
-    .#{$strype-classname-pea-no-tabs-placeholder-span} {
-        color: transparent;
-        padding: 9px 0 8px 0px;
-    }
-    
     .expanded-PEA-controls {
         border-top: black 1px solid;
     }
@@ -1552,7 +1596,14 @@ export default defineComponent({
         --bs-nav-link-color: black;
         --bs-nav-link-hover-color: black;
         --bs-nav-tabs-border-radius: 0.25rem;
+        // Slightly tighter than Bootstrap's 1rem default, so the tab bar (now with a third,
+        // Files, tab) doesn't feel as spread out:
+        --bs-nav-link-padding-x: 0.65rem;
+    }
 
+    .pea-hidden-tab {
+        // !important: Bootstrap's own nav-link display rule is at least as specific as this one
+        display: none !important;
     }
 
     .pea-display-tab:hover {
@@ -1579,6 +1630,23 @@ export default defineComponent({
     .pea-tab-content-container {
         width: 100%;
         position: relative;
+    }
+
+    // Scoped to only when the Files tab is showing -- deliberately not applied to the
+    // Graphics/Console layout (the Splitpanes-based sibling further down), which must render
+    // exactly as before. Without this, a child taller than this container's own height (whether
+    // that height comes from the aspect-ratio rule just below, or from .pea-component's own
+    // "no-43-ratio-collapsed-PEA"/expanded-mode height elsewhere) forces this container itself to
+    // grow to fit that content instead of clipping it -- the CSS auto-minimum-size behaviour that
+    // "overflow: visible" (the default) leaves in place. That defeats FileSystemPane.vue's own
+    // .file-system-pane overflow:auto: if this container just keeps growing instead, the pane
+    // never actually overflows *its own* box, so it never shows a scrollbar -- the oversized
+    // content is only clipped (with no scrollbar at all) by whatever ancestor finally does have a
+    // hard, non-content-based size (in practice, the outer Splitpanes pane). This one line
+    // establishes this container's own height as authoritative, so .file-system-pane's own
+    // overflow:auto is what actually engages:
+    .pea-tab-content-container.pea-files-showing {
+        overflow: hidden;
     }
 
     .pea-tab-content-container.pea-43-ratio {
@@ -1627,6 +1695,11 @@ export default defineComponent({
         background-color: grey;
         overflow:auto;
         position: relative;
+    }
+
+    .pea-files-container {
+        width:100%;
+        height: 100%;
     }
 
 
