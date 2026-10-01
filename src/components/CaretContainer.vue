@@ -8,13 +8,9 @@
         tabindex="-1"
     >
         <!--
-            This input is the real DOM focus target for a frame cursor (see focusInputUID below).
-            It exists so that browsers -- Safari/WebKit in particular -- see a genuine editable element
-            under the caret and dispatch native clipboard "paste" events for Cmd/Ctrl-V, rather than
-            silently deciding paste isn't applicable at a plain, non-editable div.
-            It is visually hidden and not part of the tab order; it never keeps user-typed content
-            (see clearFocusInputContent()) and is not currently given any ARIA semantics -- see the PR
-            description for the accessibility implications of that.
+            This input is the real DOM focus target for a frame cursor, so that browsers (Safari/WebKit)
+            see a genuine editable element under the caret and dispatch native clipboard "paste" events.
+            It is visually hidden, not part of the tab order, and never keeps user-typed content.
         -->
         <input
             type="text"
@@ -235,11 +231,8 @@ export default defineComponent({
             }  
         },
         
-        // Clears out the invisible paste-focus input's content (see the template comment on it):
-        // nothing ever reads its value, but a stray typed character (anything that somehow reaches
-        // the input without a shortcut handler already having called preventDefault -- see
-        // Commands.vue's keydown handling of bare frame-cursor typing) or the browser's own default
-        // paste-insertion (see the top of pasteIfFocused below) would otherwise sit there indefinitely.
+        // Clears out the invisible paste-focus input's content to prevent stray characters (not caught
+        // by a shortcut handler or typing --> frame insertion) lingering forever.
         clearFocusInputContent(event: Event) {
             (event.target as HTMLInputElement).value = "";
         },
@@ -247,10 +240,7 @@ export default defineComponent({
         pasteIfFocused(event: ClipboardEvent) {
             // Only respond if we are focused:
             if (this.isFocusedForPaste) {
-                // The paste focus input (see template) is a genuine editable element, so browsers will
-                // by default try to insert the pasted text into it; we handle the paste ourselves below,
-                // so stop that default insertion (it would immediately be wiped by clearFocusInputContent
-                // anyway, but there's no reason to let the browser do the work in the first place).
+                // Disable the browser's default paste handler. We handle the paste event below.
                 event.preventDefault();
                 let pasteDestination = {id: this.frameId, caretPosition: this.caretAssignedPosition};
                 const stateBeforeChanges = cloneDeep(this.appStore.$state);
@@ -408,9 +398,7 @@ export default defineComponent({
     scroll-margin-top: 50px;
     scroll-margin-bottom: 50px;
     outline: none;
-    // Establishes a positioning context for the invisible paste-focus <input> (position: absolute via
-    // Bootstrap's .visually-hidden), so it stays roughly where the visible caret is on screen rather
-    // than wherever the nearest other positioned ancestor happens to be.
+    // Ensure the invisible paste-focus <input> stays roughly where the visible caret is on screen.
     position: relative;
 }
 
