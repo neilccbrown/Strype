@@ -76,7 +76,8 @@
     "refresh": "rafraîchir",
     "choose": "Sélectionner",
     "reload": "Recharger",
-    "renameAllWithShortcut": "Renommer tout <span class=\"kb-shortcut\">({modifierkey}+R)</span>"
+    "renameAllWithShortcut": "Renommer tout <span class=\"kb-shortcut\">({modifierkey}+R)</span>",
+    "close": "Fermer"
   },
   "errorMessage": {
     "wrongDataFormat": "le format de données ne peut pas être lu",
@@ -194,7 +195,7 @@
     "thisFunction": "cette fonction",
     "thisClass": "cette classe",
     "clearAllRecent": "Supprimer tout",
-    "downloadPEAConsole":"Préparation de la capture du terminal (cela peut prendre du temps)..."
+    "downloadPEAConsole": "Préparation de la capture du terminal (cela peut prendre du temps)..."
   },
   "contextMenu": {
     "ctrl": "Ctrl",
@@ -223,8 +224,7 @@
     "cannotCollapseErrors": "Réduction impossible avec des erreurs",
     "freeze": "Verrouiller",
     "unfreeze": "Déverrouiller",
-    "cannotFreezeErrors": "Verrouillage impossible avec des erreurs",
-    "download": "Télécharger"
+    "cannotFreezeErrors": "Verrouillage impossible avec des erreurs"
   },
   "appMenu": {
     "downloadHex": "Convertir vers Hex",
@@ -251,6 +251,7 @@
     "myClasses": "Mes classes",
     "importedModules": "Modules importés",
     "builtinFiles": "Fichiers intégrés",
+    "yourFiles": "Vos fichiers",
     "invalidState": "Aucune complétion disponible",
     "noDocumentation": "Aucune documentation disponible",
     "codeCompletion": "Complétion de code",
@@ -278,12 +279,14 @@
     "loading": "Initialisation...",
     "runtimeErrorConsole": "Erreur d'exécution",
     "console": "Terminal",
+    "output": "Sortie",
     "Graphics": "Graphics",
     "importTurtleOrGraphics": "Importez 'strype.graphics' ou 'turtle' pour utiliser Graphics",
     "PEA-layout-tabs-collapsed": "Disposition en onglets reduite",
     "PEA-layout-tabs-expanded": "Disposition en onglets étendue",
     "PEA-layout-split-collapsed": "Disposition fractionnée réduite",
-    "PEA-layout-split-expanded": "Disposition fractionnée étendue"
+    "PEA-layout-split-expanded": "Disposition fractionnée étendue",
+    "fileSystem": "Fichiers"
   },
   "media": {
     "edit": "Éditer",
@@ -363,5 +366,32 @@
     "delete": "Suppr",
     "ctrlPlus": "Ctrl+",
     "period": "Point"
+  },
+  "fileSystemTab": {
+    "builtIn": "Fichiers intégrés",
+    "cloud": "Cloud",
+    "local": "Fichiers locaux",
+    "cwd": "Ceci est le répertoire de travail actuel lorsque votre code s'exécute",
+    "download": "Télécharger",
+    "downloadZip": "Téléchargent en tant que fichier zip",
+    "view": "Afficher ce fichier",
+    "viewUnsupported": "Ce type de fichier ne peut pas être affiché.",
+    "viewTooLarge": "Ce fichier est trop volumineux pour être affiché.",
+    "delete": "Supprimer ce fichier",
+    "deleteDir": "Supprimer ce dossier et tout son contenu",
+    "pin": "Épingler ce fichier pour l'enregistrer avec le projet",
+    "unpin": "Désépingler ce ficher (il ne sera plus enregistré avec le projet)",
+    "pinTooLarge": "Les fichiers dépassant 1 Mo ne peuvent pas être épinglés",
+    "copyPath": "Cliquez pour copier le chemin",
+    "upload": "Importer",
+    "loading": "Chargement...",
+    "emptyFolder": "(vide)",
+    "archiveDialogTitle": "Importer un fichier compressé",
+    "archiveDialogMessage": "\"{name}\" est un fichier zip. Voulez-vous le conserver en tant que fichier zip ou en extraire le contenu ?",
+    "keepAsZip": "Conserver en tant que fichier zip",
+    "unzipContents": "Extraire le contenu",
+    "overwriteDialogTitle": "Ce fichier existe déjà",
+    "overwriteDialogMessage": "Un fichier nommé \"{name}\" existe déjà à cet emplacement. Voulez-vous le remplacer ?",
+    "overwrite": "Écraser"
   }
 }

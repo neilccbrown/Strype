@@ -9,7 +9,7 @@
         <div>
             <h1>Creative Python Programming with Strype</h1>
             <p>
-                Strype has an accompanying <a href="https://strype.org/book/" target="_blank">textbook with a free preview version</a>.  From here you can open the projects described in the book.
+                Strype has an accompanying <a href="https://book.strype.org/" target="_blank">textbook with a free preview version</a>.  From here you can open the projects described in the book.
             </p>
         </div>
         <div class="d-flex" style="height: 400px;border-top: #aaa solid 1px; padding-top: 1rem;">

@@ -541,7 +541,9 @@ export function getCaretContainerFocusInputUID(caretPos: CaretPosition, frameId:
 // handleDocumentSelectionChange, wrongly believe the user is editing a text slot. So we always clear the
 // selection right after focusing this input.
 export function focusCaretContainerInput(caretPos: CaretPosition, frameId: number): void {
-    document.getElementById(getCaretContainerFocusInputUID(caretPos, frameId))?.focus();
+    // preventScroll avoids the browser's own native scroll-into-view on focus; scrolling is handled
+    // deliberately by callers via scrollCaretIntoView.
+    document.getElementById(getCaretContainerFocusInputUID(caretPos, frameId))?.focus({preventScroll: true});
     document.getSelection()?.removeAllRanges();
 }
 
@@ -2129,8 +2131,8 @@ export function setPythonExecutionAreaTabsContentMaxHeight(): void {
     // (defined above) with the correct value. If not, we use the default 50vh (50% of body) value directly.
     const editorNewMaxHeight = manuallyResizedEditorHeight ?? (fullAppHeight / 2);
     // For the tabs' height, we can't rely on the container as the tabs may stack on top of each other (small browser window)
-    // so we get the first element of the tab section that is not having a 0 height (because tabs are hidden when we are in split layout)
-    const pythonExecAreaTabsAreaHeight = [...document.querySelectorAll("#" + getPEAControlsDivId() + " li, ." + scssVars.peaNoTabsPlaceholderSpanClassName)]
+    // so we get the first element of the tab section that is not having a 0 height (the graphics tab is hidden when we are in split layout)
+    const pythonExecAreaTabsAreaHeight = [...document.querySelectorAll("#" + getPEAControlsDivId() + " li")]
         .find((element) => element.getBoundingClientRect().height != 0)
         ?.getBoundingClientRect().height;    
     (document.querySelector("#"+getPEATabContentContainerDivId()) as HTMLDivElement).style.maxHeight = ((fullAppHeight - editorNewMaxHeight - (pythonExecAreaTabsAreaHeight??0)) + "px");
