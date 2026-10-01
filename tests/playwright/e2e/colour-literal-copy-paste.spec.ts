@@ -8,9 +8,15 @@ import { setupStrypeTest } from "../support/general";
 // anything (see colour-picker.spec.ts's own copy of this helper).
 async function openColourPickerViaShortcut(page: import("@playwright/test").Page) {
     await page.keyboard.press(" ");
-    // The pane focuses its first button asynchronously, so wait for that rather than pressing the
-    // shortcut letter immediately -- otherwise it can race and land back on the slot itself.
-    await expect(page.locator("#addSlotShortcutsPanel .frame-cmd-btn").first()).toBeFocused();
+    // The pane focuses its first button asynchronously (a zero-delay setTimeout in Commands.vue's
+    // openSlotShortcutsPane()), so wait for that rather than pressing the shortcut letter
+    // immediately -- otherwise it can race and land back on the slot itself. The default 5s
+    // timeout isn't always enough under heavy CI contention (seen consistently failing on a
+    // macos-latest/chromium run for the identical wait in colour-picker.spec.ts, CI run
+    // 36733941422/job 109950581178) -- macOS CI runners are already known to be starved for
+    // main-thread time under load (see playwright.config.ts's worker-count comment), so give this
+    // more headroom rather than treat it as a real hang.
+    await expect(page.locator("#addSlotShortcutsPanel .frame-cmd-btn").first()).toBeFocused({timeout: 20000});
     await page.keyboard.press("c");
 }
 
