@@ -12,18 +12,20 @@
             see a genuine editable element under the caret and dispatch native clipboard "paste" events.
             It is visually hidden, not part of the tab order, and never keeps user-typed content.
         -->
-        <input
-            type="text"
-            class="visually-hidden"
-            :id="focusInputUID"
-            tabindex="-1"
-            autocomplete="off"
-            autocorrect="off"
-            autocapitalize="off"
-            spellcheck="false"
-            inputmode="none"
-            @input="clearFocusInputContent"
-        />
+        <div class="caret-container-focus-input-wrapper">
+            <input
+                type="text"
+                class="visually-hidden"
+                :id="focusInputUID"
+                tabindex="-1"
+                autocomplete="off"
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
+                inputmode="none"
+                @input="clearFocusInputContent"
+            />
+        </div>
         <ContextMenu
             :contextMenuItemsDef="frameContextMenuItems"
             :showContextMenu="showContextMenu"
@@ -398,8 +400,17 @@ export default defineComponent({
     scroll-margin-top: 50px;
     scroll-margin-bottom: 50px;
     outline: none;
-    // Ensure the invisible paste-focus <input> stays roughly where the visible caret is on screen.
-    position: relative;
+}
+
+// When the paste-focus <input> gets focus, Chromium creates a phantom caret Selection on the input's
+// parent element and natively scrolls to reveal it (centring it if need be), a few ms later and even
+// with preventScroll. That beats our own small-margin scroll (see putCaretContainerInView) and strands
+// the frame cursor mid-screen. If the parent is fixed-position it is always in view, so there's nothing
+// to scroll to.
+.caret-container-focus-input-wrapper {
+    position: fixed;
+    top: 0;
+    left: 0;
 }
 
 .static-caret-container{
