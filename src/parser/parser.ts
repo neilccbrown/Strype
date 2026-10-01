@@ -1,7 +1,7 @@
 import Compiler from "@/compiler/compiler";
 import {hasEditorCodeErrors, trimmedKeywordOperators} from "@/helpers/editor";
 import { UNARY_PREFIX_OPERATORS } from "@/helpers/operatorPrecedence";
-import { generateFlatSlotBases, getParentOrJointParent, retrieveSlotByPredicate } from "@/helpers/storeMethods";
+import { generateFlatSlotBases, getFrameSectionIdFromFrameId, getParentOrJointParent, retrieveSlotByPredicate } from "@/helpers/storeMethods";
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
 import {AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CollapsedState, ContainerTypesIdentifiers, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, FrozenState, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, MediaSlot, OptionalSlotType, ParserElements, SlotsStructure, SlotType, StringSlot} from "@/types/types";
@@ -612,6 +612,13 @@ export default class Parser {
         return this.parse({startAtFrameId: useStore().getImportsFrameContainerId, stopAt: {frameId: useStore().getDefsFrameContainerId, includeThisFrame: false}});
     }
 
+    public parseJustTests() : string {
+        // Testing has no following sibling container to use as an exclusive stop boundary (it's the
+        // last one), so we start and stop at the Testing container itself, inclusive:
+        const testsContainerId = useStore().getTestsFrameContainerId;
+        return this.parse({startAtFrameId: testsContainerId, stopAt: {frameId: testsContainerId, includeThisFrame: true}});
+    }
+
     // You can only pass start if you also pass stop.  (But stop by itself is fine)
     // If you pass start and stop frames, they must be siblings.
     // (To explain: we sometimes want to stop at an arbitrary place, e.g. just before
@@ -842,12 +849,15 @@ export default class Parser {
         // call site to a function defined twice). The caller finds the marker and splices in its own probe
         // text in its place, so the probe always ends up correctly nested exactly where the user is
         // editing, however much unrelated code precedes or follows it.
-        const code = this.parse({excludeComments: true, ignoreSpecificFrameId: endFrameId, ignoreSpecificFrameIdReplacement: AC_PROBE_MARKER});
+        // If we're editing inside the Testing section itself, we must not stop before it (or endFrameId would
+        // never be found/replaced); otherwise, exclude Testing code from the evidence used for Imports/Defs/Main.
+        const isEditingInTests = getFrameSectionIdFromFrameId(endFrameId) == useStore().getTestsFrameContainerId;
+        const code = this.parse({excludeComments: true, ignoreSpecificFrameId: endFrameId, ignoreSpecificFrameIdReplacement: AC_PROBE_MARKER, stopAt: isEditingInTests ? undefined : {frameId: useStore().getTestsFrameContainerId, includeThisFrame: false}});
         return this.removeErrorsFromParsedCode(code);
     }
 
     public getFullCode(): string {
-        return this.parse({excludeComments: false});
+        return this.parse({excludeComments: false, stopAt: {frameId: useStore().getTestsFrameContainerId, includeThisFrame: false}});
     }
 
     private checkIfFrameHasError(frame: FrameObject): boolean {

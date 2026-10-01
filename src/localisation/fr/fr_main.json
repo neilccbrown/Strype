@@ -141,6 +141,8 @@
     "importsContainer": "Imports :",
     "defsContainer": "Définitions :",
     "mainContainer": "Mon code :",
+    "testsContainer": "Tests :",
+    "runTestsButton": "Exécuter les tests",
     "preCompiledErrorNeedFix": "Veuillez d'abord corriger les erreurs existantes.",
     "noWebUSB": "Ce navigateur ne supporte pas les connexions webUSB. Veuillez utiliser un autre navigateur (par example Google Chrome).",
     "emptyCodeError": "Le code ne peut pas être vide.",

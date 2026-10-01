@@ -4,6 +4,7 @@
             <button v-if="!isMainCodeFrameContainer && !isDefsFrameContainer" class="frame-container-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
             <span :class="{[scssVars.frameContainerLabelSpanClassName]: true,'no-toggle-frame-container-span': isMainCodeFrameContainer || isDefsFrameContainer}" @click.self="toggleCollapse">{{containerLabel}}</span>
             <ChildrenFrameStateToggle v-if="isDefsFrameContainer" :frames="frames" :parentIsFrozen="false"/>
+            <button v-if="isTestsFrameContainer" id="runTestsButton" class="frame-container-btn-run-tests" :disabled="isPythonExecuting || !isPythonWorkerReady" :title="$t('appMessage.runTestsButton')" @click="runTestsClicked">{{$t('appMessage.runTestsButton')}}</button>
         </div>
 
         <!-- keep the tabindex attribute, it is necessary to handle focus properly -->
@@ -46,6 +47,7 @@ import { CustomEventTypes, getCaretContainerRef, getFrameUID} from "@/helpers/ed
 import scssVars from "@/assets/style/_export.module.scss";
 import { getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
 import ChildrenFrameStateToggle from "@/components/ChildrenFrameStateToggle.vue";
+import { isPythonWorkerReady } from "@/stryperuntime/main_thread_python_handler";
 
 //////////////////////
 //     Component    //
@@ -99,6 +101,10 @@ export default defineComponent({
 
         isDefsFrameContainer(): boolean {
             return this.frameId == this.appStore.getDefsFrameContainerId;
+        },
+
+        isTestsFrameContainer(): boolean {
+            return this.frameId == this.appStore.getTestsFrameContainerId;
         },
         
         frames: {
@@ -155,7 +161,7 @@ export default defineComponent({
         containerStyle(): Record<string, string> {
             return {
                 "display": (this.isCollapsed) ? "none" : "block",
-                "backgroundColor": `${(this.frameType.type === FrameContainersDefinitions.ImportsContainerDefinition.type || this.frameType.type == FrameContainersDefinitions.DefsContainerDefinition.type) 
+                "backgroundColor": `${(this.frameType.type === FrameContainersDefinitions.ImportsContainerDefinition.type || this.frameType.type == FrameContainersDefinitions.DefsContainerDefinition.type || this.frameType.type == FrameContainersDefinitions.TestsContainerDefinition.type)
                     ? getFrameDefType(AllFrameTypesIdentifier.import).colour
                     : getFrameDefType(AllFrameTypesIdentifier.return).colour}`,
             };
@@ -163,7 +169,11 @@ export default defineComponent({
 
         isPythonExecuting(): boolean {
             return (this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
-        },        
+        },
+
+        isPythonWorkerReady(): boolean {
+            return isPythonWorkerReady.value;
+        },
     },
 
     methods: {
@@ -188,6 +198,10 @@ export default defineComponent({
                     this.appStore.setCurrentFrame({id: targetFrameContainerId, caretPosition: CaretPosition.body});
                 }
             }
+        },
+
+        runTestsClicked(): void {
+            this.appStore.requestTestRun();
         },
 
         onFrameContainerClick(event: any): void {
@@ -278,6 +292,11 @@ export default defineComponent({
 
 .frame-container-btn-collapse:focus {
     outline: none;
+}
+
+.frame-container-btn-run-tests {
+    margin-left: auto;
+    margin-right: 5px;
 }
 
 .#{$strype-classname-frame-container-label-span} {       

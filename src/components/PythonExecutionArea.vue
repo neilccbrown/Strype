@@ -85,7 +85,7 @@ import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { BTab, BTabs } from "bootstrap-vue-next";
 import * as Comlink from "comlink";
 import {handleErrorTrace, setSInputConsole} from "@/helpers/execPythonCode";
-import {isServiceWorkerChannelResponsive, PyodideErrorDetails, serviceWorkerReadyAndInControl} from "@/workers/shared_helpers";
+import {isServiceWorkerChannelResponsive, PyodideErrorDetails, serviceWorkerReadyAndInControl, TestRunResult, TestRunResults} from "@/workers/shared_helpers";
 import {SpriteHandle, SyncOrAsyncStrypePyodideWorkerRequest} from "@/stryperuntime/worker_bridge_type";
 import {SoundManager} from "@/stryperuntime/sound_manager";
 import {handleAsyncRequests, handleSyncRequests} from "@/stryperuntime/main_bridge_handler";
@@ -418,6 +418,10 @@ export default defineComponent({
             return useStore().pythonExecRunningState != PythonExecRunningState.NotRunning;
         },
 
+        testRunRequestId(): number {
+            return this.appStore.testRunRequestId;
+        },
+
         currentSplitterPane1Size(): number {
             // The current size (in %) of the splitter's pane 1, we keep this as a variable not directly affected to the splitter's 
             // pane size to maintain visual aspects when layout switches (the actual size may be explicitly changed to 0 or 100
@@ -471,6 +475,11 @@ export default defineComponent({
             if (!nowExecuting) {
                 closeAudioContext();
             }
+        },
+
+        testRunRequestId(){
+            // Triggered by the Testing section's "Run tests" button (FrameContainer.vue), via appStore.requestTestRun().
+            this.execTestsCode();
         },
     },
 
@@ -850,6 +859,118 @@ export default defineComponent({
                 // Note that a run time error can still occur later.                
                 this.checkNonePrecompiledErrors();
             }, 1000);           
+        },
+
+        async execTestsCode() {
+            // Triggered by the Testing section's "Run tests" button -- see appStore.requestTestRun()/testRunRequestId.
+            // Both of these are also reflected in the button's :disabled state (FrameContainer.vue), but are
+            // checked again here as a defensive guard, since the underlying Pyodide client only allows one
+            // call() in flight at a time and throws "State is running, not idle" otherwise:
+            if (this.isPythonExecuting || !isPythonWorkerReady.value) {
+                return;
+            }
+
+            const client = getPythonClient();
+            if (client == null) {
+                return;
+            }
+
+            const pythonConsole = this.$refs.pythonConsole as HTMLTextAreaElement;
+            // Separate Parser instances: Parser.parse() leaves internal state (e.g. exitFlag) set after
+            // reaching a stop boundary, which would corrupt a second parse() call reusing the same instance.
+            // We keep parser/testsParser afterwards: their getFramePositionMap() lets a pytest failure's
+            // file/line be mapped back to the frame that caused it, the same way a normal Run's error is
+            // highlighted.
+            const parser = new Parser();
+            const mainCode = parser.getFullCode();
+            const importsCode = new Parser().parseJustImports();
+            const testsParser = new Parser();
+            const testsCode = testsParser.parseJustTests();
+            // The test file is importsCode + the "from strype_user_code import *" line + testsCode (see
+            // executeTests() in workers/python-execution.ts) -- used below to map a pytest failure's
+            // file line back into testsCode's own (0-indexed) getFramePositionMap():
+            const testsFileLinesBeforeTestsCode = importsCode.split("\n").length; // includes the "import *" line
+
+            // Gather the libraries used by the project, same as a normal Run (see execPythonCode()):
+            this.libraries = parser.getLibraries();
+            const micropipLibraries: string[] = [];
+            const userLibraries = {} as {[url: string] : Record<string, string>};
+            for (const lib of this.libraries) {
+                if (lib.startsWith("micropip:")) {
+                    micropipLibraries.push(lib.slice("micropip:".length));
+                }
+                else {
+                    const files = await getAvailableFilesFromLibrary(lib);
+                    if (files != null) {
+                        userLibraries[lib] = Object.fromEntries(files.map((v) => [v, v]));
+                    }
+                }
+            }
+
+            useStore().pythonExecRunningState = PythonExecRunningState.Running;
+            pythonConsole.value += "\nRunning tests...\n";
+            this.switchToConsoleTab("always");
+
+            client.call(client.workerProxy.executeTests, mainCode, importsCode, testsCode, micropipLibraries, userLibraries).then((results: TestRunResults) => {
+                let output: string;
+                if (results.collectionError) {
+                    output = `Could not run tests:\n${results.collectionError}\n`;
+                }
+                else if (results.results.length == 0) {
+                    output = "No tests found in the Testing section.\n";
+                }
+                else {
+                    const failures = results.results.filter((r) => r.outcome != "passed");
+                    output = `${results.results.length - failures.length} passed, ${failures.length} failed\n`;
+                    for (const failure of failures) {
+                        output += `\nFAILED ${failure.nodeId}\n${failure.message}\n`;
+                    }
+                    this.highlightTestFailures(failures, parser, testsParser, testsFileLinesBeforeTestsCode);
+                }
+                pythonConsole.value += output;
+                pythonConsole.scrollTop = pythonConsole.scrollHeight;
+                this.checkNonePrecompiledErrors();
+            }).catch((err) => {
+                console.error("Running tests failed: ", err);
+                pythonConsole.value += `\nAn internal error occurred while running the tests: ${(err as Error)?.message ?? err}\n`;
+                pythonConsole.scrollTop = pythonConsole.scrollHeight;
+            }).finally(() => {
+                useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
+                // Restart Pyodide for a clean state, same as after a normal Run (see execPythonCode()):
+                void terminateAndRestartPyodide();
+            });
+        },
+
+        // Maps each failing test's pytest-reported crash location back to the Strype frame that caused
+        // it, and highlights it the same way a normal Run's runtime error is highlighted (see
+        // handleErrorTrace() in helpers/execPythonCode.ts, which this mirrors for the single-error case
+        // Run always has -- here there can be several, one per failing test).
+        highlightTestFailures(failures: TestRunResult[], mainParser: Parser, testsParser: Parser, testsFileLinesBeforeTestsCode: number): void {
+            let firstFailureFrameId: number | undefined;
+            for (const failure of failures) {
+                if (!failure.crashFile || failure.lineno == null) {
+                    // No reprcrash (e.g. a plain pytest.fail() reason), or it wasn't in either
+                    // generated file we can map back to frames (e.g. inside a library pytest itself
+                    // loaded) -- nothing to highlight for this one.
+                    continue;
+                }
+                const positions = (failure.crashFile == "main") ? mainParser.getFramePositionMap() : testsParser.getFramePositionMap();
+                // getFramePositionMap() is 0-indexed, matching the 1-indexed file line used by
+                // pytest/Python conventions as lineno-1 (see handleErrorTrace()) -- except the tests
+                // file also has testsFileLinesBeforeTestsCode extra prepended lines (the project's own
+                // Imports section, plus the "from strype_user_code import *" line) that the Testing
+                // section's own parsed code doesn't contain, hence the extra subtraction there:
+                const lineIndex = failure.lineno - 1 - (failure.crashFile == "tests" ? testsFileLinesBeforeTestsCode : 0);
+                const posInfo = positions[lineIndex];
+                if (posInfo) {
+                    useStore().frameObjects[posInfo.frameId].runTimeError = failure.crashMessage || failure.message;
+                    useStore().forceExpand(posInfo.frameId);
+                    firstFailureFrameId ??= posInfo.frameId;
+                }
+            }
+            if (firstFailureFrameId !== undefined) {
+                useStore().wasLastRuntimeErrorFrameId = firstFailureFrameId;
+            }
         },
 
         checkNonePrecompiledErrors(){

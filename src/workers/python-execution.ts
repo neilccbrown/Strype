@@ -84,7 +84,7 @@ import {SpriteManager} from "@/stryperuntime/image_and_collisions";
 import {asyncBridge, PyodideWorkerGlobalScope, syncBridge} from "@/workers/python_execution_type";
 import {getFSForEmscripten} from "@/stryperuntime/pyodide-emscripten-cloud-fs";
 import { assetsFilePrefixes, createLazyFetchAssetsFS } from "@/stryperuntime/pyodide-emscripten-assets-fs";
-import {isServiceWorkerChannelResponsive, PyodideErrorDetails} from "@/workers/shared_helpers";
+import {isServiceWorkerChannelResponsive, PyodideErrorDetails, TestRunResults} from "@/workers/shared_helpers";
 import {makeServiceWorkerChannel} from "sync-message";
 import {createLazyFetchFS} from "@/stryperuntime/pyodide-emscript-fetch-fs";
 
@@ -547,6 +547,129 @@ runner`);
     });
 });
 
+// Runs the Testing section's code (testsCode) against the rest of the user's program (mainCode) via
+// pytest, which is already vendored as part of the Pyodide distribution (see pyodide-lock.json), so
+// this never fetches anything over the network. mainCode is written to a module on Pyodide's virtual
+// FS; testsCode is written to a second module alongside it, prefixed with importsCode (the project's
+// own Imports section, copied in verbatim so tests see the same imports as the rest of the program,
+// without needing test-only imports of their own) and an import of the mainCode module. pytest is
+// then run against that second file and its per-test results collected via a small plugin.
+const executeTests = pyodideExpose(async (
+    extras: PyodideExtras,
+    mainCode: string,
+    importsCode: string,
+    testsCode: string,
+    micropipLibraries: string[],
+    userLibrariesFileIndexes: { [url: string]: Record<string, string>}
+) : Promise<TestRunResults> => {
+    if (reloader == null) {
+        return {collectionError: "Pyodide is not available.", results: []};
+    }
+    return await reloader.withPyodide(async (pyodide: PyodideInterface) => {
+        // Load any in-built packages used by either the main code or the tests (e.g. numpy, pandas):
+        await pyodide.loadPackagesFromImports(mainCode + "\n" + testsCode, {messageCallback: console.log, errorCallback: console.error});
+
+        for (let url in userLibrariesFileIndexes) {
+            const libDir = "/strype_libraries/" + await urlToDirName(url);
+            pyodide.FS.mkdirTree(libDir);
+
+            let cache = libraryCaches.get(url);
+            if (!cache) {
+                cache = new Map();
+                libraryCaches.set(url, cache);
+            }
+
+            const fs = createLazyFetchFS(pyodide, userLibrariesFileIndexes[url], url, cache);
+            try {
+                pyodide.FS.mount(fs, {}, libDir);
+            }
+            catch {
+                // Ignore errors from mounting the same library dir again on a second test run:
+            }
+
+            pyodide.runPython(`
+import sys
+sys.path.append("${libDir}")
+`);
+        }
+
+        if (micropipLibraries.length > 0) {
+            await pyodide.loadPackage("micropip");
+            const micropip = pyodide.pyimport("micropip");
+            for (let micropipLibrary of micropipLibraries) {
+                await micropip.install(micropipLibrary);
+            }
+        }
+
+        // pytest is already vendored in the Pyodide distribution (see pyodide-lock.json), so this
+        // resolves locally and never fetches anything over the network:
+        await pyodide.loadPackage("pytest");
+
+        try {
+            pyodide.FS.mkdirTree("/strype_tests");
+        }
+        catch {
+            // Ignore errors from the directory already existing on a second test run:
+        }
+        pyodide.FS.writeFile("/strype_tests/strype_user_code.py", mainCode);
+        pyodide.FS.writeFile("/strype_tests/test_strype_user_tests.py", importsCode + "from strype_user_code import *\n" + testsCode);
+
+        const resultProxy = await pyodide.runPythonAsync(`
+def _strype_run_pytest():
+    import sys
+    # Modules may be cached from a previous test run in this same worker; drop them so edits are picked up:
+    sys.modules.pop("strype_user_code", None)
+    sys.modules.pop("test_strype_user_tests", None)
+    if "/strype_tests" not in sys.path:
+        sys.path.insert(0, "/strype_tests")
+
+    import pytest
+
+    results = []
+    collection_errors = []
+
+    class _StrypeResultCollector:
+        def pytest_runtest_logreport(self, report):
+            if report.when == "call" or (report.when in ("setup", "teardown") and report.outcome != "passed"):
+                # reprcrash gives the single line (file/line/message) pytest considers the actual
+                # crash site, as opposed to the full (possibly multi-frame) longrepr text -- that's
+                # what we need to highlight the right frame in the editor. Not every longrepr has one
+                # (e.g. a plain string reason from pytest.fail(), or a collection-time error), so this
+                # is all best-effort and falls back to no location rather than guessing:
+                reprcrash = getattr(report.longrepr, "reprcrash", None)
+                crash_path = getattr(reprcrash, "path", None)
+                crash_file = None
+                if crash_path is not None:
+                    crash_path_str = str(crash_path)
+                    if crash_path_str.endswith("test_strype_user_tests.py"):
+                        crash_file = "tests"
+                    elif crash_path_str.endswith("strype_user_code.py"):
+                        crash_file = "main"
+                results.append({
+                    "nodeId": report.nodeid,
+                    "outcome": report.outcome,
+                    "message": str(report.longrepr) if report.longrepr else "",
+                    "crashMessage": getattr(reprcrash, "message", None),
+                    "lineno": getattr(reprcrash, "lineno", None),
+                    "crashFile": crash_file,
+                })
+
+        def pytest_collectreport(self, report):
+            if report.failed:
+                collection_errors.append(str(report.longrepr))
+
+    pytest.main(["-q", "-p", "no:cacheprovider", "/strype_tests/test_strype_user_tests.py"], plugins=[_StrypeResultCollector()])
+
+    return {"collectionError": (collection_errors[0] if collection_errors else None), "results": results}
+
+_strype_run_pytest()
+`);
+        const result = resultProxy.toJs({dict_converter: Object.fromEntries}) as TestRunResults;
+        resultProxy.destroy();
+        return result;
+    });
+});
+
 const onReady = pyodideExpose(async (extras: PyodideExtras, callOnceReady:  Comlink.Remote<() => void>)=> {
     if (reloader != null) {
         await reloader.withPyodide(async () => callOnceReady());
@@ -555,6 +678,7 @@ const onReady = pyodideExpose(async (extras: PyodideExtras, callOnceReady:  Coml
 
 Comlink.expose({
     executePython,
+    executeTests,
     onReady,
 });
 

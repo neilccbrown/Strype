@@ -1,5 +1,5 @@
 import { nextTick} from "vue";
-import { FrameObject, CollapsedState, CurrentFrame, CaretPosition, FrozenState, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, DefsContainerDefinition, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode, SaveRequestReason, RootContainerFrameDefinition, StrypeLayoutDividerSettings, MediaSlot, SlotInfosOptionalMedia, ModifierKeyCode } from "@/types/types";
+import { FrameObject, CollapsedState, CurrentFrame, CaretPosition, FrozenState, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, DefsContainerDefinition, TestsContainerDefinition, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode, SaveRequestReason, RootContainerFrameDefinition, StrypeLayoutDividerSettings, MediaSlot, SlotInfosOptionalMedia, ModifierKeyCode } from "@/types/types";
 import { getObjectPropertiesDifferences } from "@/helpers/common";
 import i18n from "@/i18n";
 import {calculateNextCollapseState, checkCodeErrors, checkStateDataIntegrity, evaluateSlotType, filterAllowedJointChildrenAfter, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getFrameSectionIdFromFrameId, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isAncestorGatedFrameTypeAllowed, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
@@ -76,6 +76,8 @@ export const useStore = defineStore("app", {
 
             defsContainerId: -2,
 
+            testsContainerId: -4,
+
             /** END of flags that need checking when a build is done **/           
 
             currentFrame: { id: -3, caretPosition: CaretPosition.body } as CurrentFrame,
@@ -136,6 +138,9 @@ export const useStore = defineStore("app", {
 
             // This flag indicates if the user code is being executed in the Python Execution Area (including the micro:bit simulator)
             pythonExecRunningState: PythonExecRunningState.NotRunning as PythonExecRunningState,
+
+            // Incremented each time the user asks to run the Testing section's code via pytest; watched by PythonExecutionArea.vue.
+            testRunRequestId: 0,
 
             // This flag can be used anywhere a key event should be ignored within the application
             ignoreKeyEvent: false,
@@ -322,9 +327,13 @@ export const useStore = defineStore("app", {
             return Object.values(state.frameObjects).filter((frame: FrameObject) => frame.frameType.type === DefsContainerDefinition.type)[0].id;
         },
 
+        getTestsFrameContainerId:(state): number => {
+            return Object.values(state.frameObjects).filter((frame: FrameObject) => frame.frameType.type === TestsContainerDefinition.type)[0].id;
+        },
+
         // Maps every (non-container) frame id to its 1-based position in document/visual order
-        // (depth-first, top to bottom, regardless of nesting), spanning the imports, definitions
-        // and main code sections in that order. Used to display frame numbers.
+        // (depth-first, top to bottom, regardless of nesting), spanning the imports, definitions,
+        // main code and testing sections in that order. Used to display frame numbers.
         getFrameVisualNumbers(): {[frameId: number]: number} {
             const numbers: {[frameId: number]: number} = {};
             let counter = 0;
@@ -334,7 +343,7 @@ export const useStore = defineStore("app", {
                 frame.childrenIds.forEach(visit);
                 frame.jointFrameIds.forEach(visit);
             };
-            [this.getImportsFrameContainerId, this.getDefsFrameContainerId, this.getMainCodeFrameContainerId].forEach((containerId) => {
+            [this.getImportsFrameContainerId, this.getDefsFrameContainerId, this.getMainCodeFrameContainerId, this.getTestsFrameContainerId].forEach((containerId) => {
                 this.frameObjects[containerId].childrenIds.forEach(visit);
             });
             return numbers;
@@ -1698,6 +1707,10 @@ export const useStore = defineStore("app", {
             this.editorLastModificationAt = Date.now();
         },
 
+        requestTestRun() {
+            this.testRunRequestId++;
+        },
+
         cycleFrameCollapsedState(frameId: number) {
             const parentIsFrozen = this.frameObjects[this.frameObjects[frameId].parentId].frozenState == FrozenState.FROZEN;
             const newStates = calculateNextCollapseState([this.frameObjects[frameId]], parentIsFrozen).individual;
@@ -2650,7 +2663,13 @@ export const useStore = defineStore("app", {
                                                 newStateObj["frameObjects"][projectDocumentationFrameId] = cloneDeep(emptyState[projectDocumentationFrameId]);
                                                 newStateObj["frameObjects"]["0"]["childrenIds"].unshift(projectDocumentationFrameId);
                                             }
-                                            
+
+                                            // If the project predates the Testing section, add it in (folded, empty) as the last root child:
+                                            if (!newStateObj["frameObjects"]["-4"]) {
+                                                newStateObj["frameObjects"]["-4"] = cloneDeep(emptyState["-4"]);
+                                                newStateObj["frameObjects"]["0"]["childrenIds"].push(-4);
+                                            }
+
                                             if(!restoreSavedStateFrameTypes(newStateObj)){
                                                 // There was something wrong with the type name (it should not happen, but better check anyway)
                                                 isStateJSONStrValid = false;

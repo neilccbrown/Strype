@@ -389,6 +389,7 @@ export const ContainerTypesIdentifiers = {
     importsContainer: "importsContainer",
     defsContainer: "defsContainer",
     framesMainContainer: "mainContainer",
+    testsContainer: "testsContainer",
 };
 
 const SpecialTypesIdentifiers = {
@@ -513,12 +514,47 @@ export const MainFramesContainerDefinition: FramesDefinitions = {
     colour: "#BBC6B6",
 };
 
+// Statements allowed directly inside the Testing section (i.e. outside any test function). funcdef
+// can't nest inside if/for/while/match anywhere in Strype (see BlockDefinition.forbiddenChildrenTypes),
+// which rules out the main reason those would otherwise be useful here (conditionally/dynamically
+// defining test_ functions) -- so only statements with a standalone module-level purpose are kept:
+// funccall/varassign/comment/blank for ordinary top-level code and shared test data, and try/with
+// for guarding a shared setup resource, and raise for a deliberate "stop collecting this file"
+// bail-out. "global" is a no-op at module level and "return" is a syntax error outside a function,
+// so neither is included despite being in StandardFrameTypesIdentifiers. Imports are deliberately
+// not allowed here either -- there are no test-only imports, the generated test file instead gets
+// the project's own Imports section copied in (see parser.ts's parseJustTests()/parseJustImports()
+// and executeTests() in workers/python-execution.ts), so add an import there as usual.
+const TestsAllowedStatementTypes: string[] = [
+    StandardFrameTypesIdentifiers.funccall,
+    StandardFrameTypesIdentifiers.blank,
+    StandardFrameTypesIdentifiers.comment,
+    StandardFrameTypesIdentifiers.varassign,
+    StandardFrameTypesIdentifiers.try,
+    StandardFrameTypesIdentifiers.with,
+    StandardFrameTypesIdentifiers.raise,
+];
+
+export const TestsContainerDefinition: FramesDefinitions = {
+    ...BlockDefinition,
+    type: ContainerTypesIdentifiers.testsContainer,
+    labels: [
+        { label: i18n.global.t("appMessage.testsContainer"), showSlots: false, defaultText: "" },
+    ],
+    allowedCollapsedStates: [CollapsedState.FULLY_VISIBLE, CollapsedState.ONLY_HEADER_VISIBLE],
+    forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
+        .filter((frameTypeDef: string) => !TestsAllowedStatementTypes.includes(frameTypeDef)
+            && frameTypeDef !== DefIdentifiers.funcdef),
+    colour: "#BBC6B6",
+};
+
 
 export const FrameContainersDefinitions = {
     RootContainerFrameDefinition,
     ImportsContainerDefinition,
     DefsContainerDefinition,
     MainFramesContainerDefinition,
+    TestsContainerDefinition,
 };
 
 export const ProjectDocumentationDefinition: FramesDefinitions = {
@@ -851,6 +887,10 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
             case MainFramesContainerDefinition.type:
                 frameObject.frameType.labels[0].label = i18n.global.t("appMessage.mainContainer");
                 MainFramesContainerDefinition.labels[0].label = i18n.global.t("appMessage.mainContainer");
+                break;
+            case TestsContainerDefinition.type:
+                frameObject.frameType.labels[0].label = i18n.global.t("appMessage.testsContainer");
+                TestsContainerDefinition.labels[0].label = i18n.global.t("appMessage.testsContainer");
                 break;
             case ProjectDocumentationDefinition.type:
                 break;
