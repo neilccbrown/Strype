@@ -19,7 +19,11 @@
                 <BTab :button-id="filesTabId" :title="'📁 '+$t('PEA.fileSystem')" title-link-class="pea-display-tab"></BTab>
             </BTabs>
             <div class="flex-padding"/>            
-            <span v-if="isGraphicsAreaShowing && !isPythonExecuting && mouseCoordsToShow" class="pea-hover-coords">{{mouseCoordsToShow}}</span>
+            <!-- Always present, and sized for the widest possible reading, so that the tab headers don't re-wrap as the coordinates come and go or change length -->
+            <span class="pea-hover-coords-slot">
+                <span class="pea-hover-coords-sizer" aria-hidden="true">(-399, -300)</span>
+                <span v-if="isGraphicsAreaShowing && !isPythonExecuting && mouseCoordsToShow" class="pea-hover-coords">{{mouseCoordsToShow}}</span>
+            </span>
             <div class="flex-padding"/>
             <button id="runButton" ref="runButton" class="pea-controls-button" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'" :class="{highlighted: highlightPythonRunningState}" :disabled="!isPythonWorkerReady">
                 <img v-if="!isPythonExecuting" :src="faviconURL" class="pea-play-img">
@@ -1714,9 +1718,23 @@ export default defineComponent({
         outline: none;
     }
     
-    .pea-hover-coords {
-        font-size: 90%;
+    // A single grid cell holds both the invisible widest-possible text (which sets the slot's width)
+    // and the real coordinates on top of it, so the width never depends on what's displayed:
+    .pea-hover-coords-slot {
+        display: inline-grid;
+        font-size: 80%;
         color: #333;
+        white-space: nowrap;
+        text-align: center;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .pea-hover-coords-slot > * {
+        grid-area: 1 / 1;
+    }
+
+    .pea-hover-coords-sizer {
+        visibility: hidden;
     }
     
     .pea-no-graphics-import-span {

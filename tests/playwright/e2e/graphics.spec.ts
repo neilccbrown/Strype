@@ -141,6 +141,31 @@ async function hoverProportionalPos(page: Page, x: number, y: number) : Promise<
 }
 
 test.describe("Test mouse hover coordinate display", () => {
+    // The coordinate label's space is always reserved, so that the tab headers beside it don't
+    // re-wrap (and jump around) depending on whether, and how wide, the coordinates currently are.
+    test("Check showing, changing and hiding the coordinates doesn't move the tab headers", async ({page}) => {
+        await page.click("#graphicsPEATab");
+        const coords = page.locator(".pea-hover-coords");
+        const slot = page.locator(".pea-hover-coords-slot");
+        async function layout() {
+            return {files: await page.locator("#filesPEATab").boundingBox(), slot: await slot.boundingBox()};
+        }
+        const before = await layout();
+        expect(before.slot?.width).toBeGreaterThan(0);
+
+        // Near the middle (short coords), then just inside the far bottom-left (wide coords, e.g. "(-383, -282)"),
+        // not exactly on the edge as that can legitimately give no reading:
+        for (const [x, y] of [[0.5, 0.5], [0.02, 0.98]] as [number, number][]) {
+            await hoverProportionalPos(page, x, y);
+            await expect(coords).toBeVisible();
+            expect(await layout()).toEqual(before);
+        }
+        // And with the mouse away again:
+        await page.mouse.move(0, 0);
+        await expect(coords).toHaveCount(0);
+        expect(await layout()).toEqual(before);
+    });
+
     // This display (the little "(x, y)" label next to the Run button) only shows while Python
     // is not executing, so there is no need to run any code for this test -- we just need the
     // graphics tab (and its canvas) to be showing.
