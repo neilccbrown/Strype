@@ -4,7 +4,7 @@ import {readFileSync, readdirSync} from "node:fs";
 import {join} from "node:path";
 import {setupStrypeTest} from "../support/general";
 
-// Every .spy file under public/book_projects and public/demos should be valid Python that
+// Every .spy file under the book volume folders (public/book_vol*) and public/demos should be valid Python that
 // round-trips cleanly through load-then-save: loading it in and saving straight back out
 // should reproduce the file byte-for-byte. If it doesn't, that's a sign the file itself
 // contains something Strype can't represent losslessly (e.g. a ___strype_blank placeholder
@@ -27,8 +27,19 @@ function findSpyFiles(dir: string): string[] {
     return result;
 }
 
+// The book projects live in one folder per volume (public/book_vol01, public/book_vol02, ...).  We look
+// for them rather than listing them, so a new volume is covered automatically:
+const bookVolumeDirs = readdirSync("public", {withFileTypes: true})
+    .filter((entry) => entry.isDirectory() && entry.name.startsWith("book_vol"))
+    .map((entry) => join("public", entry.name))
+    .sort();
+if (bookVolumeDirs.length == 0) {
+    // Fail loudly rather than quietly testing nothing if the folders are moved again:
+    throw new Error("Found no public/book_vol* folders to check");
+}
+
 const spyFiles = [
-    ...findSpyFiles("public/book_projects"),
+    ...bookVolumeDirs.flatMap((dir) => findSpyFiles(dir)),
     ...findSpyFiles("public/demos"),
 ];
 
