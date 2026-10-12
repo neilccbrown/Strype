@@ -19,7 +19,6 @@
                 <BTab :button-id="filesTabId" :title="'📁 '+$t('PEA.fileSystem')" title-link-class="pea-display-tab"></BTab>
             </BTabs>
             <div class="flex-padding"/>            
-            <span v-if="isGraphicsAreaShowing && !isPythonExecuting && mouseCoordsToShow" class="pea-hover-coords">{{mouseCoordsToShow}}</span>
             <div class="flex-padding"/>
             <button id="runButton" ref="runButton" class="pea-controls-button" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'" :class="{highlighted: highlightPythonRunningState}" :disabled="!isPythonWorkerReady">
                 <img v-if="!isPythonExecuting" :src="faviconURL" class="pea-play-img">
@@ -35,6 +34,10 @@
                     <pane :id="graphicsSplitPaneId" key="1" v-show="isGraphicsAreaShowing" :size="(isTabsLayout) ? 100 : currentSplitterPane1Size" min-size="5">
                         <div :id="graphicsContainerDivId" @wheel.stop :class="{'pea-graphics-container': true, hidden: graphicsTemporaryHidden}" @contextmenu="handleContextMenu">
                             <canvas id="pythonGraphicsCanvas" ref="pythonGraphicsCanvas" @mousedown.stop="graphicsCanvasMouseDown" @mouseup.stop="graphicsCanvasMouseUp" @mousemove="graphicsCanvasMouseMove" @mouseleave="graphicsCanvasMouseExit"></canvas>
+                            <!-- Sized to exactly cover the drawn world (see updateHoverCoordsDisplay()) so the label can sit in its corners -->
+                            <div v-if="isGraphicsAreaShowing && !isPythonExecuting && mouseCoordsToShow" class="pea-hover-coords-bounds" :style="hoverCoordsBoundsStyle">
+                                <span :class="{'pea-hover-coords': true, 'pea-hover-coords-top-right': hoverCoordsAtTopRight}">{{mouseCoordsToShow}}</span>
+                            </div>
                         </div>
                     </pane>
                     <pane key="2" v-show="isConsoleAreaShowing" :size="(isTabsLayout) ? 100 : (100 - currentSplitterPane1Size)" min-size="5" style="position: relative;">
@@ -104,7 +107,7 @@ import {isServiceWorkerChannelResponsive, PyodideErrorDetails, serviceWorkerRead
 import {SpriteHandle, SyncOrAsyncStrypePyodideWorkerRequest} from "@/stryperuntime/worker_bridge_type";
 import {SoundManager} from "@/stryperuntime/sound_manager";
 import {handleAsyncRequests, handleSyncRequests} from "@/stryperuntime/main_bridge_handler";
-import {getPythonClient, isPythonWorkerReady, renderer, serviceWorkerChannel, terminateAndRestartPyodide} from "@/stryperuntime/main_thread_python_handler";
+import {callTrackingProxyPorts, getPythonClient, isPythonWorkerReady, renderer, serviceWorkerChannel, terminateAndRestartPyodide} from "@/stryperuntime/main_thread_python_handler";
 import { TurtlePixiHandler } from "@/stryperuntime/turtle_pixi_handler";
 import {closeAudioContext, createOrGetAudioContext} from "@/helpers/audioContext";
 import {clearAllRuntimeErrors, computeFrameSnapshot} from "@/helpers/storeMethods";
@@ -120,6 +123,9 @@ const enum PEATabIndexes {graphics, console, files}
 let domContext : CanvasRenderingContext2D | null = null;
 let targetContext : OffscreenCanvasRenderingContext2D | null = null;
 let targetCanvas : OffscreenCanvas | null = null;
+// Incremented each time a run starts its redraw loop, so that the previous run's loop stops itself
+// (otherwise each run leaves behind a requestAnimationFrame loop that runs forever):
+let redrawLoopGeneration = 0;
 let mostRecentClickedItems : SpriteHandle[] = []; // All the items under the mouse cursor at last click
 let mostRecentClickDetails : { x: number, y: number, button: number, clickCount: number } | null = null; // x, y, button, click_count
 let mostRecentMouseDetails : {x: number, y: number, buttonsPressed: boolean[]} = {x:0, y:0, buttonsPressed: [false, false, false]}; // X, Y, three button states
@@ -259,6 +265,11 @@ export default defineComponent({
             frameContextMenuItems: [] as StrypeContextMenuItem[],
             showContextMenuAtCoordPos: {x: 0, y: 0} as CoordPosition,
             mouseCoordsToShow: undefined as string | undefined,
+            // Where the hover coordinates label is drawn: a box covering the drawn world, and whether
+            // the label is in its top-right corner (it normally sits bottom-left, but moves out of the
+            // way when the mouse is in the bottom-left region so it's never under the cursor):
+            hoverCoordsBoundsStyle: {} as {[prop: string]: string},
+            hoverCoordsAtTopRight: false,
             copyConsoleTextBtnClicked: false, // flag used for UI
             graphicsOverride: null as {background: OffscreenCanvas | HTMLImageElement, imageToShowCentered: OffscreenCanvas | HTMLImageElement} | null,
         };
@@ -674,16 +685,17 @@ export default defineComponent({
                 // Start the redraw loop:
                 // eslint-disable-next-line @typescript-eslint/no-this-alias
                 const t = this;
+                const myGeneration = ++redrawLoopGeneration;
                 function redraw() {
                     t.redrawCanvasIfNeeded();
-                    if (useStore().pythonExecRunningState != PythonExecRunningState.RunningAwaitingStop) {
+                    if (myGeneration == redrawLoopGeneration && useStore().pythonExecRunningState != PythonExecRunningState.RunningAwaitingStop) {
                         requestAnimationFrame(redraw);
                     }
                 }
                 requestAnimationFrame(redraw);
                 
                 this.libraries = parser.getLibraries();
-                const micropipLibraries = [];
+                const micropipLibraries : string[] = [];
                 const userLibraries = {} as {[url: string] : Record<string, string>};
                 for (const lib of this.libraries) {
                     if (lib.startsWith("micropip:")) {
@@ -796,7 +808,7 @@ export default defineComponent({
                 // this is cheap and idempotent when nothing has changed.
                 await client.workerProxy.restoreLocalFs(listEntriesForWorker());
 
-                (client.call(
+                (callTrackingProxyPorts(client, () => client.call(
                     client.workerProxy.executePython,
                     userCode,
                     micropipLibraries,
@@ -831,7 +843,7 @@ export default defineComponent({
                             });
                         }
                     }))
-                ) as Promise<PyodideErrorDetails | null>).then((possibleError) => {
+                )) as Promise<PyodideErrorDetails | null>).then((possibleError) => {
                     // If the user clicked Stop, runClicked() (below) has already set this to NotRunning
                     // *before* this callback fires (natural completion is the only other path, and that
                     // only sets NotRunning just below, i.e. after we've had a chance to check it here).
@@ -1284,10 +1296,29 @@ export default defineComponent({
                 mostRecentMouseDetails.x = clampedX;
                 mostRecentMouseDetails.y = clampedY;
                 this.mouseCoordsToShow = "(" + roundedX + ", " + roundedY + ")";
+                this.updateHoverCoordsDisplay(roundedX, roundedY);
             }
             else {
                 this.mouseCoordsToShow = undefined;
             }
+        },
+        // Positions the hover coordinates label over the drawn world (which is centred in the canvas and scaled
+        // to fit, so it doesn't necessarily fill it). The label is bottom-left, unless the mouse is in the
+        // bottom-left cell of a 4x4 grid over the world, in which case it moves to the top-right:
+        updateHoverCoordsDisplay(roundedX: number, roundedY: number) {
+            const domCanvas = this.$refs.pythonGraphicsCanvas as HTMLCanvasElement | undefined;
+            if (!domCanvas) {
+                return;
+            }
+            const scaledWidth = graphicsCanvasLogicalWidth * this.scaleToFit;
+            const scaledHeight = graphicsCanvasLogicalHeight * this.scaleToFit;
+            this.hoverCoordsBoundsStyle = {
+                left: (domCanvas.offsetLeft + (domCanvas.clientWidth - scaledWidth) / 2) + "px",
+                top: (domCanvas.offsetTop + (domCanvas.clientHeight - scaledHeight) / 2) + "px",
+                width: scaledWidth + "px",
+                height: scaledHeight + "px",
+            };
+            this.hoverCoordsAtTopRight = roundedX <= -graphicsCanvasLogicalWidth / 4 && roundedY <= -graphicsCanvasLogicalHeight / 4;
         },
         graphicsCanvasMouseExit(event: MouseEvent) {
             this.mouseCoordsToShow = undefined;
@@ -1714,9 +1745,28 @@ export default defineComponent({
         outline: none;
     }
     
+    // Covers the drawn world, ignoring the mouse so the canvas still gets all mouse events:
+    .pea-hover-coords-bounds {
+        position: absolute;
+        pointer-events: none;
+    }
+
+    // White text with a black outline so it's legible over any graphics:
     .pea-hover-coords {
-        font-size: 90%;
-        color: #333;
+        position: absolute;
+        left: 4px;
+        bottom: 2px;
+        font-size: 110%;
+        color: white;
+        text-shadow: -1px -1px 0 black, 1px -1px 0 black, -1px 1px 0 black, 1px 1px 0 black, 0 0 3px black;
+        white-space: nowrap;
+    }
+
+    .pea-hover-coords.pea-hover-coords-top-right {
+        left: auto;
+        bottom: auto;
+        right: 4px;
+        top: 2px;
     }
     
     .pea-no-graphics-import-span {

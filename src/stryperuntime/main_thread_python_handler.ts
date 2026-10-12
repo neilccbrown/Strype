@@ -47,6 +47,59 @@ interface PyodideSlot {
     // to a real 404 instead of being intercepted, which looks to the user like Run doing nothing.
     // Defaults to false (pessimistic) until the worker actively confirms otherwise:
     controlled: boolean;
+    // The main-thread ends of the MessageChannels Comlink creates for every function we pass to this
+    // slot's worker via Comlink.proxy() -- see trackProxyPorts() below. We have to close them ourselves
+    // when the worker is discarded; see disposeSlot():
+    proxyPorts: MessagePort[];
+}
+
+// Comlink creates a new MessageChannel for every function passed via Comlink.proxy() (including the
+// callbacks that comsync's PyodideClient.call() passes internally), keeps one end open on this thread
+// to serve calls from the worker, and only closes it when the worker side sends a release message.
+// When we terminate a worker that never happens, so each discarded worker leaves its ports open. Those
+// ports are never garbage collected, and (in Safari at least) each one adds to the cost of all later
+// MessagePort traffic, because the ports are managed by the network process: after N runs of a
+// program the (N+1)th run was markedly slower, and the network process's CPU use grew with N.
+// So we swap in Comlink's own "proxy" handler with a copy that records the port we keep, into
+// whichever slot's array is set in proxyPortSink at that moment:
+let proxyPortSink : MessagePort[] | null = null;
+const comlinkProxyHandler = Comlink.transferHandlers.get("proxy") as Comlink.TransferHandler<any, MessagePort>;
+Comlink.transferHandlers.set("proxy", {
+    canHandle: comlinkProxyHandler.canHandle,
+    deserialize: comlinkProxyHandler.deserialize,
+    serialize: (obj: any) => {
+        const {port1, port2} = new MessageChannel();
+        Comlink.expose(obj, port1);
+        proxyPortSink?.push(port1);
+        return [port2, [port2]];
+    },
+});
+
+// Runs fn, which must make any Comlink.proxy() calls synchronously (as PyodideClient.call() does, up until
+// its first await), recording the ports against the given slot:
+function withProxyPortsTrackedFor<T>(slot: PyodideSlot, fn: () => T) : T {
+    proxyPortSink = slot.proxyPorts;
+    try {
+        return fn();
+    }
+    finally {
+        proxyPortSink = null;
+    }
+}
+
+// Same as above, for code outside this file which only has the client (e.g. to call executePython):
+export function callTrackingProxyPorts<T>(client: PyodideClient<any>, fn: () => T) : T {
+    const slot = [activeSlot, spareSlot].find((s) => s?.client === client);
+    return slot != null ? withProxyPortsTrackedFor(slot, fn) : fn();
+}
+
+// Terminates the slot's worker and closes all the MessagePorts which were being used to talk to it:
+function disposeSlot(slot: PyodideSlot) : void {
+    slot.worker.terminate();
+    slot.updatePort.close();
+    for (const port of slot.proxyPorts.splice(0)) {
+        port.close();
+    }
 }
 
 // Only surfaces readiness once the slot has BOTH finished loading Pyodide AND confirmed it has a
@@ -81,6 +134,10 @@ async function triggerServiceWorkerReclaim() : Promise<void> {
 // so any tab left open longer than that can easily outlive a deploy). No amount of local retrying
 // fixes that; only reloading the page does, which is a separate piece of work:
 const maxActiveSlotLoadRetries = 3;
+// For logging only (see createPyodideSlot()): a running count of slots created, and how long after
+// creation a still-unusable slot gets a warning:
+let slotCounter = 0;
+const slotWatchdogMs = 30000;
 let activeSlotLoadRetriesUsed = 0;
 
 function createPyodideSlot() : PyodideSlot | null {
@@ -100,7 +157,18 @@ function createPyodideSlot() : PyodideSlot | null {
     worker.postMessage({updatePort: updateChannel.port1}, [updateChannel.port1]);
 
     const client = new PyodideClient(() => worker, serviceWorkerChannel);
-    const slot: PyodideSlot = {worker, client, updatePort: updateChannel.port2, ready: false, controlled: false};
+    const slot: PyodideSlot = {worker, client, updatePort: updateChannel.port2, ready: false, controlled: false, proxyPorts: []};
+    // Diagnostics for the Run button occasionally staying on "Initialising..." (seen in CI): log how
+    // long each slot takes to become ready, and warn if one is still not usable after a while, with
+    // which half (loaded vs controlled) is missing. Worker-side progress is relayed via "debugLog":
+    const slotId = `#${++slotCounter}`;
+    const slotCreatedAt = Date.now();
+    console.info(`[Pyodide slot ${slotId} ${new Date().toISOString()}] created (${activeSlot == null ? "will be the active slot" : "spare"})`);
+    setTimeout(() => {
+        if ((slot === activeSlot || slot === spareSlot) && !(slot.ready && slot.controlled)) {
+            console.warn(`[Pyodide slot ${slotId} ${new Date().toISOString()}] still not usable ${slotWatchdogMs / 1000}s after creation: ready=${slot.ready} controlled=${slot.controlled} isActive=${slot === activeSlot} activeSlotLoadRetriesUsed=${activeSlotLoadRetriesUsed}`);
+        }
+    }, slotWatchdogMs);
 
     // The worker reports its own navigator.serviceWorker.controller status (see
     // reportControllerStatus() in python-execution.ts), both once immediately on startup and
@@ -114,6 +182,9 @@ function createPyodideSlot() : PyodideSlot | null {
                 console.info(`[Pyodide slot controller ${new Date().toISOString()}] worker now reports controlled=${slot.controlled}`);
             }
             updateReadyFlag(slot);
+        }
+        else if (typeof e.data?.debugLog === "string") {
+            console.info(`[Pyodide worker ${slotId} ${new Date().toISOString()}] ${e.data.debugLog}`);
         }
         else if (e.data?.localFsChange != null && slot === activeSlot) {
             applyLiveChange(e.data.localFsChange.path, e.data.localFsChange.data);
@@ -138,7 +209,7 @@ function createPyodideSlot() : PyodideSlot | null {
             return;
         }
         console.error(`[Pyodide worker load failed ${new Date().toISOString()}] ${e.message || "unknown error"}`);
-        slot.worker.terminate();
+        disposeSlot(slot);
         if (slot === spareSlot) {
             // Just a background optimisation -- drop it and let the next maybeCreateSpareSlot()
             // call (made after every run stops, see terminateAndRestartPyodide() below) try again:
@@ -160,17 +231,18 @@ function createPyodideSlot() : PyodideSlot | null {
         }
     });
 
-    client.call(
+    withProxyPortsTrackedFor(slot, () => client.call(
         client.workerProxy.onReady,
         Comlink.proxy(() => {
             slot.ready = true;
+            console.info(`[Pyodide slot ${slotId} ${new Date().toISOString()}] Pyodide ready after ${Date.now() - slotCreatedAt}ms (controlled=${slot.controlled}, isActive=${slot === activeSlot})`);
             // A successful load is good evidence whatever was wrong (if anything) has cleared up:
             activeSlotLoadRetriesUsed = 0;
             // Only surface readiness if this slot is still the active one by the time it
             // finishes loading (it may instead be sitting in the background as the spare):
             updateReadyFlag(slot);
         })
-    );
+    ));
     return slot;
 }
 
@@ -278,7 +350,9 @@ export async function terminateAndRestartPyodide() : Promise<void> {
 
     // This is apparently instant on most browsers, so we can immediately assume Pyodide has
     // stopped; the interrupt above is what makes that assumption hold on WebKit too:
-    activeSlot?.worker.terminate();
+    if (activeSlot != null) {
+        disposeSlot(activeSlot);
+    }
 
     // If we already have a pre-warmed spare (ready or not -- even a still-loading spare is
     // further along than a brand new worker would be), swap straight to it so the next run

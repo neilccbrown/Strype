@@ -2,6 +2,7 @@
     <div class="frame-numbers-gutter" v-if="isGutterMode">
         <span
             v-for="frameId in numberedFrameIds"
+            v-show="offsets[frameId] !== undefined"
             :key="frameId"
             :class="{'frame-number-gutter-item': true, 'frame-number-selected': appStore.isFrameSelected(frameId)}"
             :style="{top: (offsets[frameId] ?? 0) + 'px'}"

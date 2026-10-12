@@ -135,7 +135,7 @@ import {Splitpanes, Pane} from "splitpanes";
 import { useStore, settingsStore, getEditorTabId } from "@/store/store";
 import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, FrozenState, MediaSlot, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, RecordNewImageInDialogFunction, RecordNewSoundInDialogFunction, OpenColourPickerInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition, CollapsedState, LoadRequestReason, StateAppObject, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders } from "@/types/types";
 import { CloudDriveAPIState, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
-import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getFocusedEditableSlotTextSelectionStartEnd, getSelectionCursorsComparisonValue, bumpCaretRequestSeq, getCaretRequestSeq, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getActiveContextMenu, actOnGraphicsImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames, getFrameHeaderUID, closeRenameIdentifierPopups, newStrypeProject } from "./helpers/editor";
+import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getFocusedEditableSlotTextSelectionStartEnd, getSelectionCursorsComparisonValue, bumpCaretRequestSeq, getCaretRequestSeq, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getActiveContextMenu, actOnGraphicsImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, isCaretContainerFocusInputElement, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames, getFrameHeaderUID, closeRenameIdentifierPopups, newStrypeProject } from "./helpers/editor";
 import { AllFrameTypesIdentifier} from "@/types/types";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import { debounceComputeAddFrameCommandContainerSize, getPEATabContentContainerDivId, getPEAComponentRefId } from "@/helpers/editor";
@@ -1366,6 +1366,19 @@ export default defineComponent({
             // When the selection has changed, we update the cursor infos in the store.
             const docSelection = document.getSelection();
             if(docSelection){
+                // Focusing a frame cursor's invisible paste-focus <input> (see CaretContainer.vue,
+                // focusCaretContainerInput() in editor.ts) makes Chromium/Firefox asynchronously manufacture
+                // a phantom, zero-length Selection collapsed on the caret container div -- a browser quirk
+                // when giving focus to a form control nested in an otherwise non-editable div. It fires here
+                // as its own selectionchange event *after* focusCaretContainerInput() has already cleared
+                // the selection once, so it must be discarded again, here, rather than mistaken for the user
+                // having selected text in a slot (which would otherwise show a phantom text cursor alongside
+                // the very real frame cursor).
+                const activeElement = document.activeElement as HTMLElement | null;
+                if(activeElement && isCaretContainerFocusInputElement(activeElement.id)){
+                    docSelection.removeAllRanges();
+                    return;
+                }
                 // If we have an application overlay (masking the UI) we shouldn't do anything
                 if(docSelection.anchorNode?.nodeName == "DIV" && (docSelection.anchorNode as HTMLDivElement).className.includes("app-overlay-pane")){
                     return;

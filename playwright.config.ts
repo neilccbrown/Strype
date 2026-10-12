@@ -20,6 +20,11 @@ const excludeSpecFilter = process.env.EXCLUDE_SPEC;
 // project below, not under the plain chromium/firefox/webkit projects:
 const mediaRecordingSpecPattern = "**/media-recording.spec.ts";
 const excludeMediaRecordingSpec = [...(excludeSpecFilter ? excludeSpecFilter.split(",") : []), mediaRecordingSpecPattern];
+// The media-recording project sets its own testMatch (which overrides the top-level one), so it has to
+// honour SPEC/EXCLUDE_SPEC itself: it only runs if no SPEC is given or SPEC names media-recording.spec.ts,
+// and not if EXCLUDE_SPEC names it. (An empty testMatch list matches nothing.)
+const mediaRecordingTestMatch = (specFilter ? specFilter.split(",").filter((spec) => spec.includes("media-recording.spec")) : [mediaRecordingSpecPattern])
+    .filter((spec) => !(excludeSpecFilter ?? "").split(",").includes(spec));
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
@@ -101,7 +106,7 @@ export default defineConfig({
         // has no UI to click in a headless/CI context).
         {
             name: "chromium-media-recording",
-            testMatch: [mediaRecordingSpecPattern],
+            testMatch: mediaRecordingTestMatch,
             use: { ...devices["Desktop Chrome"], contextOptions: {
                 permissions: ["camera", "microphone"],
             },

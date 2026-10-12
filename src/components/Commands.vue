@@ -1012,7 +1012,7 @@ export default defineComponent({
                 // resolves (e.g. autocomplete-related focus shifts can already be underway), so we
                 // address it directly by the frame ID addFrameWithCommand() just gave us.
                 const nameSlotUID = getLabelSlotUID({frameId: newFrameId, labelSlotsIndex: 0, slotId: "0", slotType: SlotType.code});
-                document.getElementById(nameSlotUID)?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: {type: "text", content: typedChar}}));
+                document.getElementById(nameSlotUID)?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: {type: "text", content: typedChar, skipStateSave: true}}));
             });
         },
 
