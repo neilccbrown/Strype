@@ -2,6 +2,14 @@ import path from "path";
 import { strypeElIds } from "./standard-setup";
 // imports the locale files we need for the locales used by this test
 import en from "@/localisation/en/en_main.json";
+import {ARROWS_DEFS_TO_MAIN, ARROWS_MAIN_TO_DEFS, arrowsUpFromMain} from "../../shared/main-heading-focus";
+
+// Key sequences for crossing the "My code" heading, to use in cy.type() strings instead of hard-coded
+// {uparrow}/{downarrow} counts (see tests/shared/main-heading-focus.ts):
+export const DOWN_DEFS_TO_MAIN = "{downarrow}".repeat(ARROWS_DEFS_TO_MAIN);
+export const UP_MAIN_TO_DEFS = "{uparrow}".repeat(ARROWS_MAIN_TO_DEFS);
+// From the top of Main up through the given number of (empty) sections: 1 = Definitions, 2 = Imports
+export const upFromMain = (sectionsUp: number): string => "{uparrow}".repeat(arrowsUpFromMain(sectionsUp));
 
 export function cleanFromHTML(html: string) : string {
     // Get rid of the zero-width spaces which occur in the HTML:
@@ -145,7 +153,7 @@ export function focusEditorAndClear(): void {
         cy.get("body").type("{downarrow}");
         waitForEditorSettled();
         deleteFramesUpTo("#frameContainer_-2");
-        cy.get("body").type("{downarrow}");
+        cy.get("body").type(DOWN_DEFS_TO_MAIN);
         waitForEditorSettled();
         deleteFramesUpTo("#frameContainer_-3");
     });
