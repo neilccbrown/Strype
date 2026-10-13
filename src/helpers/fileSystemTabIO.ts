@@ -90,10 +90,12 @@ export async function readFsFileBytes(node: FsTreeNode, root: FsRoot): Promise<U
         return localFsCache.readFile(node.path);
     }
     if (root === "/cloud") {
-        if (node.cloudFileId == null || node.size == null) {
+        if (node.cloudFileId == null) {
             return undefined;
         }
-        return await cloudReadFile({cloudFileId: node.cloudFileId}, 0, node.size, node.path);
+        // Read the whole file: the listed size can't be trusted to be accurate (or even present),
+        // and a size of 0 would otherwise silently yield an empty file.
+        return await cloudReadFile({cloudFileId: node.cloudFileId}, 0, Number.MAX_SAFE_INTEGER, node.path);
     }
 
     const client = getPythonClient();

@@ -189,12 +189,14 @@ export function trackUsedDemo(demoName: string, source: string): void {
     enqueueAnalyticsEvent("demo_used", {demoName: cleanDemoName, source});
 }
 
-export function trackUsedBookProject(projectName: string, chapter: string): void {
+// path is the chapter's path, e.g. "book_vol01/chapter07"; chapter is only its display name (e.g. "Chapter 7"),
+// which on its own is ambiguous between volumes. Events from before path was added don't have it.
+export function trackUsedBookProject(projectName: string, chapter: string, path: string): void {
     const cleanName = projectName.trim();
     if (cleanName.length === 0) {
         return;
     }
-    enqueueAnalyticsEvent("book_project_used", {projectName: cleanName, chapter});
+    enqueueAnalyticsEvent("book_project_used", {projectName: cleanName, chapter, path});
 }
 
 // How a frame was inserted: an explicit shortcut/command choice -- either "shortcut_key" (a direct
@@ -218,15 +220,15 @@ export function trackFrameConvert(toType: string): void {
 }
 
 export function trackStorageLocation(target: StrypeSyncTarget): void {
-    let storageLocation: "local" | "cloud" | null = null;
+    // For cloud saves, cloudProvider says which cloud (so new clouds only need a new case here).
+    // storageLocation is kept as the coarse local/cloud split for compatibility with existing data.
     if (target == StrypeSyncTarget.fs) {
-        storageLocation = "local";
+        enqueueAnalyticsEvent("save", {storageLocation: "local"});
     }
-    else if (target == StrypeSyncTarget.gd || target == StrypeSyncTarget.od) {
-        storageLocation = "cloud";
+    else if (target == StrypeSyncTarget.gd) {
+        enqueueAnalyticsEvent("save", {storageLocation: "cloud", cloudProvider: "google_drive"});
     }
-    if (storageLocation == null) {
-        return;
+    else if (target == StrypeSyncTarget.od) {
+        enqueueAnalyticsEvent("save", {storageLocation: "cloud", cloudProvider: "onedrive"});
     }
-    enqueueAnalyticsEvent("save", {storageLocation});
 }
