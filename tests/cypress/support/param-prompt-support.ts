@@ -1,6 +1,6 @@
 
 
-import {cleanFromHTML, clearDefaultImports, DOWN_IMPORTS_TO_MAIN, UP_MAIN_TO_DEFS, waitForEditorSettled} from "./test-support";
+import {cleanFromHTML, clearDefaultImports, DOWN_DEFS_TO_MAIN, DOWN_IMPORTS_TO_MAIN, UP_MAIN_TO_DEFS, waitForEditorSettled} from "./test-support";
 import {Signature, SignatureArg} from "@tigerpython/tpparser";
 import { scssVars, standardBeforeEach, strypeElIds } from "./standard-setup";
 
@@ -123,7 +123,7 @@ export function testRawFuncs(rawFuncs: [string | [string, string] | {class?: str
                     ? ` c${(rawFunc[0] as any)?.class}{rightarrow}{rightarrow}`
                     : "";
                 funcs.push({
-                    keyboardTypingToImport: UP_MAIN_TO_DEFS + classTypePreamble + " f" + (rawFunc[0] as any)?.udf + (isTestingFunctionInClass ? "{downarrow}" : "{downarrow}{downarrow}"),
+                    keyboardTypingToImport: UP_MAIN_TO_DEFS + classTypePreamble + " f" + (rawFunc[0] as any)?.udf + (isTestingFunctionInClass ? "{downarrow}" : "{downarrow}" + DOWN_DEFS_TO_MAIN),
                     funcName: rawFunc[1],
                     params: params,
                     acSection: (isTestingFunctionInClass) ? "self" : "My functions",
