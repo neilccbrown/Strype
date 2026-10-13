@@ -27,6 +27,11 @@ test.describe("Testing section", () => {
         const consoleLoc = page.locator("#peaConsole");
         await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toContain("1 passed, 0 failed");
         await checkFrameErrorCount(page, 0);
+
+        // A second run clears the console first, as a normal Run does, rather than appending:
+        await expect(runTestsButton).toBeEnabled({timeout: 120000});
+        await runTestsButton.click();
+        await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toMatch(/^Running tests\.\.\.\n1 passed, 0 failed\n$/);
     });
 
     test("Running tests reports a failure and highlights the offending frame, without affecting normal Run", async ({page}) => {

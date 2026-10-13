@@ -971,7 +971,8 @@ export default defineComponent({
             }
 
             useStore().pythonExecRunningState = PythonExecRunningState.Running;
-            pythonConsole.value += "\nRunning tests...\n";
+            // Clear the console first, as a normal Run does:
+            pythonConsole.value = "Running tests...\n";
             this.switchToConsoleTab("always");
 
             // As for a normal Run: refresh the worker's "/local" from the cache first (so files added via the
