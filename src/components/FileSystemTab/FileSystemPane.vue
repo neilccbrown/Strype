@@ -45,6 +45,7 @@
                 <h4>{{ $t("fileSystemTab.cloud") }}</h4>
                 <FileSystemTree
                     :node="cloudRoot"
+                    label-override="/cloud/"
                     start-expanded
                     allow-upload
                     :executing="isPythonExecuting"
