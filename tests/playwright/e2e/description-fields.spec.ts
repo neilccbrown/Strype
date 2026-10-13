@@ -3,6 +3,7 @@ import {checkFrameXorTextCursor, doTextHomeEndKeyPress, getDefaultStrypeProjectI
 import {readFileSync} from "node:fs";
 import {loadContent, save, testPlaywrightRoundTripImportAndDownload} from "../support/loading-saving";
 import { setupStrypeTest } from "../support/general";
+import {ARROWS_MAIN_TO_DEFS} from "../../shared/main-heading-focus";
 
 const defaultStandardStrypeProjectDocLiteralWithDotSpace = "This is the default Strype starter project. ";
 const defaultStrypeProjectImportsLiteral = getDefaultStrypeProjectImportsFullLine();
@@ -235,12 +236,11 @@ print(myString)
             await page.keyboard.press("ArrowDown");
             await page.waitForTimeout(300);
         }
-        await page.keyboard.press("ArrowUp");
-        await page.waitForTimeout(300);
-        await page.keyboard.press("ArrowUp");
-        await page.waitForTimeout(300);
-        await page.keyboard.press("ArrowUp");
-        await page.waitForTimeout(300);
+        // Two ups to reach the top of Main, then the third (or more, if the My code heading takes focus) crosses into the end of Definitions:
+        for (let i = 0; i < 2 + ARROWS_MAIN_TO_DEFS; i++) {
+            await page.keyboard.press("ArrowUp");
+            await page.waitForTimeout(300);
+        }
         await page.keyboard.press(process.platform == "darwin" ? "Alt+ArrowUp" : "Control+ArrowUp");
         await page.waitForTimeout(300);
         // Then go into function, type "a" before header, down three times which should take us to before seven, and type "b"
@@ -266,8 +266,8 @@ print(myString)
             await page.keyboard.press("ArrowDown");
             await page.waitForTimeout(300);
         }
-        // Get us beneath function header:
-        for (let i = 0; i < 5; i++) {
+        // Get us beneath function header (4 ups within Main and Definitions, plus the crossing of the My code heading):
+        for (let i = 0; i < 4 + ARROWS_MAIN_TO_DEFS; i++) {
             await page.keyboard.press("ArrowUp");
             await page.waitForTimeout(300);
         }

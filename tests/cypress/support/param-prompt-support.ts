@@ -1,6 +1,6 @@
 
 
-import {cleanFromHTML, clearDefaultImports, waitForEditorSettled} from "./test-support";
+import {cleanFromHTML, clearDefaultImports, DOWN_IMPORTS_TO_MAIN, UP_MAIN_TO_DEFS, waitForEditorSettled} from "./test-support";
 import {Signature, SignatureArg} from "@tigerpython/tpparser";
 import { scssVars, standardBeforeEach, strypeElIds } from "./standard-setup";
 
@@ -123,7 +123,7 @@ export function testRawFuncs(rawFuncs: [string | [string, string] | {class?: str
                     ? ` c${(rawFunc[0] as any)?.class}{rightarrow}{rightarrow}`
                     : "";
                 funcs.push({
-                    keyboardTypingToImport: "{uparrow}" + classTypePreamble + " f" + (rawFunc[0] as any)?.udf + (isTestingFunctionInClass ? "{downarrow}" : "{downarrow}{downarrow}"),
+                    keyboardTypingToImport: UP_MAIN_TO_DEFS + classTypePreamble + " f" + (rawFunc[0] as any)?.udf + (isTestingFunctionInClass ? "{downarrow}" : "{downarrow}{downarrow}"),
                     funcName: rawFunc[1],
                     params: params,
                     acSection: (isTestingFunctionInClass) ? "self" : "My functions",
@@ -149,7 +149,7 @@ export function testRawFuncs(rawFuncs: [string | [string, string] | {class?: str
             // The "import module" frame:
             if (!skipFullyQualifiedVersion) {
                 funcs.push({
-                    keyboardTypingToImport: "{uparrow}{uparrow}" + libraryTyping + " i" + module + "{rightarrow}{downarrow}{downarrow}",
+                    keyboardTypingToImport: "{uparrow}{uparrow}" + libraryTyping + " i" + module + "{rightarrow}" + DOWN_IMPORTS_TO_MAIN,
                     funcName: module + "." + rawFunc[1],
                     params: params,
                     acSection: module,
@@ -159,7 +159,7 @@ export function testRawFuncs(rawFuncs: [string | [string, string] | {class?: str
             }
             // The "from module import *" frame:
             funcs.push({
-                keyboardTypingToImport: "{uparrow}{uparrow}" + libraryTyping + " f" + module + "{rightarrow}*{rightarrow}{downarrow}{downarrow}",
+                keyboardTypingToImport: "{uparrow}{uparrow}" + libraryTyping + " f" + module + "{rightarrow}*{rightarrow}" + DOWN_IMPORTS_TO_MAIN,
                 funcName: rawFunc[1],
                 params: params,
                 acSection: module,
@@ -169,7 +169,7 @@ export function testRawFuncs(rawFuncs: [string | [string, string] | {class?: str
             // The "from module import funcName" frame:
             // Note that if funcName has a dot, we need to only use the part before the dot or opening bracket:
             funcs.push({
-                keyboardTypingToImport: "{uparrow}{uparrow}" + libraryTyping + " f" + module + "{rightarrow}" + (rawFunc[1].match(/^[A-Za-z0-9_]+/)?.[0] ?? rawFunc[1]) + "{rightarrow}{downarrow}{downarrow}",
+                keyboardTypingToImport: "{uparrow}{uparrow}" + libraryTyping + " f" + module + "{rightarrow}" + (rawFunc[1].match(/^[A-Za-z0-9_]+/)?.[0] ?? rawFunc[1]) + "{rightarrow}" + DOWN_IMPORTS_TO_MAIN,
                 funcName: rawFunc[1],
                 params: params,
                 acName: rawFunc[1],

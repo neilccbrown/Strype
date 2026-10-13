@@ -268,7 +268,8 @@ export default defineComponent({
             if (this.isFocusedForPaste) {
                 // Disable the browser's default paste handler. We handle the paste event below.
                 event.preventDefault();
-                let pasteDestination = {id: this.frameId, caretPosition: this.caretAssignedPosition};
+                // The "My code" heading's cursor pastes exactly like the cursor at the top of My code (its body):
+                let pasteDestination: {id: number, caretPosition: CaretPosition} = {id: this.frameId, caretPosition: (this.caretAssignedPosition == CaretPosition.header) ? CaretPosition.body : this.caretAssignedPosition};
                 const stateBeforeChanges = cloneDeep(this.appStore.$state);
                 let hasRemovedFrameSelection = false;
                 // If we currently have a selection of frames, the pasted frame should replace the selection, so we delete that selection.
@@ -395,7 +396,7 @@ export default defineComponent({
             // by any other mean which caret is the one the user clicked on.
             const currentShownContextMenuUID: string = this.appStore.contextMenuShownId;
             if(currentShownContextMenuUID === this.UID){
-                navigator.clipboard.readText().then((text) => pasteMixedPython(text, {id: this.frameId, caretPosition: this.caretAssignedPosition}));
+                navigator.clipboard.readText().then((text) => pasteMixedPython(text, {id: this.frameId, caretPosition: (this.caretAssignedPosition == CaretPosition.header) ? CaretPosition.body : this.caretAssignedPosition}));
             }
         },
     
