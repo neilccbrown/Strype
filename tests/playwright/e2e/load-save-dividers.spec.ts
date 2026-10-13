@@ -41,9 +41,6 @@ ${getDefaultStrypeProjectImportsFullLine()}#(=> Section:Definitions
 #(=> Section:Main
 myString  = "Hello from Strype" 
 print(myString) 
-#(=> Section:Testing
-def test_main ( ) :
-    pass
 #(=> Section:End
 `.trimStart().split(/\r?\n/));
 }

@@ -20,18 +20,18 @@ test.describe("Testing section", () => {
         await expect(testsContainer.locator(".container-frames")).toBeVisible();
     });
 
-    test("The default project's test_main passes", async ({page}) => {
+    test("A project with no tests reports that, and each run clears the console first", async ({page}) => {
         const runTestsButton = page.locator("#runTestsButton");
         await expect(runTestsButton).toBeEnabled({timeout: 120000});
         await runTestsButton.click();
         const consoleLoc = page.locator("#peaConsole");
-        await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toContain("1 passed, 0 failed");
+        await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toMatch(/^Running tests\.\.\.\nNo tests found in the Testing section\.\n$/);
         await checkFrameErrorCount(page, 0);
 
         // A second run clears the console first, as a normal Run does, rather than appending:
         await expect(runTestsButton).toBeEnabled({timeout: 120000});
         await runTestsButton.click();
-        await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toMatch(/^Running tests\.\.\.\n1 passed, 0 failed\n$/);
+        await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toMatch(/^Running tests\.\.\.\nNo tests found in the Testing section\.\n$/);
     });
 
     test("Running tests reports a failure and highlights the offending frame, without affecting normal Run", async ({page}) => {
@@ -74,7 +74,7 @@ test.describe("Testing section", () => {
         await runTestsButton.click();
 
         const consoleLoc = page.locator("#peaConsole");
-        await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toContain("1 passed, 1 failed");
+        await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toContain("0 passed, 1 failed");
         const consoleContent = await consoleLoc.inputValue();
         expect(consoleContent).toContain("FAILED test_strype_user_tests.py::test_fail");
         expect(consoleContent).toContain("ValueError: invalid literal for int()");
@@ -105,13 +105,8 @@ test.describe("Testing section", () => {
     test("Test function shortcut prefills test_ and test functions are shaded light brown", async ({page}) => {
         await page.locator("#frameContainer_-4 .frame-container-btn-collapse").click();
         await waitForEditorSettled(page);
-        // The default project has test_main (frame 5) in the section; clicking just inside the bottom
-        // edge of that frame puts the frame caret below it (still in the Testing section):
-        const testMainBox = await page.locator("#frame_id_5").boundingBox();
-        if (!testMainBox) {
-            throw new Error("test_main frame has no bounding box");
-        }
-        await page.mouse.click(testMainBox.x + 3, testMainBox.y + testMainBox.height - 2);
+        // Clicking into the (empty) expanded section puts the frame caret in it:
+        await page.locator("#frameContainer_-4 .container-frames").click();
         await waitForEditorSettled(page);
 
         // The shortcut creates a function definition named "test_" with the text cursor at the end of the name:
@@ -120,8 +115,8 @@ test.describe("Testing section", () => {
         await page.keyboard.type("works");
         await waitForEditorSettled(page);
         const allFuncDefs = page.locator("#frameContainer_-4 .frame-div[data-frameType='funcdef']");
-        await expect(allFuncDefs).toHaveCount(2);
-        const funcDefFrame = allFuncDefs.nth(1);
+        await expect(allFuncDefs).toHaveCount(1);
+        const funcDefFrame = allFuncDefs.first();
         await expect(funcDefFrame.locator(".label-slot-input").first()).toHaveText("test_works");
         await expect(funcDefFrame).toHaveCSS("background-color", "rgb(230, 210, 181)");
 
@@ -133,9 +128,8 @@ test.describe("Testing section", () => {
         await expect(funcDefFrame).not.toHaveCSS("background-color", "rgb(230, 210, 181)");
     });
 
-    test("Assert frame is only available in the Testing section", async ({page}) => {
+    test("Assert frame is available at the top level of the Testing section, but not in other sections", async ({page}) => {
         const assertFrames = page.locator(".frame-div[data-frameType='assert']");
-        // The default project's test_main is empty:
         await expect(assertFrames).toHaveCount(0);
 
         // Not in My code (the default caret):
@@ -145,21 +139,21 @@ test.describe("Testing section", () => {
 
         await page.locator("#frameContainer_-4 .frame-container-btn-collapse").click();
         await waitForEditorSettled(page);
-        const testMainBox = await page.locator("#frame_id_5").boundingBox();
-        if (!testMainBox) {
-            throw new Error("test_main frame has no bounding box");
-        }
-        await page.mouse.click(testMainBox.x + 3, testMainBox.y + testMainBox.height - 2);
+        await page.locator("#frameContainer_-4 .container-frames").click();
         await waitForEditorSettled(page);
 
-        // Available at the top level of the Testing section too (outside any function)...
+        // But available in the Testing section, even outside any function:
         await pressFrameShortcut(page, "k");
         await waitForEditorSettled(page);
         await expect(assertFrames).toHaveCount(1);
-        await page.keyboard.type("True");
+        await expect(page.locator("#frameContainer_-4 .frame-div[data-frameType='assert']")).toHaveCount(1);
+    });
+
+    test("Assert frame can be used inside a test function", async ({page}) => {
+        const assertFrames = page.locator(".frame-div[data-frameType='assert']");
+        await page.locator("#frameContainer_-4 .frame-container-btn-collapse").click();
         await waitForEditorSettled(page);
-        // ...and, below, inside a new test function's body (first leave this assert's caret by clicking below test_main again):
-        await page.mouse.click(testMainBox.x + 3, testMainBox.y + testMainBox.height - 2);
+        await page.locator("#frameContainer_-4 .container-frames").click();
         await waitForEditorSettled(page);
         await pressFrameShortcut(page, "s");
         await waitForEditorSettled(page);
@@ -173,24 +167,20 @@ test.describe("Testing section", () => {
         await waitForEditorSettled(page);
         await page.keyboard.type("1 > 2");
         await waitForEditorSettled(page);
-        await expect(assertFrames).toHaveCount(2);
+        await expect(assertFrames).toHaveCount(1);
 
         const runTestsButton = page.locator("#runTestsButton");
         await expect(runTestsButton).toBeEnabled({timeout: 120000});
         await runTestsButton.click();
         const consoleLoc = page.locator("#peaConsole");
-        await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toContain("1 passed, 1 failed");
+        await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toContain("0 passed, 1 failed");
         expect(await consoleLoc.inputValue()).toContain("FAILED test_strype_user_tests.py::test_fails");
     });
 
     test("Main code's top-level variables are not visible to the tests", async ({page}) => {
         await page.locator("#frameContainer_-4 .frame-container-btn-collapse").click();
         await waitForEditorSettled(page);
-        const testMainBox = await page.locator("#frame_id_5").boundingBox();
-        if (!testMainBox) {
-            throw new Error("test_main frame has no bounding box");
-        }
-        await page.mouse.click(testMainBox.x + 3, testMainBox.y + testMainBox.height - 2);
+        await page.locator("#frameContainer_-4 .container-frames").click();
         await waitForEditorSettled(page);
         await pressFrameShortcut(page, "s");
         await waitForEditorSettled(page);
@@ -210,18 +200,14 @@ test.describe("Testing section", () => {
         await expect(runTestsButton).toBeEnabled({timeout: 120000});
         await runTestsButton.click();
         const consoleLoc = page.locator("#peaConsole");
-        await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toContain("1 passed, 1 failed");
+        await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toContain("0 passed, 1 failed");
         expect(await consoleLoc.inputValue()).toContain("NameError");
     });
 
     test("Tests can read files from the assets file system", async ({page}) => {
         await page.locator("#frameContainer_-4 .frame-container-btn-collapse").click();
         await waitForEditorSettled(page);
-        const testMainBox = await page.locator("#frame_id_5").boundingBox();
-        if (!testMainBox) {
-            throw new Error("test_main frame has no bounding box");
-        }
-        await page.mouse.click(testMainBox.x + 3, testMainBox.y + testMainBox.height - 2);
+        await page.locator("#frameContainer_-4 .container-frames").click();
         await waitForEditorSettled(page);
         await pressFrameShortcut(page, "s");
         await waitForEditorSettled(page);
@@ -243,7 +229,7 @@ test.describe("Testing section", () => {
         await runTestsButton.click();
         const consoleLoc = page.locator("#peaConsole");
         await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toContain("passed");
-        expect(await consoleLoc.inputValue()).toContain("2 passed, 0 failed");
+        expect(await consoleLoc.inputValue()).toContain("1 passed, 0 failed");
     });
 
     test("Tests can call functions defined in the Definitions section", async ({page}) => {
@@ -267,11 +253,7 @@ test.describe("Testing section", () => {
         // Then a test that calls it (an unimported name would be a NameError):
         await page.locator("#frameContainer_-4 .frame-container-btn-collapse").click();
         await waitForEditorSettled(page);
-        const testMainBox = await page.locator("#frame_id_5").boundingBox();
-        if (!testMainBox) {
-            throw new Error("test_main frame has no bounding box");
-        }
-        await page.mouse.click(testMainBox.x + 3, testMainBox.y + testMainBox.height - 2);
+        await page.locator("#frameContainer_-4 .container-frames").click();
         await waitForEditorSettled(page);
         await pressFrameShortcut(page, "s");
         await waitForEditorSettled(page);
@@ -291,15 +273,13 @@ test.describe("Testing section", () => {
         await runTestsButton.click();
         const consoleLoc = page.locator("#peaConsole");
         await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toContain("passed");
-        expect(await consoleLoc.inputValue()).toContain("2 passed, 0 failed");
+        expect(await consoleLoc.inputValue()).toContain("1 passed, 0 failed");
     });
 
     test("Test function shortcut is not available outside the Testing section", async ({page}) => {
-        // The default caret is in My code; "s" must not create a function definition there (the only
-        // one in the project is the default test_main in the Testing section):
+        // The default caret is in My code; "s" must not create a function definition there:
         await pressFrameShortcut(page, "s");
         await waitForEditorSettled(page);
-        await expect(page.locator(".frame-div[data-frameType='funcdef']")).toHaveCount(1);
-        await expect(page.locator("#frameContainer_-3 .frame-div[data-frameType='funcdef']")).toHaveCount(0);
+        await expect(page.locator(".frame-div[data-frameType='funcdef']")).toHaveCount(0);
     });
 });

@@ -73,7 +73,7 @@ const initialPythonState: EditorFrameObjects = {
         isSelected: false,
         isVisible: true,
         parentId: 0,
-        childrenIds: [5],
+        childrenIds: [],
         jointParentId: 0,
         jointFrameIds: [],
         labelSlotsDict: {},
@@ -140,23 +140,6 @@ const initialPythonState: EditorFrameObjects = {
         jointParentId: 0,
         jointFrameIds: [],
         labelSlotsDict: {0: {slotStructures: {operators: [{code: ""}, {code: ""}], fields: [{code: "print"}, {openingBracketValue: "(", fields:[{code: "myString"}], operators: []}, {code: ""}]}}},
-        caretVisibility: CaretPosition.none,
-    },
-
-    5: {
-        frameType: getFrameDefType(AllFrameTypesIdentifier.funcdef),
-        id: 5,
-        isDisabled: false,
-        isSelected: false,
-        isVisible: true,
-        parentId: -4,
-        childrenIds: [],
-        jointParentId: 0,
-        jointFrameIds: [],
-        labelSlotsDict: {
-            0: {slotStructures: {operators: [], fields: [{code: "test_main"}]}},
-            1: {slotStructures: {operators: [], fields: [{code: ""}]}},
-            3: {slotStructures: {operators: [], fields: [{code: ""}]}}},
         caretVisibility: CaretPosition.none,
     },
 
