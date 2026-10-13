@@ -135,13 +135,13 @@ test.describe("Testing section", () => {
 
     test("Assert frame is only available in the Testing section", async ({page}) => {
         const assertFrames = page.locator(".frame-div[data-frameType='assert']");
-        // The default project's test_main already has one:
-        await expect(assertFrames).toHaveCount(1);
+        // The default project's test_main is empty:
+        await expect(assertFrames).toHaveCount(0);
 
         // Not in My code (the default caret):
         await pressFrameShortcut(page, "k");
         await waitForEditorSettled(page);
-        await expect(assertFrames).toHaveCount(1);
+        await expect(assertFrames).toHaveCount(0);
 
         await page.locator("#frameContainer_-4 .frame-container-btn-collapse").click();
         await waitForEditorSettled(page);
@@ -155,7 +155,7 @@ test.describe("Testing section", () => {
         // Available at the top level of the Testing section too (outside any function)...
         await pressFrameShortcut(page, "k");
         await waitForEditorSettled(page);
-        await expect(assertFrames).toHaveCount(2);
+        await expect(assertFrames).toHaveCount(1);
         await page.keyboard.type("True");
         await waitForEditorSettled(page);
         // ...and, below, inside a new test function's body (first leave this assert's caret by clicking below test_main again):
@@ -173,7 +173,7 @@ test.describe("Testing section", () => {
         await waitForEditorSettled(page);
         await page.keyboard.type("1 > 2");
         await waitForEditorSettled(page);
-        await expect(assertFrames).toHaveCount(3);
+        await expect(assertFrames).toHaveCount(2);
 
         const runTestsButton = page.locator("#runTestsButton");
         await expect(runTestsButton).toBeEnabled({timeout: 120000});

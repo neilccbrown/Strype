@@ -43,7 +43,7 @@ myString  = "Hello from Strype"
 print(myString) 
 #(=> Section:Testing
 def test_main ( ) :
-    assert 1 > 0 
+    pass
 #(=> Section:End
 `.trimStart().split(/\r?\n/));
 }

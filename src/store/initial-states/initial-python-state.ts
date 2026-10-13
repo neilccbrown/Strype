@@ -150,27 +150,13 @@ const initialPythonState: EditorFrameObjects = {
         isSelected: false,
         isVisible: true,
         parentId: -4,
-        childrenIds: [6],
+        childrenIds: [],
         jointParentId: 0,
         jointFrameIds: [],
         labelSlotsDict: {
             0: {slotStructures: {operators: [], fields: [{code: "test_main"}]}},
             1: {slotStructures: {operators: [], fields: [{code: ""}]}},
             3: {slotStructures: {operators: [], fields: [{code: ""}]}}},
-        caretVisibility: CaretPosition.none,
-    },
-
-    6: {
-        frameType: getFrameDefType(AllFrameTypesIdentifier.assert),
-        id: 6,
-        isDisabled: false,
-        isSelected: false,
-        isVisible: true,
-        parentId: 5,
-        childrenIds: [],
-        jointParentId: 0,
-        jointFrameIds: [],
-        labelSlotsDict: {0: {slotStructures: {operators: [{code: ">"}], fields: [{code: "1"}, {code: "0"}]}}},
         caretVisibility: CaretPosition.none,
     },
 
