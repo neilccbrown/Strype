@@ -134,6 +134,9 @@ test.describe("File system tab -- /images (read-only bundled assets)", () => {
         // buildAssetTree() for the "-test" naming convention that hides them here:
         await openFilesTab(page);
         const imagesSection = await openBuiltInSection(page, "/images/");
+        // The images are grouped into subfolders (e.g. animals/fish.png), so expand one to see its files:
+        await imagesSection.locator("li", { has: page.locator(".file-system-tree-label", { hasText: /^\/images\/animals\/$/ }) })
+            .last().locator(".file-system-tree-chevron").first().click();
         await expect(imagesSection).toContainText("fish.png");
         await expect(imagesSection).not.toContainText("-test");
     });
