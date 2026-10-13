@@ -379,7 +379,7 @@ class Fox(Animal)  :
 #(=> Section:Main
 field  = Field() 
 while True  :
-    field.step()
+    field.step() 
     sync_graphics() 
     pace(30) 
 #(=> Section:End
