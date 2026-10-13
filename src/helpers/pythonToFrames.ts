@@ -1,4 +1,4 @@
-import { AllFrameTypesIdentifier, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CurrentFrame, EditorFrameObjects, FrameObject, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, LabelSlotsContent, SlotsStructure, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrozenState } from "@/types/types";
+import { AllFrameTypesIdentifier, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CurrentFrame, EditorFrameObjects, FrameObject, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, LabelSlotsContent, SlotsStructure, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrozenState, TestsContainerDefinition } from "@/types/types";
 import {useStore} from "@/store/store";
 import {checkCodeErrors} from "@/helpers/storeMethods";
 import {CustomEventTypes, getLastCaretPosInsideParent} from "@/helpers/editor";
@@ -48,7 +48,8 @@ export enum STRYPE_LOCATION {
     IN_FUNCDEF,
     IN_CLASSDEF,
     DEFS_SECTION,
-    IMPORTS_SECTION
+    IMPORTS_SECTION,
+    TESTS_SECTION
 }
 
 // Copies nextId and lastLineProcessed from src to dest
@@ -1130,6 +1131,12 @@ function canPastePythonAtStrypeLocation(currentStrypeLocation : STRYPE_LOCATION,
     case  STRYPE_LOCATION.IMPORTS_SECTION:
         frames = removeTopLevelBlankFrames(frames);
         return !topLevelCopiedFrames.some((frame) => ![AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.library, AllFrameTypesIdentifier.comment, AllFrameTypesIdentifier.blank].includes(frame.frameType.type));
+    case STRYPE_LOCATION.TESTS_SECTION:
+        // Top-level frames must be ones the Testing section itself allows (function definitions, assert, a
+        // few module-level statements); anything nested follows the rules for being inside a function:
+        return !copiedPythonToFrames.some((frame) => (topLevelCopiedFrameIds.includes(frame.id))
+            ? TestsContainerDefinition.forbiddenChildrenTypes.includes(frame.frameType.type)
+            : [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.classdef, AllFrameTypesIdentifier.funcdef].includes(frame.frameType.type));
     case STRYPE_LOCATION.PROJECT_DOC_SECTION:
         frames = removeTopLevelBlankFrames(frames);
         // Given we transform top comment, shouldn't be anything left:
@@ -1172,7 +1179,7 @@ function makeMapping(section: NumberedLine[]) : Record<number, number> {
 // Each line of the original will end up in exactly one of the four parts of the return.
 // With Python's indentation rules, this operation is actually easier at line level than it is post-parse.
 // The mappings map line numbers in the returned sections to line numbers in the original
-function splitLinesToSections(allLines : string[], leadingAssignmentsGoInDefs: boolean) : {projectDoc: string[], imports: string[]; funcDefs: string[]; classDefs: string[]; main: string[], importsMapping: Record<number, number>, funcDefsMapping: Record<number, number>, classDefsMapping: Record<number, number>, mainMapping: Record<number, number>, headers: Record<string, string>, format: "py" | "spy"} {
+function splitLinesToSections(allLines : string[], leadingAssignmentsGoInDefs: boolean) : {projectDoc: string[], imports: string[]; funcDefs: string[]; classDefs: string[]; main: string[], tests: string[], importsMapping: Record<number, number>, funcDefsMapping: Record<number, number>, classDefsMapping: Record<number, number>, mainMapping: Record<number, number>, testsMapping: Record<number, number>, headers: Record<string, string>, format: "py" | "spy"} {
     // There's two possibilities:
     //  - we're loading a .spy with section headings, or
     //  - we're loading a .py where we must infer it.
@@ -1186,10 +1193,12 @@ function splitLinesToSections(allLines : string[], leadingAssignmentsGoInDefs: b
             funcDefs: [] as string[],
             classDefs: [] as string[],
             main: [] as string[],
+            tests: [] as string[],
             importsMapping: {} as Record<number, number>,
             funcDefsMapping: {} as Record<number, number>,
             classDefsMapping: {} as Record<number, number>,
             mainMapping: {} as Record<number, number>,
+            testsMapping: {} as Record<number, number>,
             headers: {} as Record<string, string>,
             format: "spy" as "py" | "spy",
         };
@@ -1222,10 +1231,22 @@ function splitLinesToSections(allLines : string[], leadingAssignmentsGoInDefs: b
         }
         line += 1;
         const firstMainLine = line;
-        while (line < allLines.length && !allLines[line].match(new RegExp("^" + escapeRegExp(AppSPYFullPrefix) + " *Section *:Main"))) {
+        // The main section runs until the optional Testing section or the end marker:
+        const sectionAfterMain = new RegExp("^" + escapeRegExp(AppSPYFullPrefix) + " *Section *:(Testing|End)");
+        while (line < allLines.length && !allLines[line].match(sectionAfterMain)) {
             r.main.push(allLines[line]);
             r.mainMapping[line - firstMainLine] = line;
             line += 1;
+        }
+        // Older files have no Testing section (and the Testing section itself is omitted when empty):
+        if (line < allLines.length && allLines[line].match(new RegExp("^" + escapeRegExp(AppSPYFullPrefix) + " *Section *:Testing"))) {
+            line += 1;
+            const firstTestsLine = line;
+            while (line < allLines.length && !allLines[line].match(new RegExp("^" + escapeRegExp(AppSPYFullPrefix) + " *Section *:End"))) {
+                r.tests.push(allLines[line]);
+                r.testsMapping[line - firstTestsLine] = line;
+                line += 1;
+            }
         }
 
         return r;
@@ -1328,10 +1349,12 @@ function splitLinesToSections(allLines : string[], leadingAssignmentsGoInDefs: b
         funcDefs: funcDefs.sort((a, b) => a.lineno - b.lineno).map((l) => l.text),
         classDefs: classDefs.sort((a, b) => a.lineno - b.lineno).map((l) => l.text),
         main: main.sort((a, b) => a.lineno - b.lineno).map((l) => l.text),
+        tests: [],
         importsMapping : makeMapping(imports),
         funcDefsMapping : makeMapping(funcDefs),
         classDefsMapping : makeMapping(classDefs),
         mainMapping : makeMapping(main),
+        testsMapping: {},
         headers: {} as Record<string, string>,
         format: "py",
     };
@@ -1354,6 +1377,7 @@ export function pasteMixedPython(completeSource: string, at: CurrentFrame, clear
     let funcDefFrames : CopiedFrames;
     let classDefFrames : CopiedFrames;
     let mainFrames : CopiedFrames;
+    let testsFrames : CopiedFrames;
     let docFrames : CopiedFrames;
     try {
         importFrames = copyFramesFromParsedPython(s.imports, STRYPE_LOCATION.IMPORTS_SECTION, s.format, s.importsMapping);
@@ -1365,6 +1389,7 @@ export function pasteMixedPython(completeSource: string, at: CurrentFrame, clear
         // what container we should check the code against.
         const pastingSectionTarget = (curLocation == STRYPE_LOCATION.IN_FUNCDEF) ? STRYPE_LOCATION.IN_FUNCDEF : STRYPE_LOCATION.MAIN_CODE_SECTION;
         mainFrames = copyFramesFromParsedPython(s.main, pastingSectionTarget, s.format, s.mainMapping);
+        testsFrames = copyFramesFromParsedPython(s.tests, STRYPE_LOCATION.TESTS_SECTION, s.format, s.testsMapping);
         docFrames = copyFramesFromParsedPython(s.projectDoc, STRYPE_LOCATION.PROJECT_DOC_SECTION, s.format, s.mainMapping);
     }
     catch (err : any) {
@@ -1485,6 +1510,11 @@ export function pasteMixedPython(completeSource: string, at: CurrentFrame, clear
             posAfter = adjusted;
         }
     }
+    if (testsFrames.frameIds.length > 0) {
+        // Only .spy files have a Testing section, and they are only ever loaded wholesale, so they go at the end:
+        offsetAllIds(testsFrames, useStore().nextAvailableId);
+        useStore().insertFramesAtPosition({target: getLastCaretPosInsideParent(useStore().getTestsFrameContainerId), sourceFrames: testsFrames, ignoreStateBackup});
+    }
     if (pasteRejected) {
         useStore().showMessage(MessageDefinitions.ForbiddenFramePaste, 10000);
     }
@@ -1496,6 +1526,7 @@ export function pasteMixedPython(completeSource: string, at: CurrentFrame, clear
         Object.keys(classDefFrames.frames),
         Object.keys(funcDefFrames.frames),
         Object.keys(mainFrames.frames),
+        Object.keys(testsFrames.frames),
     ].flat().map(Number);
     void nextTick(() => {
         eventBus.emit(CustomEventTypes.updateParamPrompts, framesAdded);

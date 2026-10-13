@@ -551,6 +551,11 @@ export default class Parser {
                 output += AppSPYFullPrefix + " Section:Imports\n";
                 this.line += 1;
             }
+            else if (this.saveAsSPY && frame.frameType.type === ContainerTypesIdentifiers.testsContainer && frame.childrenIds.length > 0) {
+                // Omitted when there is nothing in the Testing section, so projects that don't use it save as before:
+                output += AppSPYFullPrefix + " Section:Testing\n";
+                this.line += 1;
+            }
             
             //if the frame is disabled and we were not in a disabled group of frames, add the comments flag
             //(to avoid weird Python code, if that first disabled frame is a joint frame (like "else") then we align the comment with the other joint/root bodies)
@@ -597,7 +602,8 @@ export default class Parser {
                 output += thisIndentation + "except:\n" + thisIndentation + "    pass\n"; 
             }
 
-            if (this.saveAsSPY && frame.frameType.type === ContainerTypesIdentifiers.framesMainContainer) {
+            if (this.saveAsSPY && frame.frameType.type === ContainerTypesIdentifiers.testsContainer) {
+                // Testing is the last section, so it is the one followed by the end marker:
                 output += AppSPYFullPrefix + " Section:End\n";
             }            
         }
