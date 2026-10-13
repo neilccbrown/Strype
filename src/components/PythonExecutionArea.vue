@@ -106,7 +106,7 @@ import {handleErrorTrace, setSInputConsole} from "@/helpers/execPythonCode";
 import {isServiceWorkerChannelResponsive, PyodideErrorDetails, serviceWorkerReadyAndInControl, TestRunResult, TestRunResults} from "@/workers/shared_helpers";
 import {SpriteHandle, SyncOrAsyncStrypePyodideWorkerRequest} from "@/stryperuntime/worker_bridge_type";
 import {SoundManager} from "@/stryperuntime/sound_manager";
-import {handleAsyncRequests, handleSyncRequests} from "@/stryperuntime/main_bridge_handler";
+import {handleAsyncRequests, handleFileSyncRequests, handleSyncRequests} from "@/stryperuntime/main_bridge_handler";
 import {callTrackingProxyPorts, getPythonClient, isPythonWorkerReady, renderer, serviceWorkerChannel, terminateAndRestartPyodide} from "@/stryperuntime/main_thread_python_handler";
 import { TurtlePixiHandler } from "@/stryperuntime/turtle_pixi_handler";
 import {closeAudioContext, createOrGetAudioContext} from "@/helpers/audioContext";
@@ -974,7 +974,28 @@ export default defineComponent({
             pythonConsole.value += "\nRunning tests...\n";
             this.switchToConsoleTab("always");
 
-            client.call(client.workerProxy.executeTests, mainCode, importsCode, testsCode, micropipLibraries, userLibraries).then((results: TestRunResults) => {
+            // As for a normal Run: refresh the worker's "/local" from the cache first (so files added via the
+            // File system tab since the last restart are visible), and answer file requests from the worker:
+            await client.workerProxy.restoreLocalFs(listEntriesForWorker());
+            const testFileRequestHandler = Comlink.proxy((asreq: SyncOrAsyncStrypePyodideWorkerRequest) => {
+                if (asreq.kind != "sync") {
+                    return;
+                }
+                const req = asreq.request;
+                const resp = handleFileSyncRequests(req);
+                resp.response.then(async (r: any) => {
+                    await serviceWorkerReadyAndInControl();
+                    await client.writeMessage({request: resp.request, response: r});
+                }).catch(async (err) => {
+                    await serviceWorkerReadyAndInControl();
+                    await client.writeMessage({request: resp.request, error: err.toString()});
+                });
+            });
+            if (!(await isServiceWorkerChannelResponsive(serviceWorkerChannel.baseUrl))) {
+                console.error("Service worker sync channel not responding; file access during tests may fail");
+            }
+
+            client.call(client.workerProxy.executeTests, mainCode, importsCode, testsCode, micropipLibraries, userLibraries, typeof(this.appStore.strypeProjectLocation) === "string", testFileRequestHandler).then((results: TestRunResults) => {
                 let output: string;
                 if (results.collectionError) {
                     output = `Could not run tests:\n${results.collectionError}\n`;

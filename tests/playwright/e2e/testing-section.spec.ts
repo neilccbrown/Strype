@@ -209,6 +209,86 @@ test.describe("Testing section", () => {
         expect(await consoleLoc.inputValue()).toContain("NameError");
     });
 
+    test("Tests can read files from the assets file system", async ({page}) => {
+        await page.locator("#frameContainer_-4 .frame-container-btn-collapse").click();
+        await waitForEditorSettled(page);
+        const testMainBox = await page.locator("#frame_id_5").boundingBox();
+        if (!testMainBox) {
+            throw new Error("test_main frame has no bounding box");
+        }
+        await page.mouse.click(testMainBox.x + 3, testMainBox.y + testMainBox.height - 2);
+        await waitForEditorSettled(page);
+        await pressFrameShortcut(page, "s");
+        await waitForEditorSettled(page);
+        await page.keyboard.type("reads_asset");
+        await waitForEditorSettled(page);
+        await page.keyboard.press("ArrowDown"); // name -> function description
+        await waitForEditorSettled(page);
+        await page.keyboard.press("ArrowDown"); // function description -> body
+        await waitForEditorSettled(page);
+        await pressFrameShortcut(page, "k");
+        await waitForEditorSettled(page);
+        // Reading the bytes (not just opening) needs the worker to fetch the asset via the main thread;
+        // a non-empty bytes object is truthy:
+        await page.keyboard.type("open(\"/images/animals/panda.png\", \"rb\").read()");
+        await waitForEditorSettled(page);
+
+        const runTestsButton = page.locator("#runTestsButton");
+        await expect(runTestsButton).toBeEnabled({timeout: 120000});
+        await runTestsButton.click();
+        const consoleLoc = page.locator("#peaConsole");
+        await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toContain("passed");
+        expect(await consoleLoc.inputValue()).toContain("2 passed, 0 failed");
+    });
+
+    test("Tests can call functions defined in the Definitions section", async ({page}) => {
+        // Create "def five(): return 5" in the (empty) Definitions section by clicking into it:
+        await page.locator("#frameContainer_-2 .container-frames").click();
+        await waitForEditorSettled(page);
+        await pressFrameShortcut(page, "d");
+        await waitForEditorSettled(page);
+        await page.keyboard.type("five");
+        await waitForEditorSettled(page);
+        await page.keyboard.press("ArrowDown"); // name -> function description
+        await waitForEditorSettled(page);
+        await page.keyboard.press("ArrowDown"); // function description -> body
+        await waitForEditorSettled(page);
+        await pressFrameShortcut(page, "r");
+        await waitForEditorSettled(page);
+        await page.keyboard.type("5");
+        await waitForEditorSettled(page);
+        await expect(page.locator("#frameContainer_-2 .frame-div[data-frameType='funcdef']")).toHaveCount(1);
+
+        // Then a test that calls it (an unimported name would be a NameError):
+        await page.locator("#frameContainer_-4 .frame-container-btn-collapse").click();
+        await waitForEditorSettled(page);
+        const testMainBox = await page.locator("#frame_id_5").boundingBox();
+        if (!testMainBox) {
+            throw new Error("test_main frame has no bounding box");
+        }
+        await page.mouse.click(testMainBox.x + 3, testMainBox.y + testMainBox.height - 2);
+        await waitForEditorSettled(page);
+        await pressFrameShortcut(page, "s");
+        await waitForEditorSettled(page);
+        await page.keyboard.type("calls_five");
+        await waitForEditorSettled(page);
+        await page.keyboard.press("ArrowDown");
+        await waitForEditorSettled(page);
+        await page.keyboard.press("ArrowDown");
+        await waitForEditorSettled(page);
+        await pressFrameShortcut(page, "k");
+        await waitForEditorSettled(page);
+        await page.keyboard.type("five()");
+        await waitForEditorSettled(page);
+
+        const runTestsButton = page.locator("#runTestsButton");
+        await expect(runTestsButton).toBeEnabled({timeout: 120000});
+        await runTestsButton.click();
+        const consoleLoc = page.locator("#peaConsole");
+        await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toContain("passed");
+        expect(await consoleLoc.inputValue()).toContain("2 passed, 0 failed");
+    });
+
     test("Test function shortcut is not available outside the Testing section", async ({page}) => {
         // The default caret is in My code; "s" must not create a function definition there (the only
         // one in the project is the default test_main in the Testing section):
