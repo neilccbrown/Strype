@@ -170,7 +170,7 @@ const initialPythonState: EditorFrameObjects = {
         childrenIds: [],
         jointParentId: 0,
         jointFrameIds: [],
-        labelSlotsDict: {0: {slotStructures: {operators: [], fields: [{code: "1 > 0"}]}}},
+        labelSlotsDict: {0: {slotStructures: {operators: [{code: ">"}], fields: [{code: "1"}, {code: "0"}]}}},
         caretVisibility: CaretPosition.none,
     },
 

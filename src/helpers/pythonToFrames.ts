@@ -352,7 +352,10 @@ function copyFramesFromParsedPython(codeLines: string[], currentStrypeLocation: 
         // reads this to decide whether to dedent multi-line docstring content:
         setIsSPYForDocStrings(format === "spy");
         // We assign new IDs starting from 1, later on they are offset:
-        processBlockItems(parsed.tree.rootNode.children, -1, undefined, {nextId: 1, addToNonJoint: result.frameIds, addToJoint: undefined, loadedFrames: result.frames, disabledLines: parsed.disabledLines, frameStateLines: new Map<number, SavedFrameState>(), parent: null, jointParent: null, lastLineProcessed: 0, lineNumberToIndentation: indents, isSPY: format === "spy", transformTopComment: (c) => {
+        // A .spy file's blank lines are all real blank frames, including any after the section's last statement (which
+        // are not followed by anything in this section's lines), so look all the way to the end of the lines for
+        // those. For plain Python, trailing blank lines are just whitespace after the code, so aren't frames:
+        processBlockItems(parsed.tree.rootNode.children, -1, format === "spy" ? codeLines.length : undefined, {nextId: 1, addToNonJoint: result.frameIds, addToJoint: undefined, loadedFrames: result.frames, disabledLines: parsed.disabledLines, frameStateLines: new Map<number, SavedFrameState>(), parent: null, jointParent: null, lastLineProcessed: 0, lineNumberToIndentation: indents, isSPY: format === "spy", transformTopComment: (c) => {
             result.docSlots = c;
         }});
         // At this stage, we can make a sanity check that we can copy the given Python code in the current position in Strype (for example, no "import" in a function definition section)
