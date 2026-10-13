@@ -197,6 +197,22 @@ export default defineComponent({
             xhr.send(null);
         },
 
+        // Resolves once the Google API is loaded, and rejects if it failed to load. Every use of the "gapi" global
+        // must go through this (directly, or via driveRequest()) because the scripts are only loaded lazily, on
+        // the first call to getCloudAPIStatusWhenLoadedOrFailed(), so "gapi" may not even exist yet.
+        whenApiLoaded(): Promise<void> {
+            return this.getCloudAPIStatusWhenLoadedOrFailed().then((state) => {
+                if(state != CloudDriveAPIState.LOADED){
+                    return Promise.reject(new Error("Google API failed to load"));
+                }
+            });
+        },
+
+        // Same as gapi.client.request() but waits for the API to be loaded first.
+        driveRequest(args: Parameters<typeof gapi.client.request>[0]): Promise<Awaited<ReturnType<typeof gapi.client.request>>> {
+            return this.whenApiLoaded().then(() => gapi.client.request(args));
+        },
+
         getCloudAPIStatusWhenLoadedOrFailed(): Promise<CloudDriveAPIState> {
             // This is the common entry point before doing anything that needs the API, so it's also
             // where we kick off (on first call) the actual lazy loading of the scripts.
@@ -228,7 +244,7 @@ export default defineComponent({
         
         getPublicSharedProjectContent(sharedFileID: string): Promise<{isSuccess: boolean, projectName: string, decodedURIFileContent: string, errorMsg: string}> {   
             // We retrieve the project name first, then if successful, we retrieve the file content
-            return gapi.client.request({
+            return this.driveRequest({
                 path: `https://www.googleapis.com/drive/v3/files/${sharedFileID}?key=${this.devKey}`,
                 method: "GET",
             })
@@ -236,7 +252,7 @@ export default defineComponent({
                     if(resp.status == 200 && JSON.parse(resp.body).name){
                         const projectName = JSON.parse(resp.body).name.replace(/\.spy$/,"");
                         // Now retrieve the conten.
-                        return gapi.client.request({
+                        return this.driveRequest({
                             path: `https://www.googleapis.com/drive/v3/files/${sharedFileID}?alt=media&key=${this.devKey}`,
                             method: "GET",
                         })
@@ -262,7 +278,7 @@ export default defineComponent({
         },
 
         getCurrentCloudFileCurrentSharingStatus(saveFileId: string): Promise<CloudFileSharingStatus> {
-            return gapi.client.request({
+            return this.driveRequest({
                 path: "https://www.googleapis.com/drive/v3/files/" + saveFileId,
                 method: "GET",
                 params: {fields: "permissions"},
@@ -282,7 +298,7 @@ export default defineComponent({
         shareCloudDriveFile(saveFileId: string): Promise<boolean>{
             // When we share a Strype project, we try to set the project on Google Drive with public acccess.
             // The methods returns a Promise, with a boolean flag set at true if we succeeeded.
-            return gapi.client.request({
+            return this.driveRequest({
                 path: `https://www.googleapis.com/drive/v3/files/${saveFileId}/permissions`,
                 method: "POST",
                 body:  {
@@ -305,7 +321,7 @@ export default defineComponent({
                 // It possible that the permission to set is effective a bit after we cancel sharing, so we only check the permission reasonably later.
                 return new Promise((resolve, reject) => {
                     setTimeout(() => {
-                        gapi.client.request({
+                        this.driveRequest({
                             path: "https://www.googleapis.com/drive/v3/files/" + saveFileId,
                             method: "GET",
                             params: {fields: "permissions"},
@@ -313,7 +329,7 @@ export default defineComponent({
                             if(resp.status == 200){
                                 const publicSharePermission = JSON.parse(resp.body).permissions.find((permission: any) =>  permission.type == "anyone");
                                 if(publicSharePermission){
-                                    gapi.client.request({
+                                    this.driveRequest({
                                         path: `https://www.googleapis.com/drive/v3/files/${saveFileId}/permissions/${publicSharePermission.id}`,
                                         method: "DELETE",
                                     }).then((resp) => {
@@ -337,7 +353,7 @@ export default defineComponent({
         },
 
         getPublicShareLink(saveFileId: string): Promise<{respStatus: number, webLink: string}> {
-            return gapi.client.request({
+            return this.driveRequest({
                 path: "https://www.googleapis.com/drive/v3/files/" + saveFileId,
                 method: "GET",
                 params: {fields: "webViewLink"},
@@ -354,7 +370,7 @@ export default defineComponent({
         },
 
         getFolderNameFromId(folderId: string): Promise<{name: string, path?: string}> {
-            return gapi.client.request({
+            return this.driveRequest({
                 path: "https://www.googleapis.com/drive/v3/files/" + folderId,
                 method: "GET",
             }).then((response) => {
@@ -364,11 +380,13 @@ export default defineComponent({
         },
 
         checkIsCloudFileReadonly(id: string, onGettingReadonlyStatus: (isReadonly: boolean) => void){
-            gapi.client.request({
+            this.whenApiLoaded().then(() => gapi.client.request({
                 path: "https://www.googleapis.com/drive/v3/files/" + id,
                 method: "GET",
                 params: {fields: "capabilities/canEdit, capabilities/canModifyContent"},
-            }).execute((resp) => onGettingReadonlyStatus((!resp["capabilities"]["canEdit"] || !resp["capabilities"]["canModifyContent"])));
+            }).execute((resp) => onGettingReadonlyStatus((!resp["capabilities"]["canEdit"] || !resp["capabilities"]["canModifyContent"]))), () => {
+                // The API failed to load: we can't tell, so we don't report any status (callers check the API state themselves).
+            });
         },
 
         pickFolderForSave(){
@@ -377,14 +395,14 @@ export default defineComponent({
 
         loadPickedFileId(id: string, otherParams: {fileName?: string}, onGettingFileMetadataSucces: (fileNameFromDrive: string, fileModifiedDateTime: string)=>void
             , onGettingFileContentSuccess: (fileContent: string) => void, onGettingFileContentFailure: (errorRespStatus: number) => void, onFinally: VoidFunction){
-            gapi.client.request({
+            this.whenApiLoaded().then(() => gapi.client.request({
                 path: "https://www.googleapis.com/drive/v3/files/" + id,
                 method: "GET",
                 params: {fields: "name, modifiedTime"},
             }).execute((resp) => {
                 onGettingFileMetadataSucces(resp.name, resp.modifiedTime);
                 // Get the file content
-                gapi.client.request({
+                this.driveRequest({
                     path: "https://www.googleapis.com/drive/v3/files/" + id,
                     method: "GET",
                     params: {alt: "media"},
@@ -397,6 +415,10 @@ export default defineComponent({
                     .finally(() => {
                         onFinally();
                     });
+            }), () => {
+                // The API failed to load
+                onGettingFileContentFailure(400);
+                onFinally();
             });
         },
         
@@ -427,7 +449,7 @@ export default defineComponent({
             body.push("Content-Type: application/json; charset=UTF-8\n\n" + JSON.stringify(bodyReqParams) + "\n");
             body.push("Content-Type: text/plain; charset=UTF-8\n\n" + fileContent + "\n");
             const fullBody = body.map((s) => "--" + boundary + "\n" + s).join("") + "--" + boundary + "--\n";
-            gapi.client.request({
+            this.driveRequest({
                 path: "https://www.googleapis.com/upload/drive/v3/files" + (saveFileId === undefined ? "" : "/" + saveFileId),
                 method: saveFileId === undefined ?  "POST" : "PATCH",
                 params: {"uploadType": "multipart"},
@@ -452,7 +474,7 @@ export default defineComponent({
             // Note that we need to specify the parent folder of the search (root folder) otherwise we would also get subfolders; and don't get trashed folders 
             // (that will also discard shared folders, so we don't need to check the writing rights...)
             let strypeFolderId: string | null = null;
-            return gapi.client.request({
+            return this.driveRequest({
                 path: "https://www.googleapis.com/drive/v3/files/" + (checkStrypeFolder ? "" : this.appStore.strypeProjectLocation),
                 params: checkStrypeFolder ? {"q": "mimeType='application/vnd.google-apps.folder' and name='Strype' and parents='root' and trashed=false"} : {},
             }).then((response) => {
@@ -472,7 +494,7 @@ export default defineComponent({
                             "name": "Strype",
                             "mimeType": "application/vnd.google-apps.folder",
                         });
-                        return gapi.client.request({
+                        return this.driveRequest({
                             path: "https://www.googleapis.com/drive/v3/files",
                             method: "POST",
                             params: {"uploadType": "media"},
@@ -548,7 +570,7 @@ export default defineComponent({
             // This method retrieves this property for a given file by its file ID.
             // It is the responsablity of the caller of that method to provide a valid file ID and have passed authentication.
             // However, we still handle potential API access issues in this method, hence this methods expects the methods to run in case of success or failure
-            gapi.client.request({
+            this.whenApiLoaded().then(() => gapi.client.request({
                 path: "https://www.googleapis.com/drive/v3/files/" + existingFileId,
                 method: "GET",
                 params: {fields: "contentRestrictions"},
@@ -562,7 +584,7 @@ export default defineComponent({
                 this.isFileLocked = (resp.contentRestrictions) ? resp.contentRestrictions[0].readOnly : false;
                 // Pass on the property value to the success case call back method.
                 onSuccess();
-            });
+            }), () => onFailure());
         },
 
         searchCloudDriveElements(elementName: string | undefined, elementLocationId: string, searchAllSPYFiles: boolean, searchOptions: Record<string, string>): Promise<CloudDriveFile[]>{
@@ -581,7 +603,7 @@ export default defineComponent({
             else {
                 query = baseQuery;
             }
-            return gapi.client.request({
+            return this.driveRequest({
                 path: "https://www.googleapis.com/drive/v3/files",
                 params: {...orderByParam, ...fileFieldsParam, "q": query},
             }).then((response) => {
