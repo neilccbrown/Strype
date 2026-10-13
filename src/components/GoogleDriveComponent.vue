@@ -591,7 +591,9 @@ export default defineComponent({
             // Make a search query on Google Drive, with the provided query parameter.
             // Returns the elements found in the Drive listed by the HTTPRequest object obtained with the call to gapi.client.request(). 
             const orderByParam = (searchOptions?.orderBy) ? {orderBy: searchOptions.orderBy} : {};
-            const fileFieldsParam = (searchOptions?.fileFields) ? {fields: searchOptions?.fileFields} : {};
+            // Drive's files.list only returns id, name and mimeType unless "fields" says otherwise, so by default we
+            // explicitly ask for the size too (otherwise every file would be reported as having size 0).
+            const fileFieldsParam = {fields: searchOptions?.fileFields ?? "files(id,name,mimeType,size)"};
             const baseQuery = `parents='${elementLocationId}' and trashed=false`;
             let query: string;
             if (searchAllSPYFiles) {
