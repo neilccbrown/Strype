@@ -1,6 +1,7 @@
 import { nextTick} from "vue";
 import { FrameObject, CollapsedState, CurrentFrame, CaretPosition, FrozenState, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, DefsContainerDefinition, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode, SaveRequestReason, RootContainerFrameDefinition, StrypeLayoutDividerSettings, MediaSlot, SlotInfosOptionalMedia, ModifierKeyCode } from "@/types/types";
 import { getObjectPropertiesDifferences } from "@/helpers/common";
+import { loadPinnedLocalFiles, pinnedLocalFilesStateKey, savePinnedLocalFiles } from "@/helpers/load-save";
 import i18n from "@/i18n";
 import {calculateNextCollapseState, checkCodeErrors, checkStateDataIntegrity, evaluateSlotType, filterAllowedJointChildrenAfter, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getFrameSectionIdFromFrameId, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isAncestorGatedFrameTypeAllowed, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
 import { AppPlatform, AppVersion, eventBus, projectDocumentationFrameId } from "@/helpers/appContext";
@@ -2535,6 +2536,12 @@ export const useStore = defineStore("app", {
             stateCopy["currentMessage"] = MessageDefinitions.NoMessage;
             stateCopy["pythonExecRunningState"] = PythonExecRunningState.NotRunning;
 
+            // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
+            // Files pinned into the project (File system tab) live outside the store, in localFsCache.ts, so
+            // they must be carried along here for them to survive a page refresh (see doSetStateFromJSONStr()):
+            stateCopy[pinnedLocalFilesStateKey] = savePinnedLocalFiles();
+            // #v-endif
+
             //simplify the storage of frame types by their type names only
             Object.keys(stateCopy["frameObjects"] as EditorFrameObjects).forEach((frameId) => {
                 stateCopy["frameObjects"][frameId].frameType = stateCopy["frameObjects"][frameId].frameType.type;
@@ -2748,6 +2755,12 @@ export const useStore = defineStore("app", {
                 // (note: for microbit, the styling is far less complicated so we don't do anything on its only layout prop,
                 // editorCommandsSplitterPane2Size)
                 const newState = JSON.parse(stateJSONStr) as typeof this.$state;
+                // The pinned files are not part of the store's state itself, so take them out before applying it:
+                const newPinnedLocalFiles = (newState as unknown as Record<string, Record<string, string> | undefined>)[pinnedLocalFilesStateKey];
+                delete (newState as unknown as Record<string, unknown>)[pinnedLocalFilesStateKey];
+                if (newPinnedLocalFiles) {
+                    loadPinnedLocalFiles(newPinnedLocalFiles);
+                }
                 const newEditorCommandsSplitterPane2Size = newState.editorCommandsSplitterPane2Size;
                 delete newState.editorCommandsSplitterPane2Size;          
                 const newPEALayout = newState.peaLayoutMode;
