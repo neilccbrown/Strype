@@ -80,7 +80,7 @@ export default defineComponent({
         },
 
         fileMoreFieldsForIO(): string {
-            return "files(id,name,capabilities,contentRestrictions)";
+            return "files(id,name,mimeType,size,capabilities,contentRestrictions)";
         },
 
         fileBasicFieldsForIO(): string {
