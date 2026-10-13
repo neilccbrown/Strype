@@ -905,7 +905,7 @@ export const isContainedInFrame = function (currFrameId: number, caretPosition: 
     return isAncestorTypeFound;
 };
 
-// return/global/break/continue are the only frame types whose availability at a given position isn't
+// return/global/break/continue/assert are the only frame types whose availability at a given position isn't
 // fully captured by a plain forbiddenChildrenTypes check -- they're additionally gated by an ancestor
 // container (the Defs section, a case block, or a for/while loop). Used both to build the frame
 // commands pane's forbidden-types list (generateAvailableFrameCommands, store.ts) and to validate a
@@ -921,6 +921,9 @@ export const isAncestorGatedFrameTypeAllowed = function (frameId: number, caretP
     case AllFrameTypesIdentifier.break:
     case AllFrameTypesIdentifier.continue:
         return isContainedInFrame(frameId, caretPosition, [AllFrameTypesIdentifier.for, AllFrameTypesIdentifier.while]);
+    case AllFrameTypesIdentifier.assert:
+        // Anywhere in the Testing section (inside test functions, or at its top level), and nowhere else:
+        return getFrameSectionIdFromFrameId(frameId) == useStore().getTestsFrameContainerId;
     default:
         return true;
     }

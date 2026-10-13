@@ -922,7 +922,9 @@ runner`);
     });
 });
 
-// Runs the Testing section's code (testsCode) against the rest of the user's program (mainCode) via
+// Runs the Testing section's code (testsCode) against the user's imports and definitions (mainCode --
+// note this deliberately excludes the main code section's own top-level statements, see
+// Parser.parseJustImportsAndDefs()) via
 // pytest, which is already vendored as part of the Pyodide distribution (see pyodide-lock.json), so
 // this never fetches anything over the network. mainCode is written to a module on Pyodide's virtual
 // FS; testsCode is written to a second module alongside it, prefixed with importsCode (the project's

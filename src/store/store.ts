@@ -466,7 +466,9 @@ export const useStore = defineStore("app", {
             // They can be added when in the function definition container though.
             const canShowGlobalStatement = isAncestorGatedFrameTypeAllowed(frameId, caretPosition, AllFrameTypesIdentifier.global);
             const canShowReturnStatement = isAncestorGatedFrameTypeAllowed(frameId, caretPosition, AllFrameTypesIdentifier.return);
-            const extraForbiddenTypes = [...(!canShowGlobalStatement ? [AllFrameTypesIdentifier.global] : []), ...(!canShowReturnStatement ? [AllFrameTypesIdentifier.return] : [])];
+            // "assert" is only available in the Testing section.
+            const canShowAssertStatement = isAncestorGatedFrameTypeAllowed(frameId, caretPosition, AllFrameTypesIdentifier.assert);
+            const extraForbiddenTypes = [...(!canShowGlobalStatement ? [AllFrameTypesIdentifier.global] : []), ...(!canShowReturnStatement ? [AllFrameTypesIdentifier.return] : []), ...(!canShowAssertStatement ? [AllFrameTypesIdentifier.assert] : [])];
             if(extraForbiddenTypes.length > 0){
                 //by default, "break" and "continue" are NOT forbidden to any frame which can host children frames,
                 //so if we cannot show "break" and "continue" : we add them from the list of forbidden

@@ -961,6 +961,8 @@ export default defineComponent({
         // game once the pane is focused.
         insertFrameForShortcutKey(eventKeyLowCase: string): boolean {
             const isHiddenShorthandFrameCommand = (hiddenShorthandFrames[eventKeyLowCase] !== undefined
+                && (!hiddenShorthandFrames[eventKeyLowCase].testsSectionOnly
+                    || getFrameSectionIdFromFrameId(this.appStore.currentFrame.id) == this.appStore.getTestsFrameContainerId)
                 && Object.values(this.addFrameCommands).flat().flatMap((addFrameDef) => addFrameDef.type.type).includes(hiddenShorthandFrames[eventKeyLowCase].type.type));
 
             if(this.addFrameCommands[eventKeyLowCase] === undefined

@@ -359,8 +359,17 @@ async function deleteFramesUpTo(page: Page, containerSelector: string, maxPresse
     await deleteFramesUpTo(page, containerSelector, maxPresses - 1);
 }
 
-// Deletes every frame currently in Main, Definitions and Imports -- not just the default
-// project's frames (2 default imports plus the myString assignment and print call in Main), since
+// Clicks the Testing section's fold/unfold button via the DOM rather than a real mouse click: the
+// latter would leave DOM focus on the button, which breaks the keyboard-driven frame navigation
+// that callers rely on.
+async function toggleTestingSectionFold(page: Page) : Promise<void> {
+    await page.locator("#frameContainer_-4 .frame-container-btn-collapse").evaluate((button: HTMLElement) => button.click());
+    await waitForEditorSettled(page);
+}
+
+// Deletes every frame currently in Main, Definitions, Imports and Testing -- not just the default
+// project's frames (2 default imports, the myString assignment and print call in Main, and the
+// test_main function in the folded Testing section), since
 // this is also used to clear out whatever a previous operation left behind, which can include
 // Definitions content that the default project never has -- leaving a genuinely blank editor
 // (0 frames) with the caret positioned at the top of Imports, ready for fresh content. Reads the
@@ -368,6 +377,12 @@ async function deleteFramesUpTo(page: Page, containerSelector: string, maxPresse
 // content changes shape.
 export async function clearDefaultProject(page: Page) : Promise<void> {
     const totalCount = await page.locator(".frame-div").count();
+    // Testing starts folded (so its keyboard navigation stops are hidden): unfold it so that its
+    // frames can be deleted, and fold it back at the end:
+    const testingWasFolded = await page.locator("#frameContainer_-4 .container-frames").isHidden();
+    if (testingWasFolded) {
+        await toggleTestingSectionFold(page);
+    }
     // Reach the very top of the whole document regardless of the current caret position or how
     // deeply nested any block frame's content is. ArrowUp is a no-op once already at the top, so
     // pressing it more times than could possibly be needed is harmless -- but a block frame's body
@@ -393,13 +408,19 @@ export async function clearDefaultProject(page: Page) : Promise<void> {
     await page.keyboard.press("ArrowDown");
     await waitForEditorSettled(page);
     await deleteFramesUpTo(page, "#frameContainer_-3");
+    await page.keyboard.press("ArrowDown");
+    await waitForEditorSettled(page);
+    await deleteFramesUpTo(page, "#frameContainer_-4");
     // Belt-and-braces check that we truly ended up at 0, on top of the settling above:
     await expect(page.locator(".frame-div")).toHaveCount(0, {timeout: 4000});
     // Return to the top of Imports, where callers of this function expect to end up:
-    await page.keyboard.press("ArrowUp");
-    await waitForEditorSettled(page);
-    await page.keyboard.press("ArrowUp");
-    await waitForEditorSettled(page);
+    for (let i = 0; i < 3; i++) {
+        await page.keyboard.press("ArrowUp");
+        await waitForEditorSettled(page);
+    }
+    if (testingWasFolded) {
+        await toggleTestingSectionFold(page);
+    }
 }
 
 export async function enterCode(page: Page, codeSections : string[]) : Promise<void> {

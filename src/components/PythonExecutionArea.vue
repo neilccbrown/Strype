@@ -943,7 +943,9 @@ export default defineComponent({
             // file/line be mapped back to the frame that caused it, the same way a normal Run's error is
             // highlighted.
             const parser = new Parser();
-            const mainCode = parser.getFullCode();
+            // Only the imports and definitions go into the module the tests import: the main code section's
+            // top-level statements are deliberately not run when testing.
+            const mainCode = parser.parseJustImportsAndDefs();
             const importsCode = new Parser().parseJustImports();
             const testsParser = new Parser();
             const testsCode = testsParser.parseJustTests();

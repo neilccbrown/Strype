@@ -1020,6 +1020,9 @@ function copyFramesFromTreeSitterNode(node: TSSyntaxNode, s: CopyState) : CopySt
         }
         return addFrame(makeFrame(AllFrameTypesIdentifier.raise, {0: {slotStructures: tsSlotsOrBlank(node.child(1))}}, s.isSPY), tsLineno(node), s);
     }
+    case "assert_statement":
+        // The condition and the optional ", message" both go in the single slot (commas are allowed there):
+        return addFrame(makeFrame(AllFrameTypesIdentifier.assert, {0: {slotStructures: flattenChildren(node.children.slice(1))}}, s.isSPY), tsLineno(node), s);
     case "return_statement":
         return addFrame(makeFrame(AllFrameTypesIdentifier.return, {0: {slotStructures: tsSlotsOrBlank(node.child(1))}}, s.isSPY), tsLineno(node), s);
     case "if_statement":
@@ -1103,7 +1106,7 @@ function canPastePythonAtStrypeLocation(currentStrypeLocation : STRYPE_LOCATION,
     // Check if the match between the current Strype location and the copied Python code frames is possible
     switch(currentStrypeLocation){
     case STRYPE_LOCATION.MAIN_CODE_SECTION:
-        return !copiedPythonToFrames.some((frame) => [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.classdef, AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.global].includes(frame.frameType.type));
+        return !copiedPythonToFrames.some((frame) => [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.classdef, AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.global, AllFrameTypesIdentifier.assert].includes(frame.frameType.type));
     case STRYPE_LOCATION.IN_FUNCDEF:
         return !copiedPythonToFrames.some((frame) => [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.classdef, AllFrameTypesIdentifier.funcdef].includes(frame.frameType.type));
     case STRYPE_LOCATION.DEFS_SECTION:

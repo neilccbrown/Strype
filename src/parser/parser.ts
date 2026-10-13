@@ -225,6 +225,7 @@ function transformSlotLevel(slots: SlotsStructure, topLevel?: {frameType: string
                 if (!([AllFrameTypesIdentifier.varassign,
                     AllFrameTypesIdentifier.for,
                     AllFrameTypesIdentifier.return,
+                    AllFrameTypesIdentifier.assert,
                     AllFrameTypesIdentifier.global].includes(topLevel.frameType)
                     || (topLevel.frameType === AllFrameTypesIdentifier.funcdef && topLevel.slotIndex == 1)
                     || (topLevel.frameType === AllFrameTypesIdentifier.fromimport && topLevel.slotIndex == 1)
@@ -610,6 +611,13 @@ export default class Parser {
     
     public parseJustImports() : string {
         return this.parse({startAtFrameId: useStore().getImportsFrameContainerId, stopAt: {frameId: useStore().getDefsFrameContainerId, includeThisFrame: false}});
+    }
+
+    // The imports and definitions sections only, i.e. everything except the main code (and the testing
+    // section). This is what the tests import: the main code's own top-level statements must not run
+    // (or be visible) when testing, so e.g. an infinite loop or print in main code can't affect tests.
+    public parseJustImportsAndDefs() : string {
+        return this.parse({stopAt: {frameId: useStore().getMainCodeFrameContainerId, includeThisFrame: false}});
     }
 
     public parseJustTests() : string {

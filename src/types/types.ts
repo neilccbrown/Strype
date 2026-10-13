@@ -351,6 +351,7 @@ export interface AddShorthandFrameCommandDef {
     type: FramesDefinitions;
     codeContent: string; // a default code content to add in the first slot of the frame (used by hidden frames)
     goNextSlot?: boolean; // indicates whether the text cursor should move to the next slot (i.e. added "print" in a function call, we want to go inside the brackets)
+    testsSectionOnly?: boolean; // if true, the shorthand is only available when the caret is inside the Testing section
 }
 
 // Helper for the allowJointChildren; see below
@@ -429,6 +430,7 @@ const StandardFrameTypesIdentifiers = {
     continue: "continue",
     try: "try",
     raise: "raise",
+    assert: "assert",
     with: "with",
     return: "return",
     varassign: "varassign",
@@ -533,6 +535,7 @@ const TestsAllowedStatementTypes: string[] = [
     StandardFrameTypesIdentifiers.try,
     StandardFrameTypesIdentifiers.with,
     StandardFrameTypesIdentifiers.raise,
+    StandardFrameTypesIdentifiers.assert,
 ];
 
 export const TestsContainerDefinition: FramesDefinitions = {
@@ -634,6 +637,18 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         type: StandardFrameTypesIdentifiers.raise,
         labels: [
             { label: "raise ", defaultText: i18n.global.t("frame.defaultText.exception"), optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK },
+        ],
+        colour: scssVars.mainCodeContainerBackground,
+    };
+
+    // Only offered in the Testing section (see isAncestorGatedFrameTypeAllowed()), where it's the pytest
+    // way of checking something. The condition slot also takes an optional message after
+    // a comma (assert cond, "message"), as the parser permits top-level commas for this frame type.
+    const AssertDefinition: FramesDefinitions = {
+        ...StatementDefinition,
+        type: StandardFrameTypesIdentifiers.assert,
+        labels: [
+            { label: "assert ", defaultText: i18n.global.t("frame.defaultText.condition") },
         ],
         colour: scssVars.mainCodeContainerBackground,
     };
@@ -849,6 +864,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         BreakDefinition,
         ContinueDefinition,
         RaiseDefinition,
+        AssertDefinition,
         TryDefinition,
         ExceptDefinition,
         FinallyDefinition,

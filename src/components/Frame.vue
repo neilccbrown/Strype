@@ -100,9 +100,9 @@ import CaretContainer from "@/components/CaretContainer.vue";
 import { useStore } from "@/store/store";
 import FrameBody from "@/components/FrameBody.vue";
 import JointFrames from "@/components/JointFrames.vue";
-import { AllFrameTypesIdentifier, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CoordPosition, CurrentFrame, DefaultFramesDefinition, FrameContextMenuActionName, FrozenState, NavigationPosition, Position, PythonExecRunningState, StrypeContextMenuItem } from "@/types/types";
-import { calculateNextCollapseState, frameOrChildHasErrors, getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getNextSibling, getOutmostDisabledAncestorFrameId, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
-import { copyFramesToClipboard, copyFrameTextReadyForClipboard, CustomEventTypes, getCaretContainerRef, getFrameBodyRef, getFrameBodyUID, getFrameHeaderUID, getFrameLabelSlotsStructureUID, getFrameUID, getHTML2CanvasFramesSelectionCropOptions, getJointFramesRef, isIdAFrameId, notifyDragStarted, parseFrameUID, setContextMenuEventClientXY } from "@/helpers/editor";
+import { AllFrameTypesIdentifier, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CoordPosition, CurrentFrame, DefaultFramesDefinition, FrameContextMenuActionName, FrozenState, isFieldBaseSlot, NavigationPosition, Position, PythonExecRunningState, StrypeContextMenuItem } from "@/types/types";
+import { calculateNextCollapseState, frameOrChildHasErrors, getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getNextSibling, getOutmostDisabledAncestorFrameId, getFrameSectionIdFromFrameId, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
+import { copyFramesToClipboard, copyFrameTextReadyForClipboard, CustomEventTypes, getCaretContainerRef, getFrameBodyRef, getFrameBodyUID, getFrameHeaderUID, getFrameLabelSlotsStructureUID, getFrameUID, getHTML2CanvasFramesSelectionCropOptions, getJointFramesRef, isIdAFrameId, notifyDragStarted, parseFrameUID, setContextMenuEventClientXY, testFunctionBgColour, testFunctionNamePrefix } from "@/helpers/editor";
 import { pasteMixedPython } from "@/helpers/pythonToFrames";
 import { mapStores } from "pinia";
 import { BPopover, useToggle } from "bootstrap-vue-next";
@@ -212,6 +212,15 @@ export default defineComponent({
         
         bodyVisible(): boolean {
             return (this.appStore.frameObjects[this.frameId].collapsedState ?? CollapsedState.FULLY_VISIBLE) == CollapsedState.FULLY_VISIBLE;
+        },
+
+        // A function definition in the Testing section whose name starts with "test_" (i.e. one pytest will run)
+        isTestFunctionDef(): boolean {
+            if(this.frameType.type !== AllFrameTypesIdentifier.funcdef || getFrameSectionIdFromFrameId(this.frameId) != this.appStore.getTestsFrameContainerId){
+                return false;
+            }
+            const nameSlot = this.appStore.frameObjects[this.frameId].labelSlotsDict[0]?.slotStructures.fields[0];
+            return !!nameSlot && isFieldBaseSlot(nameSlot) && (nameSlot as BaseSlot).code.startsWith(testFunctionNamePrefix);
         },
 
         frameStyle(): Record<string, string> {
@@ -460,6 +469,9 @@ export default defineComponent({
             // In most cases, the background colour is the one defined in the frame types.
             // The exception is for comments and joint frames, which will take the same colour as their container.
             // For comments, we keep them transparent, for joints, we retrieve the parent's colour, so that it shows up when dragging them.
+            if(this.isTestFunctionDef){
+                return testFunctionBgColour;
+            }
             if(this.frameType.type !== AllFrameTypesIdentifier.comment){
                 if(this.isJointFrame){
                     return this.appStore.frameObjects[this.appStore.frameObjects[this.frameId].jointParentId].frameType.colour;

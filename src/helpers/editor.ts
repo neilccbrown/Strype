@@ -958,6 +958,11 @@ export function generateAllFrameCommandsDefs():void {
             description: "raise",
             shortcuts: ["a"],
         }],
+        "k": [{
+            type: getFrameDefType(AllFrameTypesIdentifier.assert),
+            description: "assert",
+            shortcuts: ["k"],
+        }],
         "h": [{
             type: getFrameDefType(AllFrameTypesIdentifier.with),
             description: "with",
@@ -1020,6 +1025,10 @@ export function findAddCommandFrameType(shortcut: string, index?: number): Frame
 // and assignment. Every other shortcut requires opening the frame commands pane first.
 export const alwaysDirectFrameShortcutKeys = ["enter", "#", "="];
 
+// Name prefix that marks a function definition in the Testing section as a test (pytest's convention).
+export const testFunctionNamePrefix = "test_";
+export const testFunctionBgColour = "#E6D2B5"; // light brown
+
 // This shorthand frames are enhanced frames because they contain some default code value.
 // Therefore they are treated separately in the code and in the UI. They do not show in the frame command panel.
 // IMPORTANT : make sure that the shortcut assigned to a frame IS NOT assigned to a normal frame (see generateAllFrameCommandsDefs()) 
@@ -1029,6 +1038,12 @@ export const hiddenShorthandFrames: {[id: string]: AddShorthandFrameCommandDef} 
         codeContent:"print", // No need for the brackets: they're already included in the function call frame by default
         goNextSlot: true,
         type: getFrameDefType(AllFrameTypesIdentifier.funccall),
+    },
+    // A new test function: a function definition with its name pre-filled to "test_", text cursor left at the end of the name.
+    "s": {
+        codeContent: testFunctionNamePrefix,
+        type: getFrameDefType(AllFrameTypesIdentifier.funcdef),
+        testsSectionOnly: true,
     },
 };
 
