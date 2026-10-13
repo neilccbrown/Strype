@@ -277,7 +277,7 @@ test.describe("Edition in expressions with media",() => {
         await page.keyboard.press("ControlOrMeta+a");
         await waitForEditorSettled(page);
         // Paste an image (we make a quick check it's pasted - the paste keeps the caret in the inserted frame text slot so why not)
-        const image = fs.readFileSync("src/assetsFilesystem/images/panda.png").toString("base64");
+        const image = fs.readFileSync("src/assetsFilesystem/images/animals/panda.png").toString("base64");
         const mediaInfo: {mediaType: "img", endOfB64: string}[]  = [{mediaType: "img", endOfB64: image.slice(-10)}];
         await doPagePaste(page, image, "image/png");
         await assertStateOfFuncCallFrame(page, `{}${MEDIA_SLOT_PARSED_PLACEHOLDER.image}{$}`, mediaInfo);
