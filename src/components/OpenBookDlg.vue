@@ -90,7 +90,7 @@ interface Chapter {
 
 // Only volumes/chapters that have actually been published are listed here; further
 // chapters get added as they're written:
-const allChapters: Chapter[] = [
+const chapters: Chapter[] = [
     {volume: "Volume 1", name: "Chapter 1", path: "book_vol01/chapter01", content: getBuiltinDemos("book_vol01/chapter01")},
     {volume: "Volume 1", name: "Chapter 2", path: "book_vol01/chapter02", content: getBuiltinDemos("book_vol01/chapter02")},
     {volume: "Volume 1", name: "Chapter 3", path: "book_vol01/chapter03", content: getBuiltinDemos("book_vol01/chapter03")},
@@ -106,12 +106,6 @@ const allChapters: Chapter[] = [
     {volume: "Volume 2", name: "Chapter 5", path: "book_vol02/chapter05", content: getBuiltinDemos("book_vol02/chapter05")},
     {volume: "Volume 2", name: "Chapter 6", path: "book_vol02/chapter06", content: getBuiltinDemos("book_vol02/chapter06")},
 ];
-
-// TEMPORARY HACK: Volume 2 isn't ready to show to users yet, so filter it out of the
-// dialog here rather than removing its entries above -- remove this filter (and this
-// comment) once Volume 2 is ready to be shown.
-const HIDDEN_VOLUMES = ["Volume 2"];
-const chapters: Chapter[] = allChapters.filter((c) => !HIDDEN_VOLUMES.includes(c.volume));
 
 const props = defineProps<{
     dlgId: string;

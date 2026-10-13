@@ -115,6 +115,23 @@ of them was gone. The king became very|
 `);
     });
 
+    test("Writing to a read-only bundled asset file fails", async ({page}) => {
+        // The asset roots ("/books", "/data", etc) are mounted read-only, with no write stream_ops
+        // implemented at all (see createLazyFetchAssetsFS, pyodide-emscript-fetch-fs.ts) and file
+        // nodes given permission bits 0o444 -- so opening one for writing must raise a genuine
+        // PermissionError, not just silently do nothing:
+        await clearDefaultProject(page);
+        const writeToAssetCode = `try:
+    open("/books/fairy-tales.txt", "w")
+except Exception as e:
+    print(f"{type(e).__name__}: {e}")
+`;
+        await doPagePaste(page, writeToAssetCode);
+        await page.waitForTimeout(200);
+        await runToFinish(page, true);
+        await checkConsoleContent(page, "PermissionError: [Errno 63] Operation not permitted: '/books/fairy-tales.txt'\n");
+    });
+
     test("Append text in an existing file", async ({page}) => {
         await copyAssetInTemp("/books/fairy-tales.txt", "test.txt")(page);
         const appendThenReadCode = `with open("/tmp/test.txt","a")  as f  :

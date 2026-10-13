@@ -1,6 +1,6 @@
 import {Page, test, expect} from "@playwright/test";
 import {setupStrypeTest} from "../support/general";
-import {clearDefaultProject, waitForEditorSettled} from "../support/editor";
+import {clearDefaultProject, doPagePaste, waitForEditorSettled} from "../support/editor";
 import {AllFrameTypesIdentifier} from "../../cypress/support/frame-types";
 import {
     assertFrameType,
@@ -132,6 +132,46 @@ test.describe("Undo/redo -- scoped path (plain typing within a single frame)", (
         await expect(page.locator(".frame-div")).toHaveCount(2);
         expect(await getFirstSlotText(page, frameAId)).toEqual("xAB");
         expect(await getFirstSlotText(page, frameBId)).toEqual("yCD");
+    });
+});
+
+test.describe("Undo/redo -- pasting text into a slot", () => {
+    test("a paste at a plain text cursor is its own undoable step", async ({page}) => {
+        const frameId = await createFuncCallFrame(page, "a");
+        await page.keyboard.type("b");
+        await waitForEditorSettled(page);
+        expect(await getFirstSlotText(page, frameId)).toEqual("ab");
+
+        await doPagePaste(page, "XY");
+        expect(await getFirstSlotText(page, frameId)).toEqual("abXY");
+
+        // Undoing the paste must remove just the pasted text, not also the typed "b" before it:
+        await undo(page, 1);
+        expect(await getFirstSlotText(page, frameId)).toEqual("ab");
+
+        await redo(page, 1);
+        expect(await getFirstSlotText(page, frameId)).toEqual("abXY");
+    });
+
+    test("a paste over a text selection undoes (and redoes) as a single step", async ({page}) => {
+        const frameId = await createFuncCallFrame(page, "a");
+        await page.keyboard.type("bc");
+        await waitForEditorSettled(page);
+        expect(await getFirstSlotText(page, frameId)).toEqual("abc");
+
+        // Select the "bc" and paste over it:
+        await page.keyboard.press("Shift+ArrowLeft");
+        await page.keyboard.press("Shift+ArrowLeft");
+        await waitForEditorSettled(page);
+        await doPagePaste(page, "XY");
+        expect(await getFirstSlotText(page, frameId)).toEqual("aXY");
+
+        // One undo must restore the text from before the paste (selection deleted AND text pasted):
+        await undo(page, 1);
+        expect(await getFirstSlotText(page, frameId)).toEqual("abc");
+
+        await redo(page, 1);
+        expect(await getFirstSlotText(page, frameId)).toEqual("aXY");
     });
 });
 

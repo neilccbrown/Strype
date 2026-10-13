@@ -81,6 +81,7 @@ import AutoCompletion from "@/components/AutoCompletion.vue";
 import { bumpCaretRequestSeq, bumpLastSlotCharacterTypedTimestamp, closeBracketCharacters, CustomEventTypes, getACLabelSlotUID, getCaretRequestSeq, getFocusedEditableSlotTextSelectionStartEnd, getFrameHeaderUID, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFrameUID, getLabelSlotUID, getMatchingBracket, getNumPrecedingBackslashes, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, keywordOperatorsWithSurroundSpaces, openBracketCharacters, operators, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, simpleSlotStructureToString, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringDoubleQuoteChar, stringQuoteCharacters, stringSingleQuoteChar, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength } from "@/helpers/editor";
 import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, CollapsedState, EditImageInDialogFunction, FieldSlot, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, getFrameDefType, isFieldBracketedSlot, isFieldStringSlot, LoadedMedia, MediaSlot, MessageDefinitions, OptionalSlotType, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import { getCandidatesForAC } from "@/autocompletion/acManager";
+import { isKnownFileNameOrPath } from "@/helpers/knownFiles";
 import { mapStores } from "pinia";
 import {evaluateSlotType, getFlatNeighbourFieldSlotInfos, getOutmostDisabledAncestorFrameId, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
 import Parser from "@/parser/parser";
@@ -1478,7 +1479,7 @@ export default defineComponent({
                         if (focusSlotCursorInfos && !(focusSlotCursorInfos && anchorSlotCursorInfos &&
                                 (!areSlotCoreInfosEqual(focusSlotCursorInfos.slotInfos, anchorSlotCursorInfos.slotInfos) || focusSlotCursorInfos.cursorPos != anchorSlotCursorInfos.cursorPos))) {
                             document.getElementById(getLabelSlotUID(focusSlotCursorInfos.slotInfos))
-                                ?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: event.detail}));
+                                ?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: {...event.detail, skipStateSave: true}}));
                         }
                     }});
                 });
@@ -1490,16 +1491,19 @@ export default defineComponent({
                 if (event.detail.type.startsWith("image/") && (event.detail.width >= 1000 || event.detail.height >= 1000)) {
                     this.appStore.ignoreBlurEditableSlot = true;
                     this.doEditImageInDialog(/"([^"]+)"/.exec(event.detail.content)?.[1] ?? "", () => {}, (replacement : {code: string, mediaType: string}) => {
-                        this.onCodePasteImpl(replacement.code, replacement.mediaType);
+                        this.onCodePasteImpl(replacement.code, replacement.mediaType, undefined, !!event.detail.skipStateSave);
                     });
                 }
                 else {
-                    this.onCodePasteImpl(event.detail.content, event.detail.type);
+                    this.onCodePasteImpl(event.detail.content, event.detail.type, undefined, !!event.detail.skipStateSave);
                 }
             }
         },
         
-        onCodePasteImpl(content : string, type : string, stateBeforeChanges?: any) {
+        // skipStateSave: the caller has already saved, or will save, an undo/redo state covering this paste (e.g. it
+        // replaces a selection that was just deleted, which saved its own state, or it is part of creating a frame from
+        // a typed character), so we must not save a second one. Otherwise, the paste is its own undoable step.
+        onCodePasteImpl(content : string, type : string, stateBeforeChanges?: any, skipStateSave?: boolean) {
             // Save the current state
             stateBeforeChanges = stateBeforeChanges ?? cloneDeep(this.appStore.$state);
 
@@ -1555,7 +1559,21 @@ export default defineComponent({
                     }
                     else{
                         const specifyFromImportFrame = (this.frameType == AllFrameTypesIdentifier.fromimport) ? AllFrameTypesIdentifier.fromimport : undefined;
-                        const {slots: tempSlots, cursorOffset: tempcursorOffset} = parseCodeLiteral(content, {frameType: specifyFromImportFrame});
+                        // If the pasted text is exactly the name or path of a file shown in the File
+                        // system tab (e.g. copied from there via its click-to-copy-path feature), paste
+                        // it as a string literal rather than parsing it as code -- pasting "photo.png"
+                        // into an open(...) call should become the string "photo.png", not three
+                        // separate identifier/operator tokens. Gated on allowedSlotContent rather than
+                        // frame type: TERMINAL_EXPRESSION is the only content kind a string is ever
+                        // valid in -- everything else (ONLY_NAMES/ONLY_NAMES_OR_STAR/ONLY_FORMAL_PARAMS
+                        // for import/global/except/def/as slots, FREE_TEXT_DOCUMENTATION for comments
+                        // and doc slots, LIBRARY_ADDRESS) never accepts one, so this would only turn an
+                        // otherwise-valid plain-identifier paste (one that happens to also match a
+                        // filename) into a rejected one there -- see the pastedInvalidCode check below.
+                        const pasteAsFileString = this.allowedSlotContent == AllowedSlotContent.TERMINAL_EXPRESSION
+                            && isKnownFileNameOrPath(content);
+                        const codeToParse = pasteAsFileString ? `"${content.replaceAll("\"", "\\\"")}"` : content;
+                        const {slots: tempSlots, cursorOffset: tempcursorOffset} = parseCodeLiteral(codeToParse, {frameType: specifyFromImportFrame});
                         const parser = new Parser();
                         correctedPastedCode = parser.getSlotStartsLengthsAndCodeForFrameLabel(tempSlots, 0, OptionalSlotType.REQUIRED, AllowedSlotContent.TERMINAL_EXPRESSION).code;
                         cursorOffset = tempcursorOffset;
@@ -1596,7 +1614,7 @@ export default defineComponent({
                 this.appStore.setSlotTextCursors({slotInfos: this.coreSlotInfo, cursorPos: newPos}, {slotInfos: this.coreSlotInfo, cursorPos: newPos});
 
                 // part 4
-                this.$emit(CustomEventTypes.requestSlotsRefactoring, this.UID, stateBeforeChanges, {skipStateSaveOnly: true});     
+                this.$emit(CustomEventTypes.requestSlotsRefactoring, this.UID, stateBeforeChanges, {skipStateSaveOnly: !!skipStateSave});     
             }
         },
 

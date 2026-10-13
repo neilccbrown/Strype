@@ -111,7 +111,20 @@ export async function checkFrameXorTextCursor(page: Page, specificFrameCursor?: 
     });
     const numFrameCursors = frameCursorIds.length;
     const textCursorNode = (await page.evaluateHandle(() => {
-        return document?.getSelection()?.focusNode;
+        const scssVars = (window as any)["StrypeSCSSVarsGlobals"];
+        const focusNode = document?.getSelection()?.focusNode;
+        if (!focusNode) {
+            return null;
+        }
+        // Giving DOM focus to a frame cursor's invisible paste-focus <input> (see
+        // focusCaretContainerInput() in src/helpers/editor.ts) makes some browsers asynchronously
+        // manufacture a phantom, zero-length Selection collapsed on the caret container div itself --
+        // sometimes only surfacing once focus has already moved on elsewhere again, so it can't
+        // reliably be suppressed at the point of focusing. That isn't a real text cursor, so only
+        // count the selection as one when it's actually inside an editable label slot (matching how
+        // App.vue's handleDocumentSelectionChange already filters incoming selections):
+        const focusElement = (focusNode.nodeType === Node.ELEMENT_NODE ? focusNode as Element : focusNode.parentElement);
+        return focusElement?.closest("." + scssVars.labelSlotInputClassName) ?? null;
     })).asElement();
     const hasTextCursor = textCursorNode != null;
     expect(numFrameCursors, (message ?? "") + " ids: [" + frameCursorIds.join(", ") + "]").toEqual(hasTextCursor ? 0 : 1);

@@ -87,6 +87,8 @@ import {Completion, Signature, SignatureArg, TPyParser} from "@tigerpython/tppar
 import scssVars from "@/assets/style/_export.module.scss";
 import { findCurrentStrypeLocation, STRYPE_LOCATION } from "@/helpers/pythonToFrames";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+import * as localFsCache from "@/helpers/localFsCache";
+import { isCloudMounted } from "@/helpers/fileSystemTabIO";
 // #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
 import microbitDescriptions from "@/autocompletion/microbit.json";
 import microbitAPI from "@/autocompletion/microbit-api.json";
@@ -106,6 +108,19 @@ const assetFileList : string[] = Object.keys(import.meta.glob(
 const assetFileCompletions : AcResultType[] = assetFileList.map((path) => {
     return {acResult: path, documentation: "A file built in to Strype.", type: [], version: 0};
 });
+
+// "/local" files, computed fresh each time (unlike assetFileCompletions above, these change as the
+// user adds/removes files). Shown without the "/local" prefix when no cloud drive is connected --
+// since the working directory is then "/local" itself, so the bare name is what actually opens the
+// file -- and with the "/local/" prefix once a cloud drive is connected, since the working
+// directory becomes "/cloud" and "/local" files then need the full path.
+function localFileCompletions() : AcResultType[] {
+    const showWithoutPrefix = !isCloudMounted();
+    return Object.keys(localFsCache.listEntries()).map((path) => {
+        const acResult = (showWithoutPrefix && path.startsWith("/local/")) ? path.slice("/local/".length) : path;
+        return {acResult: acResult, documentation: "A file in your local files.", type: [], version: 0};
+    });
+}
 
 // Hand-curated set of punctuation characters after which a token can match mid-name
 // (e.g. so "pr" matches "tree_prune" or "/books/pride-and-prejudice.txt").
@@ -330,6 +345,7 @@ export default defineComponent({
             this.acResults = {};
             if (token != null && kind == "string") {
                 this.acResults[this.$t("autoCompletion.builtinFiles")] = assetFileCompletions;
+                this.acResults[this.$t("autoCompletion.yourFiles")] = localFileCompletions();
                 this.showSuggestionsAC(token);
             }
             else if (token === null) {

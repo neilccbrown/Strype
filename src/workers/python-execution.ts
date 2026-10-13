@@ -79,7 +79,7 @@ import {loadPyodide} from "pyodide";
 import {loadPyodideAndPackage, OutputPart, pyodideExpose, PyodideExtras, PyodideFatalErrorReloader} from "pyodide-worker-runner";
 import * as Comlink from "comlink";
 import {strype_bridge} from "@/stryperuntime/pyodide_bridge";
-import {ResponseFor, SyncOrAsyncStrypePyodideWorkerRequest, SyncStrypePyodideHandlerFunction, SyncStrypePyodideWorkerRequest, SyncStrypePyodideWorkerResponse} from "@/stryperuntime/worker_bridge_type";
+import {ResponseFor, SyncOrAsyncStrypePyodideWorkerRequest, StrypeSpriteStateUpdate, SyncStrypePyodideHandlerFunction, SyncStrypePyodideWorkerRequest, SyncStrypePyodideWorkerResponse} from "@/stryperuntime/worker_bridge_type";
 import {SpriteManager} from "@/stryperuntime/image_and_collisions";
 import {asyncBridge, PyodideWorkerGlobalScope, syncBridge} from "@/workers/python_execution_type";
 import {getFSForEmscripten} from "@/stryperuntime/pyodide-emscripten-cloud-fs";
@@ -91,7 +91,148 @@ import {createLazyFetchFS} from "@/stryperuntime/pyodide-emscript-fetch-fs";
 // We only specify updatePort here as we don't want other files using it directly:
 declare const self: PyodideWorkerGlobalScope & { updatePort: MessagePort };
 
+// While restoreLocalFs() (below) is filling "/local" from the main-thread cache, its writes must not be
+// echoed back to the main thread as if the program had made them:
+let localFsSyncSuppressed = false;
+
+function isLocalPath(path: string): boolean {
+    return path.startsWith("/local/");
+}
+
+// Every file (not directory) at or under path, as absolute paths; empty if path doesn't exist:
+function listFilesUnder(FS: PyodideInterface["FS"], path: string): string[] {
+    try {
+        if (!FS.isDir(FS.stat(path).mode)) {
+            return [path];
+        }
+        return FS.readdir(path)
+            .filter((entry: string) => entry !== "." && entry !== "..")
+            .flatMap((entry: string) => listFilesUnder(FS, `${path}/${entry}`));
+    }
+    catch {
+        return [];
+    }
+}
+
+// The main thread can't ask this worker for its "/local" contents while a program is stuck in a loop that
+// never waits (no sleep/print/input): the request would never be answered, so anything the program wrote
+// would be lost when Stop is clicked. But a worker can always post a message, so instead we tell the main
+// thread each file's full state as it changes -- on open-for-writing (which creates/truncates), on every
+// write that reaches the file system (that's what flush() does), on close, and on delete, rename and
+// truncate. The main thread applies these to localFsCache.ts straight away.
+function installLocalFsSync(pyodide: PyodideInterface): void {
+    // Emscripten's FS methods are called through the FS object by its own syscall layer, so replacing
+    // them here also catches Python's file I/O. The typings don't allow assigning them, hence the cast:
+    const FS = pyodide.FS as any;
+    // Reading a file back for sending uses FS.open/FS.close itself, which must not trigger more sending:
+    let sending = false;
+
+    const post = (path: string, data: Uint8Array | null) => {
+        (self as unknown as DedicatedWorkerGlobalScope).postMessage({localFsChange: {path, data}}, data == null ? [] : [data.buffer]);
+    };
+    const sendFile = (path: string | null) => {
+        if (sending || localFsSyncSuppressed || path == null || !isLocalPath(path)) {
+            return;
+        }
+        sending = true;
+        try {
+            if (!FS.isDir(FS.stat(path).mode)) {
+                post(path, FS.readFile(path, {encoding: "binary"}));
+            }
+        }
+        catch {
+            // The file has gone or can't be read: nothing to send
+        }
+        finally {
+            sending = false;
+        }
+    };
+    const sendDeleted = (path: string | null) => {
+        if (!localFsSyncSuppressed && path != null && isLocalPath(path)) {
+            post(path, null);
+        }
+    };
+    // FS methods can be given relative paths (the working directory is "/local" when running), so
+    // work out the absolute one -- before an operation that would remove what it points to:
+    const absolutePath = (path: string): string | null => {
+        try {
+            return FS.getPath(FS.lookupPath(path, {follow: false}).node);
+        }
+        catch {
+            return null;
+        }
+    };
+    const isWritable = (stream: {flags: number}) => (stream.flags & 3) !== 0; // O_RDONLY is 0
+
+    const origOpen = FS.open;
+    FS.open = function(...args: unknown[]) {
+        const stream = origOpen.apply(FS, args);
+        if (isWritable(stream)) {
+            sendFile(stream.path);
+        }
+        return stream;
+    };
+    const origWrite = FS.write;
+    FS.write = function(stream: {path: string}, ...args: unknown[]) {
+        const result = origWrite.call(FS, stream, ...args);
+        sendFile(stream.path);
+        return result;
+    };
+    const origClose = FS.close;
+    FS.close = function(stream: {path: string, flags: number}) {
+        const {path, writable} = {path: stream.path, writable: isWritable(stream)};
+        const result = origClose.call(FS, stream);
+        if (writable) {
+            sendFile(path);
+        }
+        return result;
+    };
+    const origTruncate = FS.truncate;
+    FS.truncate = function(path: string, ...args: unknown[]) {
+        const abs = absolutePath(path);
+        const result = origTruncate.call(FS, path, ...args);
+        sendFile(abs);
+        return result;
+    };
+    const origFtruncate = FS.ftruncate;
+    FS.ftruncate = function(fd: number, ...args: unknown[]) {
+        const result = origFtruncate.call(FS, fd, ...args);
+        sendFile(FS.getStream(fd)?.path ?? null);
+        return result;
+    };
+    const origUnlink = FS.unlink;
+    FS.unlink = function(path: string) {
+        const abs = absolutePath(path);
+        const result = origUnlink.call(FS, path);
+        sendDeleted(abs);
+        return result;
+    };
+    const origRename = FS.rename;
+    FS.rename = function(oldPath: string, newPath: string) {
+        // A directory rename moves every file in it, so list them before and after:
+        const oldAbs = absolutePath(oldPath);
+        const oldFiles = oldAbs == null ? [] : listFilesUnder(pyodide.FS, oldAbs);
+        const result = origRename.call(FS, oldPath, newPath);
+        oldFiles.forEach(sendDeleted);
+        const newAbs = absolutePath(newPath);
+        if (newAbs != null) {
+            listFilesUnder(pyodide.FS, newAbs).forEach(sendFile);
+        }
+        return result;
+    };
+}
+
+// The worker's console output doesn't reach the page console (and so isn't forwarded into e2e test
+// logs), so progress/diagnostic lines are relayed to the main thread, which logs them -- see the
+// "debugLog" handling in createPyodideSlot() in main_thread_python_handler.ts. Used to track down
+// the Run button occasionally staying on "Initialising..." in CI:
+const workerStartedAt = Date.now();
+function debugToMain(message: string) : void {
+    (self as unknown as DedicatedWorkerGlobalScope).postMessage({debugLog: `+${Date.now() - workerStartedAt}ms ${message}`});
+}
+
 async function loadOnly() : Promise<PyodideInterface> {
+    debugToMain("loadOnly: starting to load Pyodide");
     // The version segment here is deliberate, not incidental: it's what lets the deployed server
     // mark this whole directory as cacheable forever (see scripts/download-pyodide-libs.cjs, which
     // downloads into the matching public/pyodide/<version>/ folder, and the server config
@@ -99,6 +240,7 @@ async function loadOnly() : Promise<PyodideInterface> {
     // this multi-megabyte payload, or risking a browser never picking up a future Pyodide upgrade
     // because the URL never changed:
     const pyodide = await loadPyodideAndPackage({url: `${import.meta.env.BASE_URL}pysrc.zip`, format: "zip"}, () => loadPyodide({indexURL: `${import.meta.env.BASE_URL}pyodide/${__PYODIDE_VERSION__}/`}));
+    debugToMain("loadOnly: Pyodide and pysrc.zip loaded");
     
     // Register our strype.graphics etc modules with Pyodide by pointing it to the Javascript:
     pyodide.registerJsModule("strype_bridge", strype_bridge);
@@ -113,10 +255,145 @@ async function loadOnly() : Promise<PyodideInterface> {
     pyodide.FS.filesystems.ASSETSFS = createLazyFetchAssetsFS(pyodide);
 
     pyodide.FS.mkdir("/strype_libraries");
+
+    installLocalFsSync(pyodide);
     
+    debugToMain("loadOnly: finished setting up Pyodide");
     return pyodide;
 }
 const reloader = new PyodideFatalErrorReloader(loadOnly);
+
+// Mounts one asset root (any of assetsFilePrefixes -- "/data", "/books", "/images", etc) on demand.
+// Used by readFsFile below so that downloading an asset file works even before the user has ever
+// pressed Run (which is the only other place these get mounted -- see executePython's own loop
+// further down). Uses the same guarded mkdir/mount pattern as that loop so the two don't conflict
+// if a real run subsequently starts on this same worker.
+function ensureAssetRootMounted(pyodide: PyodideInterface, root: string): void {
+    const dir = root.slice(1);
+    if (!assetsFilePrefixes.includes(dir)) {
+        return;
+    }
+    try {
+        pyodide.FS.mkdir(root);
+    }
+    catch {
+        // Ignore errors because they will come from the dir already existing
+    }
+    try {
+        pyodide.FS.mount(pyodide.FS.filesystems.ASSETSFS, {root: dir}, root);
+    }
+    catch {
+        // Ignore errors because they will come from it already being mounted
+    }
+}
+
+// Exposed to the main thread for downloading a single file shown in the File system tab (the tree
+// listing itself is built without the worker at all -- see fileSystemTabIO.ts's listFsRootTree()
+// and assets_file_index.ts's buildAssetTree() for why). This has to be pyodideExpose'd (and so
+// called via client.call() rather than directly): reading an actual asset file's bytes goes through
+// LazyFetchFS's open() -- see pyodide-emscript-fetch-fs.ts -- which fetches the file via
+// self.syncStrypePyodideWorkerBridge, the same synchronous main-thread round trip executePython
+// sets up as "bridgeSync" below. That global is otherwise only ever set while a real Python run is
+// in progress, so without setting it up here too, downloading an asset file before ever pressing
+// Run would throw "self.syncStrypePyodideWorkerBridge is not a function". /local files need no such
+// thing (they're plain MEMFS, no lazy fetch), but there's no harm setting the bridge up
+// unconditionally here.
+const readFsFile = pyodideExpose(async (
+    extras: PyodideExtras,
+    path: string,
+    makeRawRequest: Comlink.Remote<(req: SyncOrAsyncStrypePyodideWorkerRequest) => void>
+): Promise<Uint8Array> => {
+    return await reloader.withPyodide(async (pyodide: PyodideInterface) => {
+        const bridgeSync: SyncStrypePyodideHandlerFunction = <R extends SyncStrypePyodideWorkerRequest> (req : R) : ResponseFor<R> => {
+            makeRawRequest({kind: "sync", request: req});
+            const reply = extras.readMessage() as (SyncStrypePyodideWorkerResponse | {request: string, error: string});
+            if (reply.request != req.request) {
+                throw new Error(`Internal error: Pyodide worker received ${reply.request} but had asked for ${req.request}`);
+            }
+            else if ("error" in reply) {
+                throw (req.request.startsWith("file_") ? new pyodide.FS.ErrnoError(63, "Cloud file error:" + reply.error) : new Error("Internal error:" + reply.error));
+            }
+            else {
+                return reply as ResponseFor<R>;
+            }
+        };
+        self.syncStrypePyodideWorkerBridge = bridgeSync;
+        self.asyncStrypePyodideWorkerBridge = (r) => makeRawRequest({kind: "async", request: r});
+        ensureAssetRootMounted(pyodide, "/" + path.split("/")[1]);
+        return pyodide.FS.readFile(path, {encoding: "binary"});
+    });
+});
+
+function collectFlatFiles(pyodide: PyodideInterface, path: string, out: Record<string, Uint8Array>): void {
+    const stat = pyodide.FS.stat(path);
+    if (!pyodide.FS.isDir(stat.mode)) {
+        out[path] = pyodide.FS.readFile(path, {encoding: "binary"});
+        return;
+    }
+    for (const entry of pyodide.FS.readdir(path)) {
+        if (entry === "." || entry === "..") {
+            continue;
+        }
+        collectFlatFiles(pyodide, path === "/" ? `/${entry}` : `${path}/${entry}`, out);
+    }
+}
+
+// Exposed to the main thread (see main_thread_python_handler.ts's terminateAndRestartPyodide()):
+// takes a full snapshot of "/local" as a flat {path: bytes} map, right before this worker is
+// discarded, so the main-thread cache (localFsCache.ts) can carry its contents over to the next
+// run's worker (see restoreLocalFs below). Plain MEMFS, no lazy fetch involved, so -- unlike
+// readFsFile -- this needs no pyodideExpose/sync bridge.
+async function snapshotLocalFs(): Promise<Record<string, Uint8Array> | null> {
+    return await reloader.withPyodide(async (pyodide: PyodideInterface) => {
+        const out: Record<string, Uint8Array> = {};
+        try {
+            collectFlatFiles(pyodide, "/local", out);
+        }
+        catch {
+            // "/local" doesn't exist -- this run was in /cloud mode, so there's nothing to snapshot
+            // (null rather than {}, so the caller doesn't mistake it for "everything was deleted"):
+            return null;
+        }
+        return out;
+    });
+}
+
+// Exposed to the main thread: writes a flat {path: bytes} map (as previously captured by
+// snapshotLocalFs) into this worker's fresh "/local", restoring the main-thread cache's contents
+// at the start of a new run.
+async function restoreLocalFs(entries: Record<string, Uint8Array>): Promise<void> {
+    return await reloader.withPyodide(async (pyodide: PyodideInterface) => {
+        localFsSyncSuppressed = true;
+        try {
+            try {
+                pyodide.FS.mkdir("/local");
+            }
+            catch {
+                // Ignore errors because they will come from the dir already existing
+            }
+            // Make "/local" exactly match the entries: remove anything left over from an earlier restore
+            // that has since been deleted from the main-thread cache. Only the paths matter here, so
+            // list them (listFilesUnder, also used by installLocalFsSync's rename handling above) rather
+            // than reading every file's bytes just to throw them away (collectFlatFiles, used below where
+            // the bytes are actually needed, is overkill for this):
+            for (const path of listFilesUnder(pyodide.FS, "/local")) {
+                if (!(path in entries)) {
+                    pyodide.FS.unlink(path);
+                }
+            }
+            for (const [path, data] of Object.entries(entries)) {
+                const dir = path.slice(0, path.lastIndexOf("/"));
+                if (dir && dir !== "/local") {
+                    pyodide.FS.mkdirTree(dir);
+                }
+                pyodide.FS.writeFile(path, data);
+            }
+        }
+        finally {
+            localFsSyncSuppressed = false;
+        }
+    });
+}
 
 async function urlToDirName(url: string): Promise<string> {
     const encoder = new TextEncoder();
@@ -183,7 +460,20 @@ const executePython = pyodideExpose(async (
     // (e.g. "while True: actor.move(5)") can queue up just as unboundedly as a tight print loop can.  So
     // we share this same counter and catch-up logic with sprite updates, to bound how many messages of
     // *either* kind can be outstanding at once:
+    //
+    // A catch-up is expensive: without SharedArrayBuffer the blocking wait is a synchronous XHR via the
+    // service worker, and it also has to wait for the main thread to drain everything queued so far
+    // (including any canvas redraws in progress).  A program that moves hundreds of actors per frame
+    // would otherwise spend most of its time waiting.  So for sprite updates, which cost the main thread
+    // very little to process each, we also require a minimum time since the last sync, which bounds the
+    // backlog to roughly that much work rather than to a fixed number of messages.
+    // We must NOT do this for other requests such as console output: each of those is much more expensive
+    // for the main thread (DOM updates), so 100ms worth of them can take a very long time to drain, which
+    // is exactly the problem described above that the count is there to prevent.
+    const MIN_ASYNC_REQUESTS_BEFORE_CATCH_UP = 50;
+    const MIN_MS_BETWEEN_SPRITE_CATCH_UPS = 100;
     let numConsecutiveAsyncRequests = 0;
+    let lastSyncTime = performance.now();
     // Does the actual sync dummy round-trip that guarantees all previously-sent async requests
     // (e.g. console_print for stdout/stderr) have been fully processed by the main thread, per the
     // ordering guarantee described above.
@@ -195,10 +485,13 @@ const executePython = pyodideExpose(async (
             throw new Error(`Internal error: Pyodide worker received ${reply.request} but had asked for dummy`);
         }
         numConsecutiveAsyncRequests = 0;
+        lastSyncTime = performance.now();
     };
-    const catchUpWithMainThreadIfNeeded = () => {
+    // cheapForMainThread: true for requests that are very quick for the main thread to process (sprite updates), which are
+    // additionally spaced out by MIN_MS_BETWEEN_SPRITE_CATCH_UPS; false for expensive ones (console output), which use the count alone.
+    const catchUpWithMainThreadIfNeeded = (cheapForMainThread: boolean) => {
         numConsecutiveAsyncRequests += 1;
-        if (numConsecutiveAsyncRequests >= 50) {
+        if (numConsecutiveAsyncRequests >= MIN_ASYNC_REQUESTS_BEFORE_CATCH_UP && (!cheapForMainThread || performance.now() - lastSyncTime >= MIN_MS_BETWEEN_SPRITE_CATCH_UPS)) {
             // To avoid racing too far ahead of the main thread, we do a quick catch-up:
             syncCatchUpWithMainThread();
         }
@@ -206,9 +499,10 @@ const executePython = pyodideExpose(async (
     const makeRequest = (req: SyncOrAsyncStrypePyodideWorkerRequest) => {
         if (req.kind === "sync") {
             numConsecutiveAsyncRequests = 0;
+            lastSyncTime = performance.now();
         }
         else {
-            catchUpWithMainThreadIfNeeded();
+            catchUpWithMainThreadIfNeeded(false);
         }
         // All requests are ultimately sent on:
         makeRawRequest(req);
@@ -426,9 +720,69 @@ runner`);
         // Set the global fields used by Javascript code (and by the pyodide cloud file mounting, just below): 
         self.syncStrypePyodideWorkerBridge = bridgeSync;
         self.asyncStrypePyodideWorkerBridge = (r) => makeRequest({kind: "async", request: r});
+        // Once the program calls sync_graphics() (see strype_graphics_internal.ts) we stop sending each sprite
+        // update straight away and instead collect them here, then send the lot as one "batch" message on each
+        // sync_graphics() call (and when the run ends).  The main thread then redraws only on receiving a batch.
+        // This is much cheaper than a message per update for programs that move many actors per frame.
+        let flushGraphicsAtEndOfRun = () => {};
+        let batching = false;
+        let pendingUpdates : Exclude<StrypeSpriteStateUpdate, {request: "batch"}>[] = [];
+        // Where in pendingUpdates the latest "update" for each sprite is, so a later update to that sprite can replace it
+        // (an "update" carries the sprite's full state, so only the latest matters).  The slot is reused rather than
+        // appending, which keeps the order relative to any "add"/"remove" of other sprites correct:
+        const pendingUpdateIndexById = new Map<number, number>();
+        const sendPendingUpdates = () => {
+            catchUpWithMainThreadIfNeeded(true);
+            // We send a batch even if it's empty, as that is the signal to redraw (e.g. an Image was drawn on):
+            self.updatePort.postMessage({request: "batch", updates: pendingUpdates});
+            pendingUpdates = [];
+            pendingUpdateIndexById.clear();
+        };
+        self.syncGraphics = () => {
+            batching = true;
+            sendPendingUpdates();
+        };
+        flushGraphicsAtEndOfRun = () => {
+            if (batching) {
+                sendPendingUpdates();
+            }
+        };
         self.spriteManager = new SpriteManager((u) => {
-            catchUpWithMainThreadIfNeeded();
-            self.updatePort.postMessage(u);
+            if (!batching) {
+                catchUpWithMainThreadIfNeeded(true);
+                self.updatePort.postMessage(u);
+                return;
+            }
+            switch (u.request) {
+            case "batch":
+                // Never produced by a SpriteManager; here to keep the switch exhaustive:
+                break;
+            case "update": {
+                const existing = pendingUpdateIndexById.get(u.id.handle);
+                if (existing !== undefined) {
+                    pendingUpdates[existing] = u;
+                }
+                else {
+                    pendingUpdateIndexById.set(u.id.handle, pendingUpdates.length);
+                    pendingUpdates.push(u);
+                }
+                break;
+            }
+            case "remove":
+                // Updates already pending for this sprite are still sent before this remove: they are needed if the
+                // removal is scheduled for later (removeAtTime), and harmless if it is immediate.  We just forget
+                // their slot, so any later update for this id is appended after the remove, keeping the order:
+                pendingUpdateIndexById.delete(u.id.handle);
+                pendingUpdates.push(u);
+                break;
+            case "clear":
+                // Everything before a clear is irrelevant:
+                pendingUpdates = [u];
+                pendingUpdateIndexById.clear();
+                break;
+            default:
+                pendingUpdates.push(u);
+            }
         });
         self.pyodide = pyodide;
         
@@ -476,10 +830,24 @@ runner`);
                 
         }
         
-        // We mount the "books" assets at /books, "images" at /images, etc:
+        // We mount the "books" assets at /books, "images" at /images, etc. Guarded the same way as
+        // /cloud and /local above (rather than the unguarded mkdir+mount this used to be): downloading
+        // a file from the File system tab (see readFsFile/ensureAssetRootMounted above) can mount an
+        // asset root on this same worker instance before any run ever starts, so by the time a run
+        // gets here that root may already exist and be mounted.
         for (const dir of assetsFilePrefixes) {
-            pyodide.FS.mkdir("/" + dir);
-            pyodide.FS.mount(pyodide.FS.filesystems.ASSETSFS, {root: dir}, "/" + dir);
+            try {
+                pyodide.FS.mkdir("/" + dir);
+            }
+            catch {
+                // Ignore errors because they will come from the dir already existing
+            }
+            try {
+                pyodide.FS.mount(pyodide.FS.filesystems.ASSETSFS, {root: dir}, "/" + dir);
+            }
+            catch {
+                // Ignore errors because they will come from it already being mounted
+            }
         }
         
         let error : PyodideErrorDetails | null = null;
@@ -535,7 +903,14 @@ runner`);
             }
         };
         runner.set_callback(callback);
-        await runner.run_async(pythonCode, {});
+        try {
+            await runner.run_async(pythonCode, {});
+        }
+        finally {
+            // If the program was batching graphics updates (via sync_graphics()), send any that are still outstanding
+            // so the final state is drawn:
+            flushGraphicsAtEndOfRun();
+        }
         // The counter-based catch-up above only fires every 50 async requests, so a run that ends
         // with a handful of prints immediately followed by an error (too few to trip that threshold)
         // can otherwise have its error reported to the main thread before all of that trailing output
@@ -680,6 +1055,9 @@ Comlink.expose({
     executePython,
     executeTests,
     onReady,
+    readFsFile,
+    snapshotLocalFs,
+    restoreLocalFs,
 });
 
 // We receive one message early on with the updatePort which we must store in a global:
@@ -706,8 +1084,13 @@ self.addEventListener("message", (e : any) => {
 // leave isPythonWorkerReady permanently false and Run permanently disabled. A functional probe is
 // the only signal that's actually reliable across engines:
 const workerServiceWorkerChannel = makeServiceWorkerChannel({scope: import.meta.env.BASE_URL});
+let lastReportedControlled : boolean | null = null;
 async function checkAndReportControllerStatus() : Promise<boolean> {
     const controlled = await isServiceWorkerChannelResponsive(workerServiceWorkerChannel.baseUrl);
+    if (controlled !== lastReportedControlled) {
+        debugToMain(`service worker channel check: responsive=${controlled}`);
+        lastReportedControlled = controlled;
+    }
     (self as unknown as DedicatedWorkerGlobalScope).postMessage({controllerStatus: controlled});
     return controlled;
 }
@@ -720,7 +1103,13 @@ if ("serviceWorker" in navigator) {
 // per above, isn't a reliable signal to wait on in every engine:
 (async () => {
     const deadline = Date.now() + 20000;
+    let attempts = 0;
     while (!(await checkAndReportControllerStatus()) && Date.now() < deadline) {
+        attempts++;
         await new Promise((resolve) => setTimeout(resolve, 300));
+    }
+    if (lastReportedControlled !== true) {
+        // Nothing retries after this (apart from a controllerchange event), so Run stays disabled:
+        debugToMain(`gave up probing for a service worker controller after ${attempts} attempts / 20s`);
     }
 })();

@@ -90,6 +90,11 @@ export function loadAndWaitForImage(filename: string) : RemoteImage {
     // Filename handling should have been done by caller, so we should never reach here:
     throw new Error(`Unable to load image: ${filename}`);
 }
+export function syncGraphics() : void {
+    // Unlike the sprite update functions below, this isn't a method on SpriteManager because the batching
+    // lives in the worker's message sending code (see python-execution.ts):
+    globalThis.syncGraphics();
+}
 export function setBackground(img : RemoteImage) : void {
     globalThis.spriteManager.setBackground(img);
 } 
@@ -167,29 +172,46 @@ export function canvas_setFill(img : RemoteCanvas, color : string | null) : void
 export function canvas_setStroke(img : RemoteCanvas, color : string | null) : void {
     asyncBridge({request:"canvas_setStroke", img, stroke: color ?? "#00000000"});
 }
-export function canvas_getPixel(img : RemoteCanvas, x : number, y : number) : number[] {
-    // We cache as it's rare that a call to this is isolated; usually it's in a loop:
-    const cache = cachePixelsOf(img);
-    const baseIndex = (y * img.width + x) * 4; // RGBA are 4 values per pixel 
-    // We can't slice, as we want number[] not a Uint8ClampedArray:
-    return [cache.pixelsRGBA[baseIndex], cache.pixelsRGBA[baseIndex + 1], cache.pixelsRGBA[baseIndex + 2], cache.pixelsRGBA[baseIndex + 3]];
-}
-export function canvas_setPixel(img : RemoteCanvas, x : number, y : number, r : number, g: number, b: number, a: number) : void {
+// The color is returned/passed as a single packed number (red << 24 | green << 16 | blue << 8 | alpha), because each
+// separate value or array element crossing between Python and JS is a relatively expensive call, and these are
+// called in tight loops.  We use multiplication/>>> rather than << for red to avoid going negative as a signed 32-bit int.
+export function canvas_getPixel(img : RemoteCanvas, x : number, y : number) : number {
     // We cache as it's rare that a call to this is isolated; usually it's in a loop:
     const cache = cachePixelsOf(img);
     const baseIndex = (y * img.width + x) * 4; // RGBA are 4 values per pixel
-    cache.pixelsRGBA[baseIndex] = r;
-    cache.pixelsRGBA[baseIndex+1] = g;
-    cache.pixelsRGBA[baseIndex+2] = b;
-    cache.pixelsRGBA[baseIndex+3] = a;
+    const p = cache.pixelsRGBA;
+    return p[baseIndex] * 16777216 + (p[baseIndex + 1] << 16) + (p[baseIndex + 2] << 8) + p[baseIndex + 3];
+}
+export function canvas_setPixel(img : RemoteCanvas, x : number, y : number, packedRGBA : number) : void {
+    // We cache as it's rare that a call to this is isolated; usually it's in a loop:
+    const cache = cachePixelsOf(img);
+    const baseIndex = (y * img.width + x) * 4; // RGBA are 4 values per pixel
+    const p = cache.pixelsRGBA;
+    p[baseIndex] = packedRGBA >>> 24;
+    p[baseIndex+1] = (packedRGBA >>> 16) & 255;
+    p[baseIndex+2] = (packedRGBA >>> 8) & 255;
+    p[baseIndex+3] = packedRGBA & 255;
     markDirty(img, cache);
 }
 export function canvas_getAllPixels(img : RemoteCanvas) : Uint8ClampedArray {
     return cachePixelsOf(img).pixelsRGBA;
 }
-export function canvas_setAllPixelsRGBA(img: RemoteCanvas, pixels : number[]) : void {
+export function canvas_setAllPixelsRGBA(img: RemoteCanvas, pixels : number[] | PyProxy) : void {
     const cache = cachePixelsOf(img);
-    cache.pixelsRGBA.set(pixels);
+    if (typeof (pixels as PyProxy & {getBuffer?: unknown}).getBuffer === "function") {
+        // A bytes/bytearray/memoryview (a PyProxy supporting the buffer protocol).  Copying it in one go
+        // is far faster than TypedArray.set() reading each element through the proxy:
+        const buf = (pixels as PyProxy & {getBuffer: (type: "u8") => {data: ArrayLike<number>, release: () => void}}).getBuffer("u8");
+        try {
+            cache.pixelsRGBA.set(buf.data);
+        }
+        finally {
+            buf.release();
+        }
+    }
+    else {
+        cache.pixelsRGBA.set(pixels as number[]);
+    }
     markDirty(img, cache);
 }
 export function canvas_drawImagePart(dest: RemoteCanvas, src : RemoteImage | RemoteCanvas, dx : number, dy : number, sx : number, sy : number, sw : number, sh : number, scale : number) : void {

@@ -1,6 +1,8 @@
 import { test, expect, Page } from "@playwright/test";
 import { setupStrypeTest } from "../support/general";
 import { waitForEditorSettled } from "../support/editor";
+import { load } from "../support/loading-saving";
+import en from "../../../src/localisation/en/en_main.json";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 60000, skipPyodide: true});
@@ -87,5 +89,65 @@ test.describe("Frame numbers", () => {
             expect(numberTop).toBeGreaterThanOrEqual(frameTop - tolerancePx);
             expect(numberBottom).toBeLessThanOrEqual(frameBottom + tolerancePx);
         }
+    });
+});
+
+test.describe("Frame numbers with folded frames", () => {
+    // Checks that the *visible* gutter numbers correspond one-to-one with the frame headers that
+    // are actually on screen: numbers for hidden (folded-away) frames must not be shown at all
+    // (they used to pile up on top of each other at the top of the gutter), and no two visible
+    // numbers may sit at the same vertical position.
+    async function expectGutterMatchesVisibleHeaders(page: Page) {
+        await expect.poll(async () => page.evaluate(() => {
+            const headerCount = Array.from(document.querySelectorAll("[id^=\"frameHeader_\"]"))
+                .filter((headerEl) => headerEl.closest("[id^=\"frame_id_\"]") !== null).length;
+            const tops = Array.from(document.querySelectorAll(".frame-numbers-gutter .frame-number-gutter-item"))
+                .filter((el) => getComputedStyle(el).display !== "none")
+                .map((el) => Math.round(el.getBoundingClientRect().top));
+            return {headerCount, shown: tops.length, distinct: new Set(tops).size};
+        })).toEqual(expect.objectContaining({shown: expect.any(Number)}));
+        const result = await page.evaluate(() => {
+            const headerCount = Array.from(document.querySelectorAll("[id^=\"frameHeader_\"]"))
+                .filter((headerEl) => headerEl.closest("[id^=\"frame_id_\"]") !== null).length;
+            const tops = Array.from(document.querySelectorAll(".frame-numbers-gutter .frame-number-gutter-item"))
+                .filter((el) => getComputedStyle(el).display !== "none")
+                .map((el) => Math.round(el.getBoundingClientRect().top));
+            return {headerCount, shown: tops.length, distinct: new Set(tops).size};
+        });
+        expect(result.shown).toBe(result.headerCount);
+        expect(result.distinct).toBe(result.shown);
+    }
+
+    test("are hidden for folded frames after load and across fold/unfold", async ({page}) => {
+        await load(page, "public/book_vol01/chapter03/fireworks-finished.spy");
+        await toggleFrameNumbers(page);
+        await waitForEditorSettled(page);
+        await expect(page.locator(gutterSelector)).toBeVisible();
+
+        // After load (several functions are folded to header-only):
+        await expectGutterMatchesVisibleHeaders(page);
+        const foldedCount = await page.evaluate(() => document.querySelectorAll(".frame-numbers-gutter .frame-number-gutter-item").length);
+
+        // Frozen functions can't be fully expanded, so unfreeze "prepare" first:
+        const header = page.locator(".frame-header:has-text('prepare')").first();
+        await header.click({button: "right"});
+        await page.getByRole("menuitem", {name: en.contextMenu.unfreeze, exact: true}).click({timeout: 2000});
+        await waitForEditorSettled(page);
+        await expectGutterMatchesVisibleHeaders(page);
+
+        // Unfold it (its body frames now become visible):
+        await header.click({button: "right"});
+        await page.getByRole("menuitem", {name: new RegExp("^" + en.contextMenu.collapseFull)}).click({timeout: 2000});
+        await waitForEditorSettled(page);
+        await expectGutterMatchesVisibleHeaders(page);
+        const shownAfterUnfold = await page.locator(".frame-numbers-gutter .frame-number-gutter-item:visible").count();
+        expect(shownAfterUnfold).toBeGreaterThan(0);
+
+        // Fold it again:
+        await header.click({button: "right"});
+        await page.getByRole("menuitem", {name: new RegExp("^" + en.contextMenu.collapseHeader)}).click({timeout: 2000});
+        await waitForEditorSettled(page);
+        await expectGutterMatchesVisibleHeaders(page);
+        expect(foldedCount).toBeGreaterThan(0);
     });
 });
