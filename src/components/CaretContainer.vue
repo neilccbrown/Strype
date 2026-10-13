@@ -287,7 +287,7 @@ export default defineComponent({
                 }
 
                 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
-                const inFrameType = this.appStore.frameObjects[(this.appStore.currentFrame.caretPosition == CaretPosition.body) ? this.appStore.currentFrame.id : getParentOrJointParent(this.appStore.currentFrame.id)].frameType;
+                const inFrameType = this.appStore.frameObjects[(this.appStore.currentFrame.caretPosition != CaretPosition.below) ? this.appStore.currentFrame.id : getParentOrJointParent(this.appStore.currentFrame.id)].frameType;
                 if(!inFrameType.forbiddenChildrenTypes.includes(AllFrameTypesIdentifier.funccall) && Object.values(event.clipboardData?.items??[]).some((dataTransferItem: DataTransferItem) => dataTransferItem.kind == "file" && /^(image)|(audio)\//.test(dataTransferItem.type))){
                     // For the special case of image media, we want to simulate the addition of a method call with that media.
                     // Therefore, we will need to "wrap" around the media literal value with our usual wrappers.

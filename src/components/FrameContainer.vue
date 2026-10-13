@@ -5,6 +5,13 @@
             <span :class="{[scssVars.frameContainerLabelSpanClassName]: true,'no-toggle-frame-container-span': isMainCodeFrameContainer || isDefsFrameContainer}" @click.self="toggleCollapse">{{containerLabel}}</span>
             <ChildrenFrameStateToggle v-if="isDefsFrameContainer" :frames="frames" :parentIsFrozen="false"/>
         </div>
+        <!-- The "My code" header can take the frame cursor, so that up/down arrows stop on it between the definitions and the main code -->
+        <CaretContainer
+            v-if="isMainCodeFrameContainer"
+            :frameId="frameId"
+            :caretVisibility="caretVisibility"
+            :caretAssignedPosition="caretPosition.header"
+        />
 
         <!-- keep the tabindex attribute, it is necessary to handle focus properly -->
         <hr v-if="isCollapsed && frames.length > 0" class="non-empty-collapsed-frame-container-hr">

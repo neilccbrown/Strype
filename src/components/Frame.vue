@@ -1035,10 +1035,10 @@ export default defineComponent({
                 // we need to make sure the selection is valid, and if it is, also have the selection rendered in the UI.
                 // A selection of frames with shift+click is valid if those frames have the same parent (same level frames).
                 if(selectClick){
-                    const originFrameParentId = (this.appStore.currentFrame.caretPosition == CaretPosition.body)
+                    const originFrameParentId = (this.appStore.currentFrame.caretPosition != CaretPosition.below)
                         ? this.appStore.currentFrame.id
                         : this.appStore.frameObjects[this.appStore.currentFrame.id].parentId;
-                    const targetFrameParentId = (newCaretPosition.caretPosition == CaretPosition.body)
+                    const targetFrameParentId = (newCaretPosition.caretPosition != CaretPosition.below)
                         ? newCaretPosition.frameId
                         : this.appStore.frameObjects[newCaretPosition.frameId].parentId;
                     // The selection is valid we can put this selection in effect, otherwise we get back to the initial position..
