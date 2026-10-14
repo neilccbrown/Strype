@@ -1469,10 +1469,13 @@ export default defineComponent({
                     // Store the file name in a variable to use it later in the callback, for some reason using files[0].name fails in Pinia, on Safari
                     const fileName = files[0].name;
                     const lastModified = files[0].lastModified;
+                    // Take the File itself now: "files" is live, and the input's value is reset to empty at the end of this method
+                    // (which empties it), i.e. before the paint-wait below completes.
+                    const file = files[0];
                     // Make sure the progress overlay shown above has been painted before the (synchronous, and potentially long)
                     // parse blocks the main thread:
                     waitForNextPaint()
-                        .then(() => readFileContent(files[0]))
+                        .then(() => readFileContent(file))
                         .then(
                             (content) => {
                                 // name is not always available so we also check if content starts with a {,
