@@ -1469,7 +1469,11 @@ export default defineComponent({
                     // Store the file name in a variable to use it later in the callback, for some reason using files[0].name fails in Pinia, on Safari
                     const fileName = files[0].name;
                     const lastModified = files[0].lastModified;
-                    readFileContent(files[0])
+                    // Wait for the progress overlay shown above to actually be painted before the (synchronous, and potentially long)
+                    // parse blocks the main thread: two animation frames guarantees a paint has happened in between.
+                    // (The file picker path above uses a 100ms timeout for the same reason.)
+                    new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+                        .then(() => readFileContent(files[0]))
                         .then(
                             (content) => {
                                 // name is not always available so we also check if content starts with a {,
