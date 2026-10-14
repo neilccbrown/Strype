@@ -8,7 +8,8 @@ import {ARROWS_DEFS_TO_MAIN, ARROWS_IMPORTS_TO_MAIN, ARROWS_MAIN_TO_DEFS, arrows
 // {uparrow}/{downarrow} counts (see tests/shared/main-heading-focus.ts):
 export const DOWN_DEFS_TO_MAIN = "{downarrow}".repeat(ARROWS_DEFS_TO_MAIN);
 export const UP_MAIN_TO_DEFS = "{uparrow}".repeat(ARROWS_MAIN_TO_DEFS);
-// From the (empty) top of Imports, or the position just below a frame in Imports, down to the top of Main
+// Any extra {downarrow}s needed, over a plain Definitions-bottom-to-Main step, once My code takes focus:
+export const DOWN_EXTRA_PAST_HEADING = "{downarrow}".repeat(ARROWS_DEFS_TO_MAIN - 1);// From the (empty) top of Imports, or the position just below a frame in Imports, down to the top of Main
 export const DOWN_IMPORTS_TO_MAIN = "{downarrow}".repeat(ARROWS_IMPORTS_TO_MAIN);
 // From the top of Main up through the given number of (empty) sections: 1 = Definitions, 2 = Imports
 export const upFromMain = (sectionsUp: number): string => "{uparrow}".repeat(arrowsUpFromMain(sectionsUp));
