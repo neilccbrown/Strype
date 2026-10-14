@@ -126,7 +126,7 @@ ${STARTING_MAIN}
 
     it("Pastes imports-only at top of imports", () => {
         testRoundTripPasteAndDownload(STARTING_POINT);
-        testRoundTripPasteAndDownload(IMPORT0 + "\n" + IMPORT1 + "\n" + IMPORT2, "{home}" + UP_MAIN_TO_DEFS + "{home}" + UP_MAIN_TO_DEFS + "{home}", `
+        testRoundTripPasteAndDownload(IMPORT0 + "\n" + IMPORT1 + "\n" + IMPORT2, "{home}" + UP_MAIN_TO_DEFS + "{home}{uparrow}{home}", `
 #(=> Strype:1:${MODE}
 ${getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"))}#(=> Section:Imports
 ${IMPORT0}
@@ -159,7 +159,7 @@ ${STARTING_MAIN}
 
     it("Pastes full set in imports", () => {
         testRoundTripPasteAndDownload(STARTING_POINT);
-        testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN2, MAIN1, MAIN0].join("\n"), "{home}" + UP_MAIN_TO_DEFS + "{home}" + UP_MAIN_TO_DEFS + "{home}", `
+        testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN2, MAIN1, MAIN0].join("\n"), "{home}" + UP_MAIN_TO_DEFS + "{home}{uparrow}{home}", `
 #(=> Strype:1:${MODE}
 ${getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"))}#(=> Section:Imports
 ${IMPORT0}
@@ -315,7 +315,7 @@ afterwards()
 
     it("Pastes full set in imports then adds frame", () => {
         testRoundTripPasteAndDownload(STARTING_POINT);
-        testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN2, MAIN1, MAIN0].join("\n"), "{home}" + UP_MAIN_TO_DEFS + "{home}" + UP_MAIN_TO_DEFS + "{home}", `
+        testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN2, MAIN1, MAIN0].join("\n"), "{home}" + UP_MAIN_TO_DEFS + "{home}{uparrow}{home}", `
 #(=> Strype:1:${MODE}
 ${getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"))}#(=> Section:Imports
 ${IMPORT0}

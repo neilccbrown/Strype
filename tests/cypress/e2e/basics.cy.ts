@@ -4,7 +4,7 @@ import {expect} from "chai";
 import en from "@/localisation/en/en_main.json";
 
 import failOnConsoleError from "cypress-fail-on-console-error";
-import {cleanFromHTML, clearDefaultImports, getDefaultStrypeProjectDocumentationFullLine, pressFrameShortcut, pressFrameShortcutThenType} from "../support/test-support";
+import {cleanFromHTML, clearDefaultImports, getDefaultStrypeProjectDocumentationFullLine, pressFrameShortcut, pressFrameShortcutThenType, UP_MAIN_TO_DEFS} from "../support/test-support";
 import { scssVars, standardBeforeEach, strypeElIds } from "../support/standard-setup";
 failOnConsoleError();
 require("cypress-terminal-report/src/installLogsCollector")();
@@ -299,7 +299,7 @@ describe("Adding frames", () => {
 describe("Classes", () => {
     it("Lets you add a class frame", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode));
-        cy.get("body").type("{uparrow}");
+        cy.get("body").type(UP_MAIN_TO_DEFS);
         pressFrameShortcutThenType("c", "Foo");
         cy.get("body").type("{rightarrow}{rightarrow}{downarrow}foo()");
         checkCodeEquals(defaultImports.concat([
@@ -312,7 +312,7 @@ describe("Classes", () => {
     });
     it("Lets you add a class frame with a parent class", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode));
-        cy.get("body").type("{uparrow}");
+        cy.get("body").type(UP_MAIN_TO_DEFS);
         pressFrameShortcutThenType("c", "Foo(Bar");
         cy.get("body").type("{rightarrow}{rightarrow}{rightarrow}{downarrow}foo()");
         checkCodeEquals(defaultImports.concat([
@@ -327,7 +327,7 @@ describe("Classes", () => {
     it("Lets you add a class frame with class attributes and methods", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode));
         // Class header:
-        cy.get("body").type("{uparrow}");
+        cy.get("body").type(UP_MAIN_TO_DEFS);
         pressFrameShortcutThenType("c", "Foo");
         // Constructor body:
         cy.get("body").type("{rightarrow}{rightarrow}{downarrow}foo()");
@@ -410,7 +410,7 @@ describe("Deleting frames", () => {
     it("Lets you delete a class member frame with delete", () => {
         // Makes a class with a constructor then we try to delete it:
         //(class followed by a pause, because it can take a bit longer to add its body/joint section)
-        cy.get("body").type("{upArrow}");
+        cy.get("body").type(UP_MAIN_TO_DEFS);
         pressFrameShortcut("c");
         cy.wait(100);
         cy.get("body").type("A{rightArrow}{rightArrow}");
@@ -517,7 +517,7 @@ describe("Wrapping frames", () => {
 describe("Copying key combination", () => {
     it("Check C inserts a class", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode));
-        cy.get("body").type("{upArrow}");
+        cy.get("body").type(UP_MAIN_TO_DEFS);
         cy.get("body").trigger("keydown", {keycode: 32, key: " ", code: "Space"});
         cy.get("body").trigger("keyup", {keycode: 32, key: " ", code: "Space"});
         cy.get("body").trigger("keydown", {keycode: 67, key: "c", code: "c"});
@@ -532,7 +532,7 @@ describe("Copying key combination", () => {
     it("Does not insert a class frame on Ctrl+C, when C is released first", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode));
         // Make a function frame and select it:
-        cy.get("body").type("{upArrow}");
+        cy.get("body").type(UP_MAIN_TO_DEFS);
         pressFrameShortcutThenType("f", "foo{downArrow}{downArrow}");
         pressFrameShortcutThenType("r", "42{downArrow}{downArrow}{downArrow}{shift}{upArrow}");
         cy.get("body").trigger("keydown", {keycode: 17, key: "Control", code: "ControlLeft"});
@@ -544,7 +544,7 @@ describe("Copying key combination", () => {
     it("Does not insert a class frame on Ctrl+C, when C is released second", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode));
         // Make a function frame and select it:
-        cy.get("body").type("{upArrow}");
+        cy.get("body").type(UP_MAIN_TO_DEFS);
         pressFrameShortcutThenType("f", "foo{downArrow}{downArrow}");
         pressFrameShortcutThenType("r", "42{downArrow}{downArrow}{downArrow}{shift}{upArrow}");
         cy.get("body").trigger("keydown", {keycode: 17, key: "Control", code: "ControlLeft"});
