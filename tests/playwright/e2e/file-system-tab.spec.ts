@@ -525,6 +525,37 @@ test.describe("File system tab -- /local (writeable scratch area)", () => {
         expect(readFileSync(downloadedPath as string, "utf8")).toEqual(content);
     });
 
+    test("a pinned file survives a plain page refresh", async ({ page }) => {
+        await openFilesTab(page);
+        const content = "pinned across a refresh\n";
+        const filePath = testFixturePath(test.info().outputDir, "pin-refresh.txt", content);
+        await localUploadInput(page).setInputFiles(filePath);
+
+        const localSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.local });
+        const row = localSection.locator(".file-system-tree-file", { hasText: "pin-refresh.txt" });
+        await row.hover();
+        await row.locator(".file-system-tree-pin-btn").click();
+        await expect(row.locator(".file-system-tree-pin-btn")).toHaveClass(/file-system-tree-pin-btn-pinned/);
+
+        // A refresh (unlike New project, then Load) is restored from the session's autosave:
+        await page.reload();
+        await page.waitForSelector(".frame-container");
+        await openFilesTab(page);
+
+        await expect(localSection).toContainText("pin-refresh.txt");
+        const reloadedRow = localSection.locator(".file-system-tree-file", { hasText: "pin-refresh.txt" });
+        await expect(reloadedRow.locator(".file-system-tree-pin-btn")).toHaveClass(/file-system-tree-pin-btn-pinned/);
+
+        await reloadedRow.hover();
+        const [download] = await Promise.all([
+            page.waitForEvent("download"),
+            reloadedRow.locator(".file-system-tree-download-btn").click(),
+        ]);
+        const downloadedPath = await download.path();
+        expect(downloadedPath).not.toBeNull();
+        expect(readFileSync(downloadedPath as string, "utf8")).toEqual(content);
+    });
+
     test("deleting a pinned file un-pins it too, so it isn't restored on load", async ({ page }) => {
         await openFilesTab(page);
         const keptContent = "kept and pinned\n";

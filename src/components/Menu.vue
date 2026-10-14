@@ -1372,7 +1372,7 @@ export default defineComponent({
                         // Therefore, if we are on the micro:bit version, instead of loading the selected project inside the current editor,
                         // we open a new tab pointing at the standard version with the project as if we shared it.
                         const projectName = selectedProject.name ?? "Book";
-                        trackUsedBookProject(projectName, selectedProject.chapter);
+                        trackUsedBookProject(projectName, selectedProject.chapter, selectedProject.path);
                         // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
                         selectedProject.projectFile.then((content) => {
                             if (content) {

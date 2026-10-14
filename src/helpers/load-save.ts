@@ -39,6 +39,11 @@ export function loadDivider(json: string | undefined): StrypeLayoutDividerSettin
 // rather than one big JSON blob crammed onto a single line.
 const pinnedLocalFileHeaderPrefix = "pinnedLocalFile";
 
+// The key the same pinned-file headers are stored under in the session autosave's JSON state
+// (see the store's generateStateJSONStrWithCheckpoint()/doSetStateFromJSONStr()), so that they also
+// survive a plain page refresh, not just saving to and loading from a .spy file.
+export const pinnedLocalFilesStateKey = "pinnedLocalFiles";
+
 // Serialises every currently-pinned "/local" file (see localFsCache.ts's listPinnedEntries()) into
 // one header per file: "pinnedLocalFile<n>" -> "<relativePath>:<base64>", where <relativePath> is
 // the file's path relative to "/local" (e.g. "sub/a.txt", not "/local/sub/a.txt" -- shorter, and
