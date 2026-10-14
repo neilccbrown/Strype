@@ -254,7 +254,7 @@
 //////////////////////
 import { computed, defineComponent, nextTick, ref, watch } from "vue";
 import { useStore, settingsStore } from "@/store/store";
-import {saveContentToFile, readFileContent, fileNameRegex, strypeFileExtension, isMacOSPlatform} from "@/helpers/common";
+import {saveContentToFile, readFileContent, waitForNextPaint, fileNameRegex, strypeFileExtension, isMacOSPlatform} from "@/helpers/common";
 import { AppEvent, CaretPosition, CollapsedState, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, Locale, MessageDefinitions, MIMEDesc, PythonExecRunningState, SaveRequestReason, ShareProjectMode, SlotCoreInfos, SlotCursorInfos, SlotType, StrypeSyncTarget } from "@/types/types";
 import {countEditorCodeErrors, CustomEventTypes, fileImportSupportedFormats, getAppLangSelectId, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUID, getFrameHeaderUID, getFrameUID, getCloudDriveHandlerComponentRefId, getLabelSlotUID, getLoadFromFSStrypeButtonId, getLoadProjectLinkId, getNearestErrorIndex, getSaveAsProjectModalDlg, getSaveStrypeProjectToFSButtonId, getStrypeSaveProjectNameInputId, isElementEditableLabelSlotInput, isElementUIDFrameHeader, isIdAFrameId, parseFrameHeaderUID, parseFrameUID, parseLabelSlotUID, setDocumentSelection, sharedStrypeProjectIdKey, sharedStrypeProjectTargetKey, getSaveProjectLinkId, getShareProjectLinkId, getNewProjectLinkId, getImportFileInputId, isFullyInViewport} from "@/helpers/editor";
 import { Slide } from "vue3-burger-menu";
@@ -1427,8 +1427,8 @@ export default defineComponent({
                             const emitPayload: AppEvent = {requestAttention: true};
                             emitPayload.message = this.$t("appMessage.loadEditorFile");
                             this.$emit(CustomEventTypes.appShowProgressOverlay, emitPayload);
-                            // Make sure we have a delay for the main event loop to let us display the progress bar triggered above
-                            setTimeout(() => {
+                            // Make sure the progress bar triggered above has been painted before the (synchronous, and potentially long) parse blocks the main thread:
+                            void waitForNextPaint().then(() => {
                                 const reader = new FileReader();
                                 reader.addEventListener("load", () => {
                                     // name is not always available so we also check if content starts with a {,
@@ -1447,7 +1447,7 @@ export default defineComponent({
                                     this.$emit(CustomEventTypes.appShowProgressOverlay, emitPayload);  
                                 });
                                 reader.readAsText(file); 
-                            }, 100);                            
+                            });
                         });
                     });                        
                 }
@@ -1469,7 +1469,13 @@ export default defineComponent({
                     // Store the file name in a variable to use it later in the callback, for some reason using files[0].name fails in Pinia, on Safari
                     const fileName = files[0].name;
                     const lastModified = files[0].lastModified;
-                    readFileContent(files[0])
+                    // Take the File itself now: "files" is live, and the input's value is reset to empty at the end of this method
+                    // (which empties it), i.e. before the paint-wait below completes.
+                    const file = files[0];
+                    // Make sure the progress overlay shown above has been painted before the (synchronous, and potentially long)
+                    // parse blocks the main thread:
+                    waitForNextPaint()
+                        .then(() => readFileContent(file))
                         .then(
                             (content) => {
                                 // name is not always available so we also check if content starts with a {,
