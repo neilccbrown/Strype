@@ -27,7 +27,7 @@ function writeFlakyTestsSummary(flakyTests: { spec: string; title: string; attem
 }
 
 export default defineConfig({
-    retries: 1,
+    retries: 0, // TEMPORARY (focusable-main-heading experiment): was 1; revert before merging
     downloadsFolder: "tests/cypress/downloads",
     fixturesFolder:	"tests/cypress/fixtures",
     screenshotsFolder: "tests/cypress/screenshots",
