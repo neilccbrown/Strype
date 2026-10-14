@@ -471,7 +471,7 @@ const executePython = pyodideExpose(async (
     // for the main thread (DOM updates), so 100ms worth of them can take a very long time to drain, which
     // is exactly the problem described above that the count is there to prevent.
     const MIN_ASYNC_REQUESTS_BEFORE_CATCH_UP = 50;
-    const MIN_MS_BETWEEN_SPRITE_CATCH_UPS = 100;
+    const MIN_MS_BETWEEN_SPRITE_CATCH_UPS = 5;
     let numConsecutiveAsyncRequests = 0;
     let lastSyncTime = performance.now();
     // Does the actual sync dummy round-trip that guarantees all previously-sent async requests
