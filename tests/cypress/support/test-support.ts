@@ -74,13 +74,17 @@ export function getDefaultStrypeProjectImportFullLine(mode: string): string {
 }
 
 // Navigates to the top of the code (the top of Imports) from wherever the caret currently is,
-// ready to type/paste a new import above whatever's already there. Implemented as repeated
-// {home}{uparrow} presses rather than a fixed {uparrow} count: {home} is a no-op once already at
-// the start of a line/frame and {uparrow} is a no-op once at the very top, so this reliably
-// reaches the top regardless of how many frames (including default imports) precede it -- unlike
-// an exact {uparrow} count, which breaks every time the starting project's shape changes.
+// ready to type/paste a new import above whatever's already there. Implemented as more {uparrow}
+// presses than could possibly be needed, since {uparrow} is a no-op once already at the very top --
+// so this reliably reaches the top regardless of how many frames (including default imports) precede
+// it, unlike an exact count, which breaks every time the starting project's shape changes. (This
+// deliberately doesn't use {home}: with the My code heading focusable, {home} from the heading
+// jumps back to the top of Main, so {home}{uparrow} presses can never get past it.)
 export function navigateToTopOfCode(): void {
-    cy.get("body").type("{home}{uparrow}{home}{uparrow}{home}{uparrow}");
+    cy.then(() => {
+        const presses = Cypress.$(".frame-div").length * 3 + 10;
+        cy.get("body").type("{uparrow}".repeat(presses));
+    });
 }
 
 // Navigates to the top of the code, then deletes whatever's currently in Imports (the 2 default
