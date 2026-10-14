@@ -158,6 +158,12 @@ export function readImageSizeFromDataURI(dataURI: string): Promise<{ dataURI: st
     });
 }
 
+// Resolves once the browser has painted whatever DOM changes were made before calling this.  Use it after showing something
+// (e.g. the progress overlay) and before starting long synchronous work that would block the main thread, otherwise the
+// browser may never get a rendering opportunity in between.  Two animation frames: the first callback runs just before a
+// paint, so only the second one is guaranteed to run after a paint has happened.
+export const waitForNextPaint = (): Promise<void> => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+
 export const readFileContent = async (file: File): Promise<string>  => {
     // from https://stackoverflow.com/questions/17068610/read-a-file-synchronously-in-javascript
     const result = await new Promise<string>((resolve, reject) => {
