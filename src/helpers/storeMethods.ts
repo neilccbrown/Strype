@@ -1219,6 +1219,13 @@ export function checkCodeErrors(frameIdForPrecompiled?: number): void {
 export function clearAllRuntimeErrors(): void {
     Object.values(useStore().frameObjects).forEach((frame: FrameObject) => {
         delete useStore().frameObjects[frame.id].runTimeError;
+        delete useStore().frameObjects[frame.id].assertionFailed;
+    });
+}
+
+export function clearAllTestOutcomes(): void {
+    Object.values(useStore().frameObjects).forEach((frame: FrameObject) => {
+        delete useStore().frameObjects[frame.id].testOutcome;
     });
 }
 

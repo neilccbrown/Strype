@@ -89,7 +89,7 @@ import { useStore } from "@/store/store";
 import Parser from "@/parser/parser";
 import { mapStores } from "pinia";
 import { checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, debounceComputeAddFrameCommandContainerSize, getEditorCodeErrorsHTMLElements, getFrameUID, getPEAComponentRefId, getPEAConsoleId, getPEAControlsDivId, getPEAGraphicsContainerDivId, getPEATabContentContainerDivId, hasPrecompiledCodeError, setContextMenuEventClientXY, setPythonExecAreaLayoutButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
-import { CoordPosition, defaultEmptyStrypeLayoutDividerSettings, PythonExecRunningState, StrypeContextMenuItem, StrypePEALayoutData, StrypePEALayoutMode } from "@/types/types";
+import { AllFrameTypesIdentifier, BaseSlot, CoordPosition, defaultEmptyStrypeLayoutDividerSettings, PythonExecRunningState, StrypeContextMenuItem, StrypePEALayoutData, StrypePEALayoutMode } from "@/types/types";
 import { WORLD_HEIGHT, WORLD_WIDTH } from "@/stryperuntime/image_and_collisions";
 import SVGIcon from "@/components/SVGIcon.vue";
 import { Splitpanes, Pane } from "splitpanes";
@@ -110,7 +110,7 @@ import {handleAsyncRequests, handleFileSyncRequests, handleSyncRequests} from "@
 import {callTrackingProxyPorts, getPythonClient, isPythonWorkerReady, renderer, serviceWorkerChannel, terminateAndRestartPyodide} from "@/stryperuntime/main_thread_python_handler";
 import { TurtlePixiHandler } from "@/stryperuntime/turtle_pixi_handler";
 import {closeAudioContext, createOrGetAudioContext} from "@/helpers/audioContext";
-import {clearAllRuntimeErrors, computeFrameSnapshot} from "@/helpers/storeMethods";
+import {clearAllRuntimeErrors, clearAllTestOutcomes, computeFrameSnapshot} from "@/helpers/storeMethods";
 import {listEntriesForWorker} from "@/helpers/localFsCache";
 import html2canvas from "html2canvas";
 import FileSystemPane from "@/components/FileSystemTab/FileSystemPane.vue";
@@ -959,6 +959,11 @@ export default defineComponent({
             }
 
             const pythonConsole = this.$refs.pythonConsole as HTMLTextAreaElement;
+            // Like a normal Run, start by clearing the previous run's errors (and the previous tests' outcomes):
+            this.appStore.wasLastRuntimeErrorFrameId = undefined;
+            clearAllRuntimeErrors();
+            clearAllTestOutcomes();
+
             // Separate Parser instances: Parser.parse() leaves internal state (e.g. exitFlag) set after
             // reaching a stop boundary, which would corrupt a second parse() call reusing the same instance.
             // We keep parser/testsParser afterwards: their getFramePositionMap() lets a pytest failure's
@@ -1033,6 +1038,7 @@ export default defineComponent({
                         output += `\nFAILED ${failure.nodeId}\n${failureDetailsToShow(failure.message)}\n`;
                     }
                     this.highlightTestFailures(failures, parser, testsParser, testsFileLinesBeforeTestsCode);
+                    this.recordTestOutcomes(results.results);
                 }
                 pythonConsole.value += output;
                 pythonConsole.scrollTop = pythonConsole.scrollHeight;
@@ -1070,7 +1076,14 @@ export default defineComponent({
                 const lineIndex = failure.lineno - 1 - (failure.crashFile == "tests" ? testsFileLinesBeforeTestsCode : 0);
                 const posInfo = positions[lineIndex];
                 if (posInfo) {
-                    useStore().frameObjects[posInfo.frameId].runTimeError = failure.crashMessage || failure.message;
+                    const failedFrame = useStore().frameObjects[posInfo.frameId];
+                    failedFrame.runTimeError = failure.crashMessage || failure.message;
+                    // A failed assert statement is shown differently from other errors (a cross, not a warning triangle).
+                    // Depending on the assert, pytest's one-line summary of it is "AssertionError: ..." or (for an assert it
+                    // has rewritten to explain) just "assert ..."; any other error, e.g. a NameError evaluating it, isn't one:
+                    if (failedFrame.frameType.type == AllFrameTypesIdentifier.assert && /^(AssertionError|assert)\b/.test(failure.crashMessage ?? "")) {
+                        failedFrame.assertionFailed = true;
+                    }
                     useStore().forceExpand(posInfo.frameId);
                     firstFailureFrameId ??= posInfo.frameId;
                 }
@@ -1078,6 +1091,24 @@ export default defineComponent({
             if (firstFailureFrameId !== undefined) {
                 useStore().wasLastRuntimeErrorFrameId = firstFailureFrameId;
             }
+        },
+
+        // Records on each test_ function in the Testing section whether it passed or failed in this run
+        // (shown by a tick or a cross in its header). A test function that wasn't run has no outcome.
+        recordTestOutcomes(results: TestRunResult[]): void {
+            const store = useStore();
+            const testFunctionFrames = store.frameObjects[store.getTestsFrameContainerId].childrenIds
+                .map((frameId) => store.frameObjects[frameId])
+                .filter((frame) => frame.frameType.type == AllFrameTypesIdentifier.funcdef);
+            for (const frame of testFunctionFrames) {
+                const name = (frame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code;
+                // A node id is e.g. "test_strype_user_tests.py::test_name" (with "[...]" after the name for parametrised tests):
+                const outcomes = results.filter((r) => r.nodeId.split("::").pop()?.split("[")[0] == name);
+                if (outcomes.length > 0) {
+                    frame.testOutcome = outcomes.every((r) => r.outcome == "passed") ? "passed" : "failed";
+                }
+            }
+            store.lastTestRunAt = Date.now();
         },
 
         checkNonePrecompiledErrors(){

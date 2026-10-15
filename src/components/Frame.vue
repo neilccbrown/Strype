@@ -43,6 +43,9 @@
                 :frameFrozenState="frozenState"
                 :erroneous="hasRuntimeError"
                 :wasLastRuntimeError="wasLastRuntimeError"
+                :isAssertionFailure="isAssertionFailure"
+                :testOutcome="testOutcome"
+                :isTestOutcomeStale="isTestOutcomeStale"
                 :onFocus="showFrameParseErrorPopupOnHeaderFocus"
             />
             <teleport to="body">
@@ -294,6 +297,21 @@ export default defineComponent({
 
         wasLastRuntimeError(): boolean {
             return this.appStore.wasLastRuntimeErrorFrameId == this.frameId;
+        },
+
+        // Whether the runtime error here was a failed assert statement
+        isAssertionFailure(): boolean {
+            return this.appStore.frameObjects[this.frameId].assertionFailed ?? false;
+        },
+
+        // For a test_ function: how it went in the last test run, if there has been one
+        testOutcome(): "passed" | "failed" | undefined {
+            return this.appStore.frameObjects[this.frameId].testOutcome;
+        },
+
+        // The outcome of the last test run is out of date once the editor has been changed since
+        isTestOutcomeStale(): boolean {
+            return this.appStore.editorLastModificationAt > this.appStore.lastTestRunAt;
         },
 
         errorPopupTitle(): string {

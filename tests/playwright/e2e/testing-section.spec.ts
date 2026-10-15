@@ -141,6 +141,58 @@ test.describe("Testing section", () => {
         await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toMatch(/^Running tests\.\.\.\nNo tests found in the Testing section\.\n$/);
     });
 
+    test("Test functions show a tick or a cross after a run, and a failed assert shows a cross", async ({page}) => {
+        await loadContent(page, `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+print("hi") 
+#(=> Section:Testing
+def test_passes ( ) :
+    assert 1 < 2 
+def test_fails ( ) :
+    assert 1 > 2 
+def test_errors ( ) :
+    assert undefined_name 
+#(=> Section:End
+`);
+        const testFunctions = page.locator("#frameContainer_-4 .frame-div[data-frameType='funcdef']");
+        const asserts = page.locator("#frameContainer_-4 .frame-div[data-frameType='assert']");
+        await expect(testFunctions).toHaveCount(3);
+        // Nothing is shown before the tests have been run:
+        await expect(page.locator(".test-outcome-icon")).toHaveCount(0);
+
+        await goToTopOfMainCode(page);
+        await switchToTestingFromMain(page);
+        await expect(runButton(page)).toBeEnabled({timeout: 120000});
+        await runButton(page).click();
+        await expect.poll(async () => await page.locator("#peaConsole").inputValue(), {timeout: 120000}).toContain("1 passed, 2 failed");
+
+        // A tick or a cross in the header of each test function:
+        const outcomeIcon = (index: number) => testFunctions.nth(index).locator(".test-outcome-icon").first();
+        await expect(outcomeIcon(0)).toHaveClass(/fa-check/);
+        await expect(outcomeIcon(0)).toHaveClass(/test-outcome-passed/);
+        await expect(outcomeIcon(1)).toHaveClass(/fa-times/);
+        await expect(outcomeIcon(1)).toHaveClass(/test-outcome-failed/);
+        await expect(outcomeIcon(2)).toHaveClass(/test-outcome-failed/);
+
+        // A failed assert statement is marked with a cross, whereas an error from evaluating it (the NameError) keeps the triangle:
+        await expect(asserts.nth(0).locator(".err-icon")).toHaveCount(0);
+        await expect(asserts.nth(1).locator(".err-icon")).toHaveClass(/fa-times/);
+        await expect(asserts.nth(1).locator(".err-icon")).not.toHaveClass(/fa-exclamation-triangle/);
+        await expect(asserts.nth(2).locator(".err-icon")).toHaveClass(/fa-exclamation-triangle/);
+        await expect(asserts.nth(2).locator(".err-icon")).not.toHaveClass(/fa-times/);
+
+        // Editing the code makes the outcomes out of date, which greys them out:
+        await asserts.nth(0).locator(".label-slot-input", {hasText: /^2$/}).click();
+        await page.keyboard.type("0");
+        await page.keyboard.press("ArrowDown");
+        await waitForEditorSettled(page);
+        await expect(outcomeIcon(0)).toHaveClass(/test-outcome-stale/);
+        await expect(outcomeIcon(1)).toHaveClass(/test-outcome-stale/);
+        await expect(outcomeIcon(0)).not.toHaveClass(/test-outcome-passed/);
+    });
+
     test("The Testing Your Functions demo project runs, and its tests pass", async ({page}) => {
         await loadContent(page, readFileSync("public/demos/console/testing_example.spy", "utf8"));
         const consoleLoc = page.locator("#peaConsole");

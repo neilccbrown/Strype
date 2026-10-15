@@ -173,6 +173,8 @@ export interface FrameObject {
     labelSlotsDict: { [index: number]: LabelSlotsContent }; //this contains the label input slots data listed as a key value pairs array (key = index of the slot)
     atParsingError?: string //this contains the error message for a parsing error (from TigerPython) that can't be associated to a slot (e.g. wrong try structure)
     runTimeError?: string; //this contains the error message for a runtime error, as the granularity of the Skulpt doesn't go beyond the line number
+    assertionFailed?: boolean; //set on an assert frame whose runtime error was a failed assertion (shown with a cross rather than a warning triangle)
+    testOutcome?: "passed" | "failed"; //for a test_ function in the Testing section: how it went in the last test run (see lastTestRunAt in the store)
 }
 
 export enum AllowedSlotContent {

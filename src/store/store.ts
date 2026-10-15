@@ -143,6 +143,10 @@ export const useStore = defineStore("app", {
             // Incremented each time the user asks to run the Testing section's code via pytest; watched by PythonExecutionArea.vue.
             testRunRequestId: 0,
 
+            // When (Date.now()) the last test run finished: a test function's outcome is out of date once the editor
+            // has been modified since then (see editorLastModificationAt)
+            lastTestRunAt: 0,
+
             // The third section of the editor shows either the main code ("My code") or the testing code
             // ("Testing"); the "My code" heading toggles between the two (see toggleMainSectionShowsTests()).
             mainSectionShowsTests: false,

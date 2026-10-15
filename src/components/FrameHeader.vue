@@ -28,6 +28,10 @@
                 <!-- ^^ Note: append to frame label is same as prepend to slot -->
             </div>
             <div class="frame-controls-container">
+                <!-- How a test_ function went in the last test run: a tick or a cross, greyed out once the code has been edited since -->
+                <i v-if="testOutcome && groupIndex == 0"
+                   :class="{'fas fa-xs test-outcome-icon': true, 'fa-check': testOutcome == 'passed', 'fa-times': testOutcome == 'failed', 'test-outcome-passed': testOutcome == 'passed' && !isTestOutcomeStale, 'test-outcome-failed': testOutcome == 'failed' && !isTestOutcomeStale, 'test-outcome-stale': isTestOutcomeStale}"
+                   :title="$t(testOutcome == 'passed' ? 'appMessage.testPassed' : 'appMessage.testFailed')"></i>
                 <div ref="frozenControl" :class="{'frozen-control': true, 'frozen': isFrozen}" v-if="groupIndex == 0">
                     <img class="frozen-frozen" src="@/assets/images/snowflake.svg" v-if="isFrozen">
                 </div>
@@ -47,7 +51,8 @@
                 </div>
             </div>
             <ChildrenFrameStateToggle v-if="isClassDef && isFoldFull && groupIndex === splitLabels.length - 1" :frames="children" :parentIsFrozen="isFrozen"/>
-            <i v-if="(wasLastRuntimeError || hasErroneousSlot) && groupIndex == splitLabels.length - 1" :class="{'fas fa-exclamation-triangle fa-xs err-icon': true, 'runtime-past-err-icon': (!erroneous && !hasErroneousSlot)}"></i>            
+            <!-- A failed assert statement gets a cross; any other error (or a slot in error) the warning triangle -->
+            <i v-if="(wasLastRuntimeError || erroneous || hasErroneousSlot) && groupIndex == splitLabels.length - 1" :class="{'fas fa-xs err-icon': true, 'fa-exclamation-triangle': !(isAssertionFailure && !hasErroneousSlot), 'fa-times': (isAssertionFailure && !hasErroneousSlot), 'runtime-past-err-icon': (!erroneous && !hasErroneousSlot)}"></i>            
         </div>
     </div>
 </template>
@@ -155,6 +160,9 @@ export default defineComponent({
         frameAllowedFrozenStates: {type: Array as PropType<FrozenState[]>},
         erroneous: Boolean,
         wasLastRuntimeError: Boolean,
+        isAssertionFailure: Boolean,
+        testOutcome: String as PropType<"passed" | "failed">,
+        isTestOutcomeStale: Boolean,
         onFocus: {type: Function, required: true}, // Handler for focus/blur the header (see Frame.vue)
     },
 
@@ -308,6 +316,15 @@ export default defineComponent({
 }
 .runtime-past-err-icon {
     color:#706e6e;
+}
+.test-outcome-icon {
+    color: #706e6e; // grey: out of date, as the code has been edited since the tests were run
+}
+.test-outcome-passed {
+    color: #2e9b3e;
+}
+.test-outcome-failed {
+    color: #d66;
 }
 .frame-header-label-projectDocumentation > img, .frame-header-label-funcdef > img, .frame-header-label-classdef > img {
     height: 0.9em;
