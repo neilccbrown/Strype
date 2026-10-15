@@ -131,6 +131,11 @@ export default defineComponent({
             // The caret is only visible when editing is off, 
             // and either one frame is currently selected 
             // OR when a frame or a frame selection is dragged over.
+            // The cursor on the "My code"/"Testing" heading is never drawn as a caret (so it doesn't count as a visible
+            // frame cursor); FrameContainer.vue outlines the heading text instead when the cursor is there.
+            if (this.caretAssignedPosition === CaretPosition.header) {
+                return !this.areFramesDraggedOver;
+            }
             return !(!this.isEditing && this.caretVisibility === this.caretAssignedPosition || this.areFramesDraggedOver); 
         },
 

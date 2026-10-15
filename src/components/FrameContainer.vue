@@ -3,7 +3,7 @@
         <!-- The Testing container has no heading of its own: it shares the "My code" heading, which switches between the two -->
         <div v-if="!isTestsFrameContainer" class="frame-container-header" @click.self="onOuterContainerClick">
             <button v-if="!isMainCodeFrameContainer && !isDefsFrameContainer" class="frame-container-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
-            <span :class="{[scssVars.frameContainerLabelSpanClassName]: true,'no-toggle-frame-container-span': isMainCodeFrameContainer || isDefsFrameContainer}" @click.self="toggleCollapse">{{headingLabel}}</span>
+            <span :class="{[scssVars.frameContainerLabelSpanClassName]: true,'no-toggle-frame-container-span': isMainCodeFrameContainer || isDefsFrameContainer, 'frame-container-heading-focused': isHeadingFocused, 'frame-container-heading-focused-pane': isHeadingFocused && isFrameCommandsPaneActive}" @click.self="toggleCollapse">{{headingLabel}}</span>
             <ChildrenFrameStateToggle v-if="isDefsFrameContainer" :frames="frames" :parentIsFrozen="false"/>
         </div>
         <!-- The "My code" header can take the frame cursor, so that up/down arrows stop on it between the definitions and the main code -->
@@ -118,6 +118,17 @@ export default defineComponent({
             return this.frameId == this.appStore.getTestsFrameContainerId;
         },
 
+        // Whether the frame cursor is on the "My code"/"Testing" heading, which shows as an outline round its text
+        // rather than as a frame cursor (see isInvisible in CaretContainer.vue)
+        isHeadingFocused(): boolean {
+            return this.isMainCodeFrameContainer && !this.appStore.isEditing
+                && this.appStore.currentFrame.id == this.frameId && this.appStore.currentFrame.caretPosition == CaretPosition.header;
+        },
+
+        isFrameCommandsPaneActive(): boolean {
+            return this.appStore.isFrameCommandsPaneActive;
+        },
+
         // Whether the third section of the editor is currently showing the testing code rather than the main code
         isShowingTests(): boolean {
             return this.appStore.mainSectionShowsTests;
@@ -165,6 +176,11 @@ export default defineComponent({
             // The same goes for the testing code, which takes the place of the main code when it is showing.
             if ((this.isMainCodeFrameContainer && !this.isShowingTests) || (this.isTestsFrameContainer && this.isShowingTests)) {
                 defaultStyle["padding-bottom"] = "200px";
+            }
+            // While the testing code is showing, "My code" is just the heading above it: no space below, so the
+            // testing code sits right under the heading exactly as the main code does.
+            else if (this.isMainCodeFrameContainer && this.isShowingTests) {
+                defaultStyle["padding-bottom"] = "0px";
             }
             return defaultStyle;
         },
@@ -321,7 +337,10 @@ export default defineComponent({
 }
 
 .no-toggle-frame-container-span {
-  margin-left: 4px; // 2px in place of the button border + 2px in place of the button inline padding 
+  // 4px in total: 2px in place of the button border + 2px in place of the button inline padding. Some of it is
+  // padding, so that the outline shown when the heading has the frame cursor can sit close to the text.
+  margin-left: 1px;
+  padding: 0 3px;
 }
 
 .container-frames, .non-empty-collapsed-frame-container-hr {
@@ -338,6 +357,17 @@ export default defineComponent({
 .frame-container-minheight {
     min-height: $frame-container-min-height;
 }
+// The frame cursor on the heading (same colours as the frame cursor: blue, or grey once the frame commands pane is active)
+.frame-container-heading-focused {
+    outline: 2px solid #3467FE;
+    outline-offset: 0;
+    border-radius: 4px;
+}
+
+.frame-container-heading-focused-pane {
+    outline-color: #b8bac0;
+}
+
 .frame-container-header {
     display: flex;
     padding-right: 5px;

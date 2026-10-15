@@ -31,6 +31,16 @@ async function goToTopOfMainCode(page: Page): Promise<void> {
     await waitForEditorSettled(page);
 }
 
+// The gap between the heading text and the box of code below it, for whichever of My code/Testing is showing
+async function gapBelowHeading(page: Page, containerId: string): Promise<number> {
+    const headingBox = await heading(page).locator(".frame-container-label-span").boundingBox();
+    const codeBox = await page.locator(`${containerId} .container-frames`).boundingBox();
+    if (!headingBox || !codeBox) {
+        throw new Error("Could not measure the heading or the code below it");
+    }
+    return codeBox.y - (headingBox.y + headingBox.height);
+}
+
 test.describe("Testing section", () => {
     test("The My code heading switches between My code and Testing with left/right arrow or space", async ({page}) => {
         const testsContainer = page.locator("#frameContainer_-4");
@@ -41,14 +51,25 @@ test.describe("Testing section", () => {
         await expect(testsContainer).toBeHidden();
         await expect(runButton(page)).toHaveText(/^\s*Run$/, {timeout: 120000});
 
+        const headingText = heading(page).locator(".frame-container-label-span");
+        const visibleFrameCursors = page.locator(".caret:not(.invisible)");
+        await expect(headingText).not.toHaveClass(/frame-container-heading-focused/);
+
+        const gapInMainCode = await gapBelowHeading(page, "#frameContainer_-3");
+
         await page.keyboard.press("ArrowUp"); // to the heading
         await waitForEditorSettled(page);
+        // The cursor on the heading is shown as an outline round its text, not as a frame cursor:
+        await expect(headingText).toHaveClass(/frame-container-heading-focused/);
+        await expect(visibleFrameCursors).toHaveCount(0);
         await page.keyboard.press("ArrowRight");
         await waitForEditorSettled(page);
         await expect(heading(page)).toContainText("Testing");
         await expect(testsContainer).toBeVisible();
         await expect(mainFrames).toBeHidden();
         await expect(page.locator(".frame-container-header")).toHaveCount(3);
+        // The testing code sits under its heading with the same spacing as the main code does:
+        expect(await gapBelowHeading(page, "#frameContainer_-4")).toBeCloseTo(gapInMainCode, 0);
         await expect(runButton(page)).toHaveText(/^\s*Run tests$/);
 
         await page.keyboard.press("ArrowLeft");
@@ -57,6 +78,15 @@ test.describe("Testing section", () => {
         await expect(mainFrames).toBeVisible();
         await expect(testsContainer).toBeHidden();
         await expect(runButton(page)).toHaveText(/^\s*Run$/);
+
+        // Moving down into the code puts the frame cursor back, and takes the outline off the heading:
+        await page.keyboard.press("ArrowDown");
+        await waitForEditorSettled(page);
+        await expect(headingText).not.toHaveClass(/frame-container-heading-focused/);
+        await expect(visibleFrameCursors).toHaveCount(1);
+        await page.keyboard.press("ArrowUp");
+        await waitForEditorSettled(page);
+        await expect(headingText).toHaveClass(/frame-container-heading-focused/);
 
         // Space toggles too (it doesn't open the frame commands pane here):
         await page.keyboard.press(" ");
