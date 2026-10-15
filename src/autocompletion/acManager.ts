@@ -4,7 +4,7 @@ import {useStore} from "@/store/store";
 import {extractFormalParamsFromSlot, getMatchingBracket, transformFieldPlaceholders} from "@/helpers/editor";
 import {getAllEnabledUserDefinedClasses, getAllEnabledUserDefinedFunctions} from "@/helpers/storeMethods";
 import i18n from "@/i18n";
-import {Signature, TPyParser} from "@tigerpython/tpparser";
+import {Completion, Signature, TPyParser} from "@tigerpython/tpparser";
 import {getAvailablePyPyiFromLibrary, getPossibleImports, getTextFileFromLibraries} from "@/helpers/libraryManager";
 import Parser, { AC_PROBE_MARKER, getCachedCodeWithoutErrors } from "@/parser/parser";
 import {extractPYI} from "@/helpers/python-pyi";
@@ -789,6 +789,51 @@ export function buildProbeCodeAndOffset(baseCode: string, context: string): {cod
 // nothing about the cache key changes once that data does become available.
 const paramPromptCache = new Map<string, Promise<string | undefined>>();
 
+// Whole-program TigerPython probes (see calculateParamPromptUncached) take ~10-20ms each, and loading a
+// big project asks for hundreds of them at once. Run back-to-back they freeze the UI for seconds, so
+// they are queued and run in time-boxed batches: work for up to PROBE_BATCH_BUDGET_MS, then hand the
+// main thread back (setTimeout) so the browser can render and handle input, then the next batch.
+// Probes for the slot the user is currently in jump the queue so typing stays responsive.
+const PROBE_BATCH_BUDGET_MS = 30;
+type ProbeTask = {run: () => Promise<Completion[] | null>, resolve: (result: Completion[] | null) => void, reject: (reason: unknown) => void};
+const urgentProbeQueue: ProbeTask[] = [];
+const backgroundProbeQueue: ProbeTask[] = [];
+let probeBatchScheduled = false;
+
+function runProbeBatch(): void {
+    probeBatchScheduled = false;
+    const batchStart = performance.now();
+    const step = (): void => {
+        const task = urgentProbeQueue.shift() ?? backgroundProbeQueue.shift();
+        if (task === undefined) {
+            return;
+        }
+        task.run().then(task.resolve, task.reject).finally(() => {
+            if (performance.now() - batchStart < PROBE_BATCH_BUDGET_MS) {
+                step();
+            }
+            else if (urgentProbeQueue.length > 0 || backgroundProbeQueue.length > 0) {
+                scheduleProbeBatch();
+            }
+        });
+    };
+    step();
+}
+
+function scheduleProbeBatch(): void {
+    if (!probeBatchScheduled) {
+        probeBatchScheduled = true;
+        setTimeout(runProbeBatch, 0);
+    }
+}
+
+function runDeferredProbe(urgent: boolean, run: () => Promise<Completion[] | null>): Promise<Completion[] | null> {
+    return new Promise((resolve, reject) => {
+        (urgent ? urgentProbeQueue : backgroundProbeQueue).push({run, resolve, reject});
+        scheduleProbeBatch();
+    });
+}
+
 export function invalidateParamPromptCache(): void {
     paramPromptCache.clear();
 }
@@ -886,17 +931,25 @@ async function calculateParamPromptUncached(frameId: number, {context, token, pa
 
     if (context) {
         // See if TigerPython can infer the type of the content before the dot (".")
-        const parser = new Parser(false, "py", true);
-        const userCode = getCachedCodeWithoutErrors(parser, frameId);
-        await tpyDefineLibraries(parser);
-        // getCodeWithoutErrors() leaves AC_PROBE_MARKER exactly where the frame we're editing sits, so
-        // the probe below ends up correctly nested there, however much other code (e.g. evidence for a
-        // "My code" global) surrounds it -- appending at the very end would often land it outside the
-        // right scope. This also covers "self." inside a method: since userCode is the whole program,
-        // the enclosing class -- and any class it inherits from -- is always present, so TigerPython
-        // resolves "self" the same way any other call after the dot would be.
-        const {code: totalCode, offset: completionOffset} = buildProbeCodeAndOffset(userCode, context);
-        const tppCompletions = TPyParser.autoCompleteExt(totalCode, completionOffset);
+        // Each probe re-parses the whole program, so they go through the deferred queue (see
+        // runDeferredProbe) rather than all running back-to-back, e.g. when loading a big project:
+        const tppCompletions = await runDeferredProbe(isFocused, async () => {
+            // The frame may have been deleted while we were queued (e.g. the user cleared the project):
+            if (useStore().frameObjects[frameId] === undefined) {
+                return null;
+            }
+            const parser = new Parser(false, "py", true);
+            const userCode = getCachedCodeWithoutErrors(parser, frameId);
+            await tpyDefineLibraries(parser);
+            // getCodeWithoutErrors() leaves AC_PROBE_MARKER exactly where the frame we're editing sits, so
+            // the probe below ends up correctly nested there, however much other code (e.g. evidence for a
+            // "My code" global) surrounds it -- appending at the very end would often land it outside the
+            // right scope. This also covers "self." inside a method: since userCode is the whole program,
+            // the enclosing class -- and any class it inherits from -- is always present, so TigerPython
+            // resolves "self" the same way any other call after the dot would be.
+            const {code: totalCode, offset: completionOffset} = buildProbeCodeAndOffset(userCode, context);
+            return TPyParser.autoCompleteExt(totalCode, completionOffset);
+        });
         const match = tppCompletions?.filter((c) => c.acResult === token);
         if (match && match.length > 0 && match[0].signature) {
             return getParamPrompt(match[0].signature, paramIndex, prevKeywordNames, lastParam, isFocused);
