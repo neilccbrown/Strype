@@ -4,6 +4,11 @@
         <div v-if="!isTestsFrameContainer" class="frame-container-header" @click.self="onOuterContainerClick">
             <button v-if="!isMainCodeFrameContainer && !isDefsFrameContainer" class="frame-container-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
             <span :class="{[scssVars.frameContainerLabelSpanClassName]: true,'no-toggle-frame-container-span': isMainCodeFrameContainer || isDefsFrameContainer, 'frame-container-heading-focused': isHeadingFocused, 'frame-container-heading-focused-pane': isHeadingFocused && isFrameCommandsPaneActive}" @click.self="toggleCollapse">{{headingLabel}}</span>
+            <!-- While the heading has the frame cursor, left/right arrow switch between My code and Testing: the triangles hint at that -->
+            <span v-if="isHeadingFocused" :class="{'frame-container-heading-arrows': true, 'frame-container-heading-arrows-pane': isFrameCommandsPaneActive}" aria-hidden="true">
+                <span class="frame-container-heading-arrow frame-container-heading-arrow-left"></span>
+                <span class="frame-container-heading-arrow frame-container-heading-arrow-right"></span>
+            </span>
             <ChildrenFrameStateToggle v-if="isDefsFrameContainer" :frames="frames" :parentIsFrozen="false"/>
         </div>
         <!-- The "My code" header can take the frame cursor, so that up/down arrows stop on it between the definitions and the main code -->
@@ -366,6 +371,38 @@ export default defineComponent({
 
 .frame-container-heading-focused-pane {
     outline-color: #b8bac0;
+}
+
+// Filled triangles to the right of the focused heading, pointing left and right (the keys that switch section)
+.frame-container-heading-arrows {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 10px;
+    pointer-events: none;
+}
+
+.frame-container-heading-arrow {
+    width: 0;
+    height: 0;
+    border-top: 6px solid transparent;
+    border-bottom: 6px solid transparent;
+}
+
+.frame-container-heading-arrow-left {
+    border-right: 9px solid #3467FE;
+}
+
+.frame-container-heading-arrow-right {
+    border-left: 9px solid #3467FE;
+}
+
+.frame-container-heading-arrows-pane .frame-container-heading-arrow-left {
+    border-right-color: #b8bac0;
+}
+
+.frame-container-heading-arrows-pane .frame-container-heading-arrow-right {
+    border-left-color: #b8bac0;
 }
 
 .frame-container-header {

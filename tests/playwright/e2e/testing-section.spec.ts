@@ -1,4 +1,6 @@
 import { test, expect, Page } from "@playwright/test";
+import { readFileSync } from "node:fs";
+import { loadContent } from "../support/loading-saving";
 import { enterTestingSection, pressFrameShortcut, switchToTestingFromMain, waitForEditorSettled } from "../support/editor";
 import { checkFrameErrorCount } from "../support/execution";
 import { setupStrypeTest } from "../support/general";
@@ -62,6 +64,17 @@ test.describe("Testing section", () => {
         // The cursor on the heading is shown as an outline round its text, not as a frame cursor:
         await expect(headingText).toHaveClass(/frame-container-heading-focused/);
         await expect(visibleFrameCursors).toHaveCount(0);
+        // Two triangles, left and right, appear to the right of the heading to show that those keys do something:
+        const arrows = heading(page).locator(".frame-container-heading-arrow");
+        await expect(arrows).toHaveCount(2);
+        const textBox = await headingText.boundingBox();
+        const leftArrowBox = await arrows.first().boundingBox();
+        const rightArrowBox = await arrows.last().boundingBox();
+        if (!textBox || !leftArrowBox || !rightArrowBox) {
+            throw new Error("Could not measure the heading or its arrows");
+        }
+        expect(leftArrowBox.x).toBeGreaterThanOrEqual(textBox.x + textBox.width);
+        expect(rightArrowBox.x).toBeGreaterThan(leftArrowBox.x);
         await page.keyboard.press("ArrowRight");
         await waitForEditorSettled(page);
         await expect(heading(page)).toContainText("Testing");
@@ -83,6 +96,7 @@ test.describe("Testing section", () => {
         await page.keyboard.press("ArrowDown");
         await waitForEditorSettled(page);
         await expect(headingText).not.toHaveClass(/frame-container-heading-focused/);
+        await expect(heading(page).locator(".frame-container-heading-arrow")).toHaveCount(0);
         await expect(visibleFrameCursors).toHaveCount(1);
         await page.keyboard.press("ArrowUp");
         await waitForEditorSettled(page);
@@ -125,6 +139,25 @@ test.describe("Testing section", () => {
         await expect(runButton(page)).toHaveText(/^\s*Run tests$/, {timeout: 120000});
         await runButton(page).click();
         await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toMatch(/^Running tests\.\.\.\nNo tests found in the Testing section\.\n$/);
+    });
+
+    test("The Testing Your Functions demo project runs, and its tests pass", async ({page}) => {
+        await loadContent(page, readFileSync("public/demos/console/testing_example.spy", "utf8"));
+        const consoleLoc = page.locator("#peaConsole");
+        await expect(runButton(page)).toBeEnabled({timeout: 120000});
+        // The program in My code uses the functions:
+        await runButton(page).click();
+        await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toContain("fun is testing");
+        expect(await consoleLoc.inputValue()).toContain("9 is not prime");
+        await expect(runButton(page)).toHaveText(/^\s*Run$/, {timeout: 120000});
+
+        // And the tests in Testing check them:
+        await goToTopOfMainCode(page);
+        await switchToTestingFromMain(page);
+        await expect(runButton(page)).toHaveText(/^\s*Run tests$/);
+        await runButton(page).click();
+        await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toMatch(/^Running tests\.\.\.\n4 passed, 0 failed\n$/);
+        await checkFrameErrorCount(page, 0);
     });
 
     test("Which of My code and Testing is showing survives a page refresh", async ({page}) => {
