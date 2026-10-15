@@ -278,7 +278,11 @@ test.describe("Testing section", () => {
         await runTestsButton.click();
         const consoleLoc = page.locator("#peaConsole");
         await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toContain("0 passed, 1 failed");
-        expect(await consoleLoc.inputValue()).toContain("FAILED test_strype_user_tests.py::test_fails");
+        const consoleContent = await consoleLoc.inputValue();
+        expect(consoleContent).toContain("FAILED test_strype_user_tests.py::test_fails");
+        // pytest's explanation of the failed assert is shown, but not its closing line giving the file and line number:
+        expect(consoleContent).toContain("assert 1 > 2");
+        expect(consoleContent).not.toMatch(/\.py:\d+: /);
     });
 
     test("Main code's top-level variables are not visible to the tests", async ({page}) => {

@@ -150,6 +150,13 @@ let waitingForSoundsAfterNormalCompletion = false;
 // got swapped in" issue that would equally affect run #3, #4, etc:
 let runCount = 0;
 
+// pytest ends a failure's text with a line giving where it crashed, e.g.
+// "../strype_tests/test_strype_user_tests.py:13: AssertionError". That is about files the user never sees, and
+// is already used to highlight the frame at fault, so it isn't shown in the console:
+function removeCrashLocationLine(message: string): string {
+    return message.replace(/\n*[^\n]*\.py:\d+: [^\n]*\s*$/, "");
+}
+
 let soundManager : SoundManager | null = null; // Can't initialise this here as we need permissions for audio context
 const turtleCanvas = new OffscreenCanvas(800, 600);
 function makePixiHandler() : TurtlePixiHandler | null {
@@ -1019,7 +1026,7 @@ export default defineComponent({
                     const failures = results.results.filter((r) => r.outcome != "passed");
                     output = `${results.results.length - failures.length} passed, ${failures.length} failed\n`;
                     for (const failure of failures) {
-                        output += `\nFAILED ${failure.nodeId}\n${failure.message}\n`;
+                        output += `\nFAILED ${failure.nodeId}\n${removeCrashLocationLine(failure.message)}\n`;
                     }
                     this.highlightTestFailures(failures, parser, testsParser, testsFileLinesBeforeTestsCode);
                 }
