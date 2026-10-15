@@ -1,6 +1,7 @@
 import {Page, test, expect} from "@playwright/test";
 import {setupStrypeTest} from "../support/general";
-import {clearDefaultProject, doPagePaste, waitForEditorSettled} from "../support/editor";
+import {clearDefaultProject, doPagePaste, pressN, waitForEditorSettled} from "../support/editor";
+import {ARROWS_IMPORTS_TO_MAIN} from "../../shared/main-heading-focus";
 import {AllFrameTypesIdentifier} from "../../cypress/support/frame-types";
 import {
     assertFrameType,
@@ -32,10 +33,7 @@ test.beforeEach(async ({page, browserName}, testInfo) => {
     await clearDefaultProject(page);
     // clearDefaultProject() leaves the caret at the top of (now-empty) Imports; every test here
     // needs Main instead, which offers a plain func-call fallback for bare typed text.
-    await page.keyboard.press("ArrowDown"); // Imports -> Definitions
-    await waitForEditorSettled(page);
-    await page.keyboard.press("ArrowDown"); // Definitions -> Main
-    await waitForEditorSettled(page);
+    await pressN("ArrowDown", ARROWS_IMPORTS_TO_MAIN, true)(page); // Imports -> Definitions -> Main
 });
 
 // Both Ctrl+Z/Ctrl+Y and Cmd+Z/Cmd+Y trigger undo/redo (Commands.vue checks event.ctrlKey ||

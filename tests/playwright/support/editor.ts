@@ -1,5 +1,6 @@
 import {Page, expect, ElementHandle} from "@playwright/test";
 import {WINDOW_STRYPE_NEXTTICK_PROPNAME} from "@/helpers/sharedIdCssWithTests";
+import {ARROWS_DEFS_TO_MAIN, arrowsUpFromMain} from "../../shared/main-heading-focus";
 
 // Keys that insert their frame type directly, without a Tab/Space prefix first (see
 // alwaysDirectFrameShortcutKeys in src/helpers/editor.ts) -- every other key (any letter) needs
@@ -405,8 +406,7 @@ export async function clearDefaultProject(page: Page) : Promise<void> {
     await page.keyboard.press("ArrowDown");
     await waitForEditorSettled(page);
     await deleteFramesUpTo(page, "#frameContainer_-2");
-    await page.keyboard.press("ArrowDown");
-    await waitForEditorSettled(page);
+    await pressN("ArrowDown", ARROWS_DEFS_TO_MAIN, true)(page);
     await deleteFramesUpTo(page, "#frameContainer_-3");
     await page.keyboard.press("ArrowDown");
     await waitForEditorSettled(page);
@@ -414,10 +414,7 @@ export async function clearDefaultProject(page: Page) : Promise<void> {
     // Belt-and-braces check that we truly ended up at 0, on top of the settling above:
     await expect(page.locator(".frame-div")).toHaveCount(0, {timeout: 4000});
     // Return to the top of Imports, where callers of this function expect to end up:
-    for (let i = 0; i < 3; i++) {
-        await page.keyboard.press("ArrowUp");
-        await waitForEditorSettled(page);
-    }
+    await pressN("ArrowUp", arrowsUpFromMain(2), true)(page);
     if (testingWasFolded) {
         await toggleTestingSectionFold(page);
     }
@@ -425,9 +422,10 @@ export async function clearDefaultProject(page: Page) : Promise<void> {
 
 export async function enterCode(page: Page, codeSections : string[]) : Promise<void> {
     await clearDefaultProject(page);
-    for (const codeSection of codeSections) {
+    for (const [index, codeSection] of codeSections.entries()) {
         // doPagePaste already waits for the editor (including frame count) to settle:
         await doPagePaste(page, codeSection);
-        await page.keyboard.press("ArrowDown");
+        // Sections are Imports, Definitions, Main; crossing from Definitions to Main may take more than one press:
+        await pressN("ArrowDown", index == 1 ? ARROWS_DEFS_TO_MAIN : 1)(page);
     }
 }

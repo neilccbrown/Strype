@@ -885,7 +885,7 @@ export default defineComponent({
             oldParent.childrenIds.splice(oldParent.childrenIds.indexOf(this.frameId), 1);
             let newParentId: number;
             let newIndex: number;
-            if(target.caretPosition === CaretPosition.body){
+            if(target.caretPosition !== CaretPosition.below){
                 newParentId = target.id;
                 newIndex = 0;
             }

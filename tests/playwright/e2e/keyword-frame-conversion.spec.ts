@@ -1,6 +1,7 @@
 import {Page, test, expect} from "@playwright/test";
 import {setupStrypeTest} from "../support/general";
-import {checkFrameXorTextCursor, clearDefaultProject, waitForEditorSettled} from "../support/editor";
+import {checkFrameXorTextCursor, clearDefaultProject, pressN, waitForEditorSettled} from "../support/editor";
+import {ARROWS_IMPORTS_TO_MAIN, ARROWS_MAIN_TO_DEFS, arrowsUpFromMain} from "../../shared/main-heading-focus";
 import {AllFrameTypesIdentifier} from "../../cypress/support/frame-types";
 import {
     DEFS_CONTAINER_ID,
@@ -30,10 +31,7 @@ test.beforeEach(async ({page, browserName}, testInfo) => {
     // clearDefaultProject() leaves the caret at the top of (now-empty) Imports -- that container
     // never offers a plain func-call fallback for typed text (only its fixed import/from/library/
     // comment shortcuts), so every test in this file needs to start from Main instead, which does.
-    await page.keyboard.press("ArrowDown"); // Imports -> Definitions
-    await waitForEditorSettled(page);
-    await page.keyboard.press("ArrowDown"); // Definitions -> Main
-    await waitForEditorSettled(page);
+    await pressN("ArrowDown", ARROWS_IMPORTS_TO_MAIN, true)(page); // Imports -> Definitions -> Main
 });
 
 // Asserts that the given frame ends up (at any depth) inside the given top-level container.
@@ -64,8 +62,7 @@ async function getChildrenIds(page: Page, parentId: number): Promise<number[]> {
 // The caret starts in Main (see beforeEach), so this first steps back up to Definitions.
 // Returns the ids of the class and of its method.
 async function createClassAndEnterMethodBody(page: Page): Promise<{classId: number, methodId: number}> {
-    await page.keyboard.press("ArrowUp"); // Main -> Definitions
-    await waitForEditorSettled(page);
+    await pressN("ArrowUp", ARROWS_MAIN_TO_DEFS, true)(page); // Main -> Definitions
     await page.keyboard.press(" ");
     await page.keyboard.press("c");
     await waitForEditorSettled(page);
@@ -81,8 +78,7 @@ async function createClassAndEnterMethodBody(page: Page): Promise<{classId: numb
 // func-call frame to be typed there. The caret starts in Main (see beforeEach), so this first
 // steps back up to Definitions.
 async function createFunctionAndEnterBody(page: Page): Promise<void> {
-    await page.keyboard.press("ArrowUp"); // Main -> Definitions
-    await waitForEditorSettled(page);
+    await pressN("ArrowUp", ARROWS_MAIN_TO_DEFS, true)(page); // Main -> Definitions
     await page.keyboard.press(" ");
     await page.keyboard.press("f");
     await waitForEditorSettled(page);
@@ -137,12 +133,8 @@ async function createIfAndEnterBody(page: Page): Promise<number> {
 // frame ID.
 async function createFuncCallFrameIn(page: Page, containerId: number): Promise<number> {
     // Caret starts in Main (see beforeEach) -- step up into the target container's own blank-line
-    // caret first: 1x ArrowUp for Definitions, 2x for Imports.
-    const arrowUpPresses = containerId === IMPORTS_CONTAINER_ID ? 2 : 1;
-    for (let i = 0; i < arrowUpPresses; i++) {
-        await page.keyboard.press("ArrowUp");
-        await waitForEditorSettled(page);
-    }
+    // caret first (Definitions is one section up, Imports two).
+    await pressN("ArrowUp", arrowsUpFromMain(containerId === IMPORTS_CONTAINER_ID ? 2 : 1), true)(page);
     // Neither container offers func-call as a pane command (only their own fixed shortcuts), but
     // bare typing still creates one there as the generic "type anything" fallback -- see Commands.vue's bare-typed-char handler.
     await page.keyboard.type("x");

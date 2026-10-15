@@ -6,6 +6,13 @@
             <ChildrenFrameStateToggle v-if="isDefsFrameContainer" :frames="frames" :parentIsFrozen="false"/>
             <button v-if="isTestsFrameContainer" id="runTestsButton" class="frame-container-btn-run-tests" :disabled="isPythonExecuting || !isPythonWorkerReady" :title="$t('appMessage.runTestsButton')" @click="runTestsClicked">{{$t('appMessage.runTestsButton')}}</button>
         </div>
+        <!-- The "My code" header can take the frame cursor, so that up/down arrows stop on it between the definitions and the main code -->
+        <CaretContainer
+            v-if="isMainCodeFrameContainer && mainHeadingTakesFocus"
+            :frameId="frameId"
+            :caretVisibility="caretVisibility"
+            :caretAssignedPosition="caretPosition.header"
+        />
 
         <!-- keep the tabindex attribute, it is necessary to handle focus properly -->
         <hr v-if="isCollapsed && frames.length > 0" class="non-empty-collapsed-frame-container-hr">
@@ -46,6 +53,7 @@ import { mapStores } from "pinia";
 import { CustomEventTypes, getCaretContainerRef, getFrameUID} from "@/helpers/editor";
 import scssVars from "@/assets/style/_export.module.scss";
 import { getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
+import { MainHeadingTakesFocus } from "@/helpers/appContext";
 import ChildrenFrameStateToggle from "@/components/ChildrenFrameStateToggle.vue";
 import { isPythonWorkerReady } from "@/stryperuntime/main_thread_python_handler";
 
@@ -80,6 +88,10 @@ export default defineComponent({
     },
 
     computed: {
+        mainHeadingTakesFocus(): boolean {
+            return MainHeadingTakesFocus;
+        },
+
         ...mapStores(useStore),
 
         scssVars() {

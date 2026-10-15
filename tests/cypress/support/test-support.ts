@@ -2,6 +2,17 @@ import path from "path";
 import { strypeElIds } from "./standard-setup";
 // imports the locale files we need for the locales used by this test
 import en from "@/localisation/en/en_main.json";
+import {ARROWS_DEFS_TO_MAIN, ARROWS_IMPORTS_TO_MAIN, ARROWS_MAIN_TO_DEFS, arrowsUpFromMain} from "../../shared/main-heading-focus";
+
+// Key sequences for crossing the "My code" heading, to use in cy.type() strings instead of hard-coded
+// {uparrow}/{downarrow} counts (see tests/shared/main-heading-focus.ts):
+export const DOWN_DEFS_TO_MAIN = "{downarrow}".repeat(ARROWS_DEFS_TO_MAIN);
+export const UP_MAIN_TO_DEFS = "{uparrow}".repeat(ARROWS_MAIN_TO_DEFS);
+// Any extra {downarrow}s needed, over a plain Definitions-bottom-to-Main step, once My code takes focus:
+export const DOWN_EXTRA_PAST_HEADING = "{downarrow}".repeat(ARROWS_DEFS_TO_MAIN - 1);// From the (empty) top of Imports, or the position just below a frame in Imports, down to the top of Main
+export const DOWN_IMPORTS_TO_MAIN = "{downarrow}".repeat(ARROWS_IMPORTS_TO_MAIN);
+// From the top of Main up through the given number of (empty) sections: 1 = Definitions, 2 = Imports
+export const upFromMain = (sectionsUp: number): string => "{uparrow}".repeat(arrowsUpFromMain(sectionsUp));
 
 export function cleanFromHTML(html: string) : string {
     // Get rid of the zero-width spaces which occur in the HTML:
@@ -63,13 +74,17 @@ export function getDefaultStrypeProjectImportFullLine(mode: string): string {
 }
 
 // Navigates to the top of the code (the top of Imports) from wherever the caret currently is,
-// ready to type/paste a new import above whatever's already there. Implemented as repeated
-// {home}{uparrow} presses rather than a fixed {uparrow} count: {home} is a no-op once already at
-// the start of a line/frame and {uparrow} is a no-op once at the very top, so this reliably
-// reaches the top regardless of how many frames (including default imports) precede it -- unlike
-// an exact {uparrow} count, which breaks every time the starting project's shape changes.
+// ready to type/paste a new import above whatever's already there. Implemented as more {uparrow}
+// presses than could possibly be needed, since {uparrow} is a no-op once already at the very top --
+// so this reliably reaches the top regardless of how many frames (including default imports) precede
+// it, unlike an exact count, which breaks every time the starting project's shape changes. (This
+// deliberately doesn't use {home}: with the My code heading focusable, {home} from the heading
+// jumps back to the top of Main, so {home}{uparrow} presses can never get past it.)
 export function navigateToTopOfCode(): void {
-    cy.get("body").type("{home}{uparrow}{home}{uparrow}{home}{uparrow}");
+    cy.then(() => {
+        const presses = Cypress.$(".frame-div").length * 3 + 10;
+        cy.get("body").type("{uparrow}".repeat(presses));
+    });
 }
 
 // Navigates to the top of the code, then deletes whatever's currently in Imports (the 2 default
@@ -145,7 +160,7 @@ export function focusEditorAndClear(): void {
         cy.get("body").type("{downarrow}");
         waitForEditorSettled();
         deleteFramesUpTo("#frameContainer_-2");
-        cy.get("body").type("{downarrow}");
+        cy.get("body").type(DOWN_DEFS_TO_MAIN);
         waitForEditorSettled();
         deleteFramesUpTo("#frameContainer_-3");
     });

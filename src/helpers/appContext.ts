@@ -27,6 +27,11 @@ appPlatform = StrypePlatform.microbit;
 // #v-endif
 export const AppPlatform = appPlatform;
 
+// Whether the "My code" heading is itself a stop for the frame cursor when navigating with the up/down arrows
+// (between the end of Definitions and the top of My code).  On in the standard Python version, off in micro:bit.
+// The tests mirror this in tests/shared/main-heading-focus.ts, which must be kept in step.
+export const MainHeadingTakesFocus = (AppPlatform as StrypePlatform) === StrypePlatform.standard;
+
 // The project defintion slot isn't attached to a "real" frame.
 // We declare the fake frame ID we used for it here.
 export const projectDocumentationFrameId = -10;

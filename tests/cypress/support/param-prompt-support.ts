@@ -1,6 +1,6 @@
 
 
-import {cleanFromHTML, clearDefaultImports, waitForEditorSettled} from "./test-support";
+import {cleanFromHTML, clearDefaultImports, DOWN_DEFS_TO_MAIN, DOWN_IMPORTS_TO_MAIN, UP_MAIN_TO_DEFS, waitForEditorSettled} from "./test-support";
 import {Signature, SignatureArg} from "@tigerpython/tpparser";
 import { scssVars, standardBeforeEach, strypeElIds } from "./standard-setup";
 
@@ -14,6 +14,10 @@ function withSelection(inner : (arg0: { id: string, cursorPos : number }) => voi
         inner({id : ed.getAttribute("data-slot-focus-id") || "", cursorPos : parseInt(ed.getAttribute("data-slot-cursor") || "-2")});
     });
 }
+
+// Marks keyboardTypingToImport strings meant to be typed at the top of (empty) Imports; deliberately
+// not a real key sequence, since e.g. UP_MAIN_TO_DEFS may now equal "{uparrow}{uparrow}":
+const IMPORTS_MARKER = "<<IMPORTS>>";
 
 const BUILTIN = "Python";
 
@@ -123,7 +127,7 @@ export function testRawFuncs(rawFuncs: [string | [string, string] | {class?: str
                     ? ` c${(rawFunc[0] as any)?.class}{rightarrow}{rightarrow}`
                     : "";
                 funcs.push({
-                    keyboardTypingToImport: "{uparrow}" + classTypePreamble + " f" + (rawFunc[0] as any)?.udf + (isTestingFunctionInClass ? "{downarrow}" : "{downarrow}{downarrow}"),
+                    keyboardTypingToImport: UP_MAIN_TO_DEFS + classTypePreamble + " f" + (rawFunc[0] as any)?.udf + (isTestingFunctionInClass ? "{downarrow}" : "{downarrow}" + DOWN_DEFS_TO_MAIN),
                     funcName: rawFunc[1],
                     params: params,
                     acSection: (isTestingFunctionInClass) ? "self" : "My functions",
@@ -149,7 +153,7 @@ export function testRawFuncs(rawFuncs: [string | [string, string] | {class?: str
             // The "import module" frame:
             if (!skipFullyQualifiedVersion) {
                 funcs.push({
-                    keyboardTypingToImport: "{uparrow}{uparrow}" + libraryTyping + " i" + module + "{rightarrow}{downarrow}{downarrow}",
+                    keyboardTypingToImport: IMPORTS_MARKER + libraryTyping + " i" + module + "{rightarrow}" + DOWN_IMPORTS_TO_MAIN,
                     funcName: module + "." + rawFunc[1],
                     params: params,
                     acSection: module,
@@ -159,7 +163,7 @@ export function testRawFuncs(rawFuncs: [string | [string, string] | {class?: str
             }
             // The "from module import *" frame:
             funcs.push({
-                keyboardTypingToImport: "{uparrow}{uparrow}" + libraryTyping + " f" + module + "{rightarrow}*{rightarrow}{downarrow}{downarrow}",
+                keyboardTypingToImport: IMPORTS_MARKER + libraryTyping + " f" + module + "{rightarrow}*{rightarrow}" + DOWN_IMPORTS_TO_MAIN,
                 funcName: rawFunc[1],
                 params: params,
                 acSection: module,
@@ -169,7 +173,7 @@ export function testRawFuncs(rawFuncs: [string | [string, string] | {class?: str
             // The "from module import funcName" frame:
             // Note that if funcName has a dot, we need to only use the part before the dot or opening bracket:
             funcs.push({
-                keyboardTypingToImport: "{uparrow}{uparrow}" + libraryTyping + " f" + module + "{rightarrow}" + (rawFunc[1].match(/^[A-Za-z0-9_]+/)?.[0] ?? rawFunc[1]) + "{rightarrow}{downarrow}{downarrow}",
+                keyboardTypingToImport: IMPORTS_MARKER + libraryTyping + " f" + module + "{rightarrow}" + (rawFunc[1].match(/^[A-Za-z0-9_]+/)?.[0] ?? rawFunc[1]) + "{rightarrow}" + DOWN_IMPORTS_TO_MAIN,
                 funcName: rawFunc[1],
                 params: params,
                 acName: rawFunc[1],
@@ -213,13 +217,13 @@ function insertKeyboardTypingToImport(keyboardTypingToImport: string | undefined
     // As we don't have an exact way to know when such case arises in func.keyboardTypingToImport,
     // we just delay all key hit reasonably.
     if (keyboardTypingToImport) {
-        // A "{uparrow}{uparrow}" prefix means the rest of the string is meant to be typed at the
+        // An IMPORTS_MARKER prefix means the rest of the string is meant to be typed at the
         // top of Imports (assumed empty) -- clear the 2 default imports there first instead of
         // just navigating past them, so the typed content still ends up in an empty Imports
         // section exactly as this was written to expect:
-        if (keyboardTypingToImport.startsWith("{uparrow}{uparrow}")) {
+        if (keyboardTypingToImport.startsWith(IMPORTS_MARKER)) {
             clearDefaultImports();
-            keyboardTypingToImport = keyboardTypingToImport.slice("{uparrow}{uparrow}".length);
+            keyboardTypingToImport = keyboardTypingToImport.slice(IMPORTS_MARKER.length);
         }
         cy.get("body").type(keyboardTypingToImport, {delay: 100});
     }
