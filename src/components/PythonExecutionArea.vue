@@ -150,11 +150,15 @@ let waitingForSoundsAfterNormalCompletion = false;
 // got swapped in" issue that would equally affect run #3, #4, etc:
 let runCount = 0;
 
-// pytest ends a failure's text with a line giving where it crashed, e.g.
-// "../strype_tests/test_strype_user_tests.py:13: AssertionError". That is about files the user never sees, and
-// is already used to highlight the frame at fault, so it isn't shown in the console:
-function removeCrashLocationLine(message: string): string {
-    return message.replace(/\n*[^\n]*\.py:\d+: [^\n]*\s*$/, "");
+// What to show in the console for a failed test (after its "FAILED ..." line): only the lines pytest prefixes
+// with "E", i.e. what went wrong ("E       AssertionError: assert 5 == 8", "E        +  where 5 = ..."), without
+// the excerpt of the test's code that comes before them, or the closing line giving the file and line number
+// (e.g. "../strype_tests/test_strype_user_tests.py:13: AssertionError"): those are about a Python file the user
+// never sees, and the frame at fault is highlighted instead. If there are no such lines (e.g. for some failures
+// that aren't an exception), we fall back to the whole text bar that closing line.
+function failureDetailsToShow(message: string): string {
+    const errorLines = message.split("\n").filter((line) => /^E(\s|$)/.test(line));
+    return (errorLines.length > 0) ? errorLines.join("\n") : message.replace(/\n*[^\n]*\.py:\d+: [^\n]*\s*$/, "");
 }
 
 let soundManager : SoundManager | null = null; // Can't initialise this here as we need permissions for audio context
@@ -1026,7 +1030,7 @@ export default defineComponent({
                     const failures = results.results.filter((r) => r.outcome != "passed");
                     output = `${results.results.length - failures.length} passed, ${failures.length} failed\n`;
                     for (const failure of failures) {
-                        output += `\nFAILED ${failure.nodeId}\n${removeCrashLocationLine(failure.message)}\n`;
+                        output += `\nFAILED ${failure.nodeId}\n${failureDetailsToShow(failure.message)}\n`;
                     }
                     this.highlightTestFailures(failures, parser, testsParser, testsFileLinesBeforeTestsCode);
                 }

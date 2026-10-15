@@ -280,9 +280,12 @@ test.describe("Testing section", () => {
         await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toContain("0 passed, 1 failed");
         const consoleContent = await consoleLoc.inputValue();
         expect(consoleContent).toContain("FAILED test_strype_user_tests.py::test_fails");
-        // pytest's explanation of the failed assert is shown, but not its closing line giving the file and line number:
-        expect(consoleContent).toContain("assert 1 > 2");
+        // Just pytest's explanation of what failed (its lines prefixed with E) is shown after the FAILED line: not the
+        // excerpt of the test's code, nor the closing line giving the file and line number:
+        expect(consoleContent).toMatch(/\nE {7}assert 1 > 2/);
+        expect(consoleContent).not.toContain("def test_fails");
         expect(consoleContent).not.toMatch(/\.py:\d+: /);
+        expect(consoleContent).not.toContain(">  ");
     });
 
     test("Main code's top-level variables are not visible to the tests", async ({page}) => {
