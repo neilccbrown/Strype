@@ -39,6 +39,7 @@
     </div>
     <teleport to="body">    
         <BPopover
+            v-if="showRenameIdentifierPopup"
             :show="showRenameIdentifierPopup"
             :target="labelSlotsStructDivId"
             :key="refactorCount"
