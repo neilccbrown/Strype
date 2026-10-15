@@ -1,10 +1,10 @@
 <template>
-    <div class="frame-container" :style="frameStyle" @click.self="onOuterContainerClick" @mouseenter="onFrameContainerHover(true)" @mouseleave="onFrameContainerHover(false)">
-        <div class="frame-container-header" @click.self="onOuterContainerClick">
+    <div v-show="!isTestsFrameContainer || isShowingTests" class="frame-container" :style="frameStyle" @click.self="onOuterContainerClick" @mouseenter="onFrameContainerHover(true)" @mouseleave="onFrameContainerHover(false)">
+        <!-- The Testing container has no heading of its own: it shares the "My code" heading, which switches between the two -->
+        <div v-if="!isTestsFrameContainer" class="frame-container-header" @click.self="onOuterContainerClick">
             <button v-if="!isMainCodeFrameContainer && !isDefsFrameContainer" class="frame-container-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
-            <span :class="{[scssVars.frameContainerLabelSpanClassName]: true,'no-toggle-frame-container-span': isMainCodeFrameContainer || isDefsFrameContainer}" @click.self="toggleCollapse">{{containerLabel}}</span>
+            <span :class="{[scssVars.frameContainerLabelSpanClassName]: true,'no-toggle-frame-container-span': isMainCodeFrameContainer || isDefsFrameContainer}" @click.self="toggleCollapse">{{headingLabel}}</span>
             <ChildrenFrameStateToggle v-if="isDefsFrameContainer" :frames="frames" :parentIsFrozen="false"/>
-            <button v-if="isTestsFrameContainer" id="runTestsButton" class="frame-container-btn-run-tests" :disabled="isPythonExecuting || !isPythonWorkerReady" :title="$t('appMessage.runTestsButton')" @click="runTestsClicked">{{$t('appMessage.runTestsButton')}}</button>
         </div>
         <!-- The "My code" header can take the frame cursor, so that up/down arrows stop on it between the definitions and the main code -->
         <CaretContainer
@@ -48,14 +48,13 @@ import { defineComponent } from "vue";
 import Frame from "@/components/Frame.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
 import { useStore } from "@/store/store";
-import { CaretPosition, CollapsedState, FrameObject, DefaultFramesDefinition, FramesDefinitions, FrameContainersDefinitions, getFrameDefType, AllFrameTypesIdentifier, PythonExecRunningState } from "@/types/types";
+import { CaretPosition, CollapsedState, FrameObject, DefaultFramesDefinition, FramesDefinitions, FrameContainersDefinitions, getFrameDefType, AllFrameTypesIdentifier } from "@/types/types";
 import { mapStores } from "pinia";
 import { CustomEventTypes, getCaretContainerRef, getFrameUID} from "@/helpers/editor";
 import scssVars from "@/assets/style/_export.module.scss";
 import { getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
 import { MainHeadingTakesFocus } from "@/helpers/appContext";
 import ChildrenFrameStateToggle from "@/components/ChildrenFrameStateToggle.vue";
-import { isPythonWorkerReady } from "@/stryperuntime/main_thread_python_handler";
 
 //////////////////////
 //     Component    //
@@ -118,6 +117,23 @@ export default defineComponent({
         isTestsFrameContainer(): boolean {
             return this.frameId == this.appStore.getTestsFrameContainerId;
         },
+
+        // Whether the third section of the editor is currently showing the testing code rather than the main code
+        isShowingTests(): boolean {
+            return this.appStore.mainSectionShowsTests;
+        },
+
+        // The "My code" heading changes to "Testing" while the testing code is what's showing
+        headingLabel(): string {
+            return (this.isMainCodeFrameContainer && this.isShowingTests)
+                ? this.$t("appMessage.testsContainer")
+                : (this.containerLabel ?? "");
+        },
+
+        // Of the main code and the testing code, only one is shown at a time
+        isHiddenByMode(): boolean {
+            return (this.isMainCodeFrameContainer && this.isShowingTests) || (this.isTestsFrameContainer && !this.isShowingTests);
+        },
         
         frames: {
             get(): FrameObject[] {
@@ -146,7 +162,8 @@ export default defineComponent({
             };
             // For the main code, add 200px at the bottom so you can scroll down to put the last bit of code
             // above the bottom of the window.
-            if (this.isMainCodeFrameContainer) {
+            // The same goes for the testing code, which takes the place of the main code when it is showing.
+            if ((this.isMainCodeFrameContainer && !this.isShowingTests) || (this.isTestsFrameContainer && this.isShowingTests)) {
                 defaultStyle["padding-bottom"] = "200px";
             }
             return defaultStyle;
@@ -159,7 +176,8 @@ export default defineComponent({
         isCollapsed: {
             get(): boolean {
                 // Ignore the value for "My code" or Defs container for compatibility with saved project having collapsable "My code" container.
-                return (this.isMainCodeFrameContainer || this.isDefsFrameContainer) ? false : this.appStore.isContainerCollapsed(this.frameId);
+                // The Testing container is never collapsed either (it is shown in place of "My code").
+                return (this.isMainCodeFrameContainer || this.isDefsFrameContainer || this.isTestsFrameContainer) ? false : this.appStore.isContainerCollapsed(this.frameId);
             },
             set(value: boolean){
                 this.appStore.setCollapseStatuses({[this.frameId]: value ? CollapsedState.ONLY_HEADER_VISIBLE : CollapsedState.FULLY_VISIBLE});
@@ -172,20 +190,13 @@ export default defineComponent({
 
         containerStyle(): Record<string, string> {
             return {
-                "display": (this.isCollapsed) ? "none" : "block",
-                "backgroundColor": `${(this.frameType.type === FrameContainersDefinitions.ImportsContainerDefinition.type || this.frameType.type == FrameContainersDefinitions.DefsContainerDefinition.type || this.frameType.type == FrameContainersDefinitions.TestsContainerDefinition.type)
+                "display": (this.isCollapsed || this.isHiddenByMode) ? "none" : "block",
+                "backgroundColor": `${(this.frameType.type === FrameContainersDefinitions.ImportsContainerDefinition.type || this.frameType.type == FrameContainersDefinitions.DefsContainerDefinition.type)
                     ? getFrameDefType(AllFrameTypesIdentifier.import).colour
                     : getFrameDefType(AllFrameTypesIdentifier.return).colour}`,
             };
         },
 
-        isPythonExecuting(): boolean {
-            return (this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
-        },
-
-        isPythonWorkerReady(): boolean {
-            return isPythonWorkerReady.value;
-        },
     },
 
     methods: {
@@ -210,10 +221,6 @@ export default defineComponent({
                     this.appStore.setCurrentFrame({id: targetFrameContainerId, caretPosition: CaretPosition.body});
                 }
             }
-        },
-
-        runTestsClicked(): void {
-            this.appStore.requestTestRun();
         },
 
         onFrameContainerClick(event: any): void {
@@ -304,11 +311,6 @@ export default defineComponent({
 
 .frame-container-btn-collapse:focus {
     outline: none;
-}
-
-.frame-container-btn-run-tests {
-    margin-left: auto;
-    margin-right: 5px;
 }
 
 .#{$strype-classname-frame-container-label-span} {       

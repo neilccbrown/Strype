@@ -992,6 +992,18 @@ export const getAncestorFrameOfTypeId = (frameId: number, ancestorType: string):
 };
 
 
+// The third section of the editor shows either the main code or the testing code, never both (see
+// the store's mainSectionShowsTests). Positions inside the one that isn't showing can't be navigated to;
+// the "My code" heading's own cursor stays reachable in both cases, as it is what switches between them.
+const isNavigationPositionInHiddenSection = function (navigationPosition: NavigationPosition): boolean {
+    const store = useStore();
+    const hiddenSectionId = store.mainSectionShowsTests ? store.getMainCodeFrameContainerId : store.getTestsFrameContainerId;
+    if (getFrameSectionIdFromFrameId(navigationPosition.frameId) !== hiddenSectionId) {
+        return false;
+    }
+    return !(navigationPosition.frameId === hiddenSectionId && navigationPosition.caretPosition === CaretPosition.header);
+};
+
 // Instead of calculating the available caret positions through the store (where the frameObjects object is hard to use for this)
 // We get the available caret positions through the DOM, where they are all present.
 // If showIsInCollapsedFrameContainer is set to true, we check that the frame container (section) containing the cursor is not collapsed 
@@ -1021,7 +1033,8 @@ export const getAvailableNavigationPositions = function(showIsInCollapsedFrameCo
             ...positionObjIdentifier,
             isInCollapsedFrameContainer: (showIsInCollapsedFrameContainer) ? ((useStore().frameObjects[getFrameSectionIdFromFrameId(parseInt(frameIdMatch?.[0]??"-100"))].collapsedState ?? CollapsedState.FULLY_VISIBLE) != CollapsedState.FULLY_VISIBLE) : undefined,            
         } as NavigationPosition;
-    }).filter((navigationPosition) => useStore().frameObjects[navigationPosition.frameId] && !(navigationPosition.isSlotNavigationPosition && useStore().frameObjects[navigationPosition.frameId].isDisabled)) as NavigationPosition[]; 
+    }).filter((navigationPosition) => useStore().frameObjects[navigationPosition.frameId] && !(navigationPosition.isSlotNavigationPosition && useStore().frameObjects[navigationPosition.frameId].isDisabled)
+        && !isNavigationPositionInHiddenSection(navigationPosition)) as NavigationPosition[]; 
 };
 
 const getPrecompiledErrorFrameId = (frameId: number): string => {

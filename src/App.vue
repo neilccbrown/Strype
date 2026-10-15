@@ -1798,6 +1798,8 @@ export default defineComponent({
                 if (s != null) {
                     // Now we can clear other non-frame related elements
                     this.appStore.clearNoneFrameRelatedState();
+                    // ... and a newly loaded project starts with the third section showing the main code:
+                    this.appStore.mainSectionShowsTests = false;
                 
                     // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
                     // We check about turtle being imported as at loading a state we should reflect if turtle was added in that state.

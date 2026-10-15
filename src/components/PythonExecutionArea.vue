@@ -20,7 +20,7 @@
             </BTabs>
             <div class="flex-padding"/>            
             <div class="flex-padding"/>
-            <button id="runButton" ref="runButton" class="pea-controls-button" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'" :class="{highlighted: highlightPythonRunningState}" :disabled="!isPythonWorkerReady">
+            <button id="runButton" ref="runButton" class="pea-controls-button" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : (isRunButtonForTests ? 'appMessage.runTestsButton' : 'PEA.run')) + ' (Ctrl+Enter)'" :class="{highlighted: highlightPythonRunningState}" :disabled="!isPythonWorkerReady">
                 <img v-if="!isPythonExecuting" :src="faviconURL" class="pea-play-img">
                 <span v-else class="python-running">{{runCodeButtonIconText}}</span>
                 <span>{{runCodeButtonLabel}}</span>
@@ -482,13 +482,18 @@ export default defineComponent({
             }
         },
         
+        // While the editor is showing the testing code (rather than the main code), the Run button runs the tests
+        isRunButtonForTests(): boolean {
+            return this.appStore.mainSectionShowsTests;
+        },
+
         runCodeButtonLabel(): string {
             if (!isPythonWorkerReady.value) {
                 return " " + this.$t("PEA.loading");
             }
             switch (useStore().pythonExecRunningState) {
             case PythonExecRunningState.NotRunning:
-                return " " + this.$t("PEA.run");
+                return " " + this.$t(this.isRunButtonForTests ? "appMessage.runTestsButton" : "PEA.run");
             case PythonExecRunningState.Running:
                 return " " + this.$t("PEA.stop");
             case PythonExecRunningState.RunningAwaitingStop:
@@ -523,7 +528,7 @@ export default defineComponent({
         },
 
         testRunRequestId(){
-            // Triggered by the Testing section's "Run tests" button (FrameContainer.vue), via appStore.requestTestRun().
+            // Triggered by the Run button while the Testing section is showing (see runClicked()), via appStore.requestTestRun().
             this.execTestsCode();
         },
     },
@@ -585,6 +590,12 @@ export default defineComponent({
             // - running awaiting stop will do nothing
             switch (useStore().pythonExecRunningState) {
             case PythonExecRunningState.NotRunning:
+                if (this.isRunButtonForTests) {
+                    // Showing the testing code: run the tests instead of the program (execTestsCode()
+                    // sets the running state itself, so Stop behaves as for a normal run):
+                    useStore().requestTestRun();
+                    return;
+                }
                 useStore().pythonExecRunningState = PythonExecRunningState.Running;
                 runCount += 1;
                 console.info(`[Run click ${new Date().toISOString()}] run #${runCount} this page session`);
@@ -923,7 +934,7 @@ export default defineComponent({
         },
 
         async execTestsCode() {
-            // Triggered by the Testing section's "Run tests" button -- see appStore.requestTestRun()/testRunRequestId.
+            // Triggered by the Run button while the Testing section is showing -- see runClicked() and appStore.requestTestRun()/testRunRequestId.
             // Both of these are also reflected in the button's :disabled state (FrameContainer.vue), but are
             // checked again here as a defensive guard, since the underlying Pyodide client only allows one
             // call() in flight at a time and throws "State is running, not idle" otherwise:

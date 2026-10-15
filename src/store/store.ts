@@ -143,6 +143,10 @@ export const useStore = defineStore("app", {
             // Incremented each time the user asks to run the Testing section's code via pytest; watched by PythonExecutionArea.vue.
             testRunRequestId: 0,
 
+            // The third section of the editor shows either the main code ("My code") or the testing code
+            // ("Testing"); the "My code" heading toggles between the two (see toggleMainSectionShowsTests()).
+            mainSectionShowsTests: false,
+
             // This flag can be used anywhere a key event should be ignored within the application
             ignoreKeyEvent: false,
 
@@ -1715,6 +1719,12 @@ export const useStore = defineStore("app", {
             this.testRunRequestId++;
         },
 
+        // Switches the third section of the editor between the main code and the testing code.
+        // The frame cursor stays where it is, which is on the heading (the only place this is called from).
+        toggleMainSectionShowsTests() {
+            this.mainSectionShowsTests = !this.mainSectionShowsTests;
+        },
+
         cycleFrameCollapsedState(frameId: number) {
             const parentIsFrozen = this.frameObjects[this.frameObjects[frameId].parentId].frozenState == FrozenState.FROZEN;
             const newStates = calculateNextCollapseState([this.frameObjects[frameId]], parentIsFrozen).individual;
@@ -2668,6 +2678,9 @@ export const useStore = defineStore("app", {
                                         }
                                         else{
                                             // Check 4) and 5) as 3) is validated
+                                            // Projects saved before the heading could show the testing code don't have the flag:
+                                            newStateObj["mainSectionShowsTests"] = newStateObj["mainSectionShowsTests"] ?? false;
+
                                             // If missing project doc frame, copy it in from the empty state and add it as first root child:
                                             if (!newStateObj["frameObjects"][projectDocumentationFrameId]) {
                                                 newStateObj["frameObjects"][projectDocumentationFrameId] = cloneDeep(emptyState[projectDocumentationFrameId]);

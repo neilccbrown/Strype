@@ -360,30 +360,35 @@ async function deleteFramesUpTo(page: Page, containerSelector: string, maxPresse
     await deleteFramesUpTo(page, containerSelector, maxPresses - 1);
 }
 
-// Clicks the Testing section's fold/unfold button via the DOM rather than a real mouse click: the
-// latter would leave DOM focus on the button, which breaks the keyboard-driven frame navigation
-// that callers rely on.
-async function toggleTestingSectionFold(page: Page) : Promise<void> {
-    await page.locator("#frameContainer_-4 .frame-container-btn-collapse").evaluate((button: HTMLElement) => button.click());
+// The "My code" heading is a stop for the frame cursor, and left/right arrow or Space there switch the
+// third section between the main code ("My code") and the testing code ("Testing"). These helpers
+// assume the frame cursor is in My code (as it is after load, and after clearing the editor).
+
+// Moves from the main code to the heading and switches to the testing code; the cursor stays on the heading.
+export async function switchToTestingFromMain(page: Page) : Promise<void> {
+    await page.keyboard.press("ArrowUp");
+    await waitForEditorSettled(page);
+    await page.keyboard.press("ArrowRight");
+    await waitForEditorSettled(page);
+}
+
+// As switchToTestingFromMain(), and then moves down into the (top of the) testing code, ready for
+// frame shortcuts to add things there.
+export async function enterTestingSection(page: Page) : Promise<void> {
+    await switchToTestingFromMain(page);
+    await page.keyboard.press("ArrowDown");
     await waitForEditorSettled(page);
 }
 
 // Deletes every frame currently in Main, Definitions, Imports and Testing -- not just the default
-// project's frames (2 default imports, the myString assignment and print call in Main, and the
-// test_main function in the folded Testing section), since
+// project's frames (2 default imports, plus the myString assignment and print call in Main), since
 // this is also used to clear out whatever a previous operation left behind, which can include
-// Definitions content that the default project never has -- leaving a genuinely blank editor
-// (0 frames) with the caret positioned at the top of Imports, ready for fresh content. Reads the
-// frame counts from the DOM rather than hard-coding them so this doesn't go stale if a section's
+// Definitions or Testing content that the default project never has -- leaving a genuinely blank
+// editor (0 frames) with the caret positioned at the top of Imports, ready for fresh content. Reads
+// the frame counts from the DOM rather than hard-coding them so this doesn't go stale if a section's
 // content changes shape.
 export async function clearDefaultProject(page: Page) : Promise<void> {
     const totalCount = await page.locator(".frame-div").count();
-    // Testing starts folded (so its keyboard navigation stops are hidden): unfold it so that its
-    // frames can be deleted, and fold it back at the end:
-    const testingWasFolded = await page.locator("#frameContainer_-4 .container-frames").isHidden();
-    if (testingWasFolded) {
-        await toggleTestingSectionFold(page);
-    }
     // Reach the very top of the whole document regardless of the current caret position or how
     // deeply nested any block frame's content is. ArrowUp is a no-op once already at the top, so
     // pressing it more times than could possibly be needed is harmless -- but a block frame's body
@@ -408,16 +413,25 @@ export async function clearDefaultProject(page: Page) : Promise<void> {
     await deleteFramesUpTo(page, "#frameContainer_-2");
     await pressN("ArrowDown", ARROWS_DEFS_TO_MAIN, true)(page);
     await deleteFramesUpTo(page, "#frameContainer_-3");
-    await page.keyboard.press("ArrowDown");
-    await waitForEditorSettled(page);
-    await deleteFramesUpTo(page, "#frameContainer_-4");
+    // The testing code is not showing (and so can't be navigated to) unless the heading is switched to it,
+    // so only do that if there is anything there to delete. The count includes the hidden frames:
+    const hasTestingFrames = await page.locator("#frameContainer_-4 .frame-div").count() > 0;
+    if (hasTestingFrames) {
+        await enterTestingSection(page);
+        await deleteFramesUpTo(page, "#frameContainer_-4");
+        // Back up to the heading, and switch back to the main code:
+        await page.keyboard.press("ArrowUp");
+        await waitForEditorSettled(page);
+        await page.keyboard.press("ArrowLeft");
+        await waitForEditorSettled(page);
+        // Now on the heading, which is one step closer to the top than the top of the main code is:
+        await pressN("ArrowUp", arrowsUpFromMain(2) - 1, true)(page);
+    }
+    else {
+        await pressN("ArrowUp", arrowsUpFromMain(2), true)(page);
+    }
     // Belt-and-braces check that we truly ended up at 0, on top of the settling above:
     await expect(page.locator(".frame-div")).toHaveCount(0, {timeout: 4000});
-    // Return to the top of Imports, where callers of this function expect to end up:
-    await pressN("ArrowUp", arrowsUpFromMain(2), true)(page);
-    if (testingWasFolded) {
-        await toggleTestingSectionFold(page);
-    }
 }
 
 export async function enterCode(page: Page, codeSections : string[]) : Promise<void> {

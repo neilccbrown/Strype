@@ -1,5 +1,5 @@
-import { test, expect } from "@playwright/test";
-import { pressFrameShortcut, waitForEditorSettled } from "../support/editor";
+import { test, expect, Page } from "@playwright/test";
+import { enterTestingSection, pressFrameShortcut, switchToTestingFromMain, waitForEditorSettled } from "../support/editor";
 import { checkFrameErrorCount } from "../support/execution";
 import { setupStrypeTest } from "../support/general";
 
@@ -9,47 +9,105 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 180000});
 });
 
+// The "My code" heading (a stop for the frame cursor) and the Run button:
+function heading(page: Page) {
+    return page.locator("#frameContainer_-3 .frame-container-header");
+}
+
+function runButton(page: Page) {
+    return page.locator("#runButton");
+}
+
+// From elsewhere in the editor (e.g. after editing the definitions), get the frame cursor back to the top of
+// My code by clicking just inside the bottom edge of its last frame and then pressing Home:
+async function goToTopOfMainCode(page: Page): Promise<void> {
+    const lastMainFrameBox = await page.locator("#frameContainer_-3 > .container-frames .frame-div").last().boundingBox();
+    if (!lastMainFrameBox) {
+        throw new Error("No frame in My code to click");
+    }
+    await page.mouse.click(lastMainFrameBox.x + 3, lastMainFrameBox.y + lastMainFrameBox.height - 2);
+    await waitForEditorSettled(page);
+    await page.keyboard.press("Home");
+    await waitForEditorSettled(page);
+}
+
 test.describe("Testing section", () => {
-    test("Starts folded and can be expanded", async ({page}) => {
+    test("The My code heading switches between My code and Testing with left/right arrow or space", async ({page}) => {
         const testsContainer = page.locator("#frameContainer_-4");
-        await expect(testsContainer).toHaveCount(1);
-        // Folded: the inner frames container is hidden (display: none):
-        await expect(testsContainer.locator(".container-frames")).toBeHidden();
-        await testsContainer.locator(".frame-container-btn-collapse").click();
+        const mainFrames = page.locator("#frameContainer_-3 .container-frames");
+        await expect(heading(page)).toContainText("My code");
+        await expect(mainFrames).toBeVisible();
+        // Only one of the two is ever showing, and there is no separate Testing heading:
+        await expect(testsContainer).toBeHidden();
+        await expect(runButton(page)).toHaveText(/^\s*Run$/, {timeout: 120000});
+
+        await page.keyboard.press("ArrowUp"); // to the heading
         await waitForEditorSettled(page);
-        await expect(testsContainer.locator(".container-frames")).toBeVisible();
+        await page.keyboard.press("ArrowRight");
+        await waitForEditorSettled(page);
+        await expect(heading(page)).toContainText("Testing");
+        await expect(testsContainer).toBeVisible();
+        await expect(mainFrames).toBeHidden();
+        await expect(page.locator(".frame-container-header")).toHaveCount(3);
+        await expect(runButton(page)).toHaveText(/^\s*Run tests$/);
+
+        await page.keyboard.press("ArrowLeft");
+        await waitForEditorSettled(page);
+        await expect(heading(page)).toContainText("My code");
+        await expect(mainFrames).toBeVisible();
+        await expect(testsContainer).toBeHidden();
+        await expect(runButton(page)).toHaveText(/^\s*Run$/);
+
+        // Space toggles too (it doesn't open the frame commands pane here):
+        await page.keyboard.press(" ");
+        await waitForEditorSettled(page);
+        await expect(heading(page)).toContainText("Testing");
+        await page.keyboard.press(" ");
+        await waitForEditorSettled(page);
+        await expect(heading(page)).toContainText("My code");
+    });
+
+    test("The Run button runs the tests while Testing is showing, and the program while My code is", async ({page}) => {
+        const consoleLoc = page.locator("#peaConsole");
+        await switchToTestingFromMain(page);
+        await expect(runButton(page)).toBeEnabled({timeout: 120000});
+        await runButton(page).click();
+        await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toContain("No tests found in the Testing section.");
+        await expect(runButton(page)).toHaveText(/^\s*Run tests$/, {timeout: 120000});
+
+        // The cursor is still on the heading: switch back to My code and run the program, which also clears the console:
+        await page.keyboard.press("ArrowLeft");
+        await waitForEditorSettled(page);
+        await expect(runButton(page)).toHaveText(/^\s*Run$/);
+        await runButton(page).click();
+        await expect(consoleLoc).toHaveValue("Hello from Strype\n", {timeout: 120000});
     });
 
     test("A project with no tests reports that, and each run clears the console first", async ({page}) => {
-        const runTestsButton = page.locator("#runTestsButton");
-        await expect(runTestsButton).toBeEnabled({timeout: 120000});
-        await runTestsButton.click();
+        await switchToTestingFromMain(page);
+        await expect(runButton(page)).toBeEnabled({timeout: 120000});
+        await runButton(page).click();
         const consoleLoc = page.locator("#peaConsole");
         await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toMatch(/^Running tests\.\.\.\nNo tests found in the Testing section\.\n$/);
         await checkFrameErrorCount(page, 0);
 
         // A second run clears the console first, as a normal Run does, rather than appending:
-        await expect(runTestsButton).toBeEnabled({timeout: 120000});
-        await runTestsButton.click();
+        await expect(runButton(page)).toHaveText(/^\s*Run tests$/, {timeout: 120000});
+        await runButton(page).click();
         await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toMatch(/^Running tests\.\.\.\nNo tests found in the Testing section\.\n$/);
     });
 
-    test("Running tests reports a failure and highlights the offending frame, without affecting normal Run", async ({page}) => {
-        await page.locator("#frameContainer_-4 .frame-container-btn-collapse").click();
-        await waitForEditorSettled(page);
+    test("Which of My code and Testing is showing survives a page refresh", async ({page}) => {
+        await switchToTestingFromMain(page);
+        await expect(heading(page)).toContainText("Testing");
+        await page.reload();
+        await page.waitForSelector(".frame-container");
+        await expect(heading(page)).toContainText("Testing");
+        await expect(page.locator("#frameContainer_-4")).toBeVisible();
+    });
 
-        // Clicking the collapse toggle above leaves DOM focus on that button, which breaks the
-        // keyboard-driven frame navigation used below -- reclaim proper editor focus by clicking
-        // into the default project's last slot (the "myString" argument to print in My code) and
-        // escaping out of it to a frame caret there, the same way commands-pane.spec.ts does:
-        await page.locator(".label-slot-input", {hasText: /^myString$/}).last().click();
-        await waitForEditorSettled(page);
-        await page.keyboard.press("Escape");
-        await waitForEditorSettled(page);
-        // That's the last frame in My code -- one more Down crosses into Testing's (now expanded,
-        // empty) body:
-        await page.keyboard.press("ArrowDown");
-        await waitForEditorSettled(page);
+    test("Running tests reports a failure and highlights the offending frame", async ({page}) => {
+        await enterTestingSection(page);
 
         // Build: def test_fail():\n    int("x")
         await pressFrameShortcut(page, "d");
@@ -69,9 +127,8 @@ test.describe("Testing section", () => {
         // -- an earlier version of this test silently mis-navigated there):
         await expect(page.locator("#frameContainer_-4 span", {hasText: /^int$/})).toHaveCount(1);
 
-        const runTestsButton = page.locator("#runTestsButton");
-        await expect(runTestsButton).toBeEnabled({timeout: 120000});
-        await runTestsButton.click();
+        await expect(runButton(page)).toBeEnabled({timeout: 120000});
+        await runButton(page).click();
 
         const consoleLoc = page.locator("#peaConsole");
         await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toContain("0 passed, 1 failed");
@@ -92,22 +149,10 @@ test.describe("Testing section", () => {
         );
         await expect(failingFrameHeader).toHaveCount(1);
         await expect(failingFrameHeader.locator(".err-icon:visible")).toHaveCount(1);
-
-        // Normal Run must still only run Imports/Definitions/My code -- the Testing section's
-        // code (including the deliberately-failing test_fail) must never execute as part of it:
-        const runButton = page.locator("#runButton");
-        await expect(runButton).toHaveText("Run", {timeout: 120000});
-        await runButton.click();
-        await expect(runButton).toHaveText("Run", {timeout: 120000});
-        await expect(consoleLoc).toHaveValue("Hello from Strype\n");
     });
 
     test("Test function shortcut prefills test_ and test functions are shaded light brown", async ({page}) => {
-        await page.locator("#frameContainer_-4 .frame-container-btn-collapse").click();
-        await waitForEditorSettled(page);
-        // Clicking into the (empty) expanded section puts the frame caret in it:
-        await page.locator("#frameContainer_-4 .container-frames").click();
-        await waitForEditorSettled(page);
+        await enterTestingSection(page);
 
         // The shortcut creates a function definition named "test_" with the text cursor at the end of the name:
         await pressFrameShortcut(page, "s");
@@ -132,15 +177,14 @@ test.describe("Testing section", () => {
         const assertFrames = page.locator(".frame-div[data-frameType='assert']");
         await expect(assertFrames).toHaveCount(0);
 
-        // Not in My code (the default caret):
+        // Not in My code (the default caret). The unmatched shortcut leaves the frame commands pane open:
         await pressFrameShortcut(page, "k");
         await waitForEditorSettled(page);
         await expect(assertFrames).toHaveCount(0);
+        await page.keyboard.press("Escape");
+        await waitForEditorSettled(page);
 
-        await page.locator("#frameContainer_-4 .frame-container-btn-collapse").click();
-        await waitForEditorSettled(page);
-        await page.locator("#frameContainer_-4 .container-frames").click();
-        await waitForEditorSettled(page);
+        await enterTestingSection(page);
 
         // But available in the Testing section, even outside any function:
         await pressFrameShortcut(page, "k");
@@ -151,10 +195,7 @@ test.describe("Testing section", () => {
 
     test("Assert frame can be used inside a test function", async ({page}) => {
         const assertFrames = page.locator(".frame-div[data-frameType='assert']");
-        await page.locator("#frameContainer_-4 .frame-container-btn-collapse").click();
-        await waitForEditorSettled(page);
-        await page.locator("#frameContainer_-4 .container-frames").click();
-        await waitForEditorSettled(page);
+        await enterTestingSection(page);
         await pressFrameShortcut(page, "s");
         await waitForEditorSettled(page);
         await page.keyboard.type("fails");
@@ -169,7 +210,7 @@ test.describe("Testing section", () => {
         await waitForEditorSettled(page);
         await expect(assertFrames).toHaveCount(1);
 
-        const runTestsButton = page.locator("#runTestsButton");
+        const runTestsButton = runButton(page);
         await expect(runTestsButton).toBeEnabled({timeout: 120000});
         await runTestsButton.click();
         const consoleLoc = page.locator("#peaConsole");
@@ -178,10 +219,7 @@ test.describe("Testing section", () => {
     });
 
     test("Main code's top-level variables are not visible to the tests", async ({page}) => {
-        await page.locator("#frameContainer_-4 .frame-container-btn-collapse").click();
-        await waitForEditorSettled(page);
-        await page.locator("#frameContainer_-4 .container-frames").click();
-        await waitForEditorSettled(page);
+        await enterTestingSection(page);
         await pressFrameShortcut(page, "s");
         await waitForEditorSettled(page);
         await page.keyboard.type("uses_main");
@@ -196,7 +234,7 @@ test.describe("Testing section", () => {
         await page.keyboard.type("myString");
         await waitForEditorSettled(page);
 
-        const runTestsButton = page.locator("#runTestsButton");
+        const runTestsButton = runButton(page);
         await expect(runTestsButton).toBeEnabled({timeout: 120000});
         await runTestsButton.click();
         const consoleLoc = page.locator("#peaConsole");
@@ -205,10 +243,7 @@ test.describe("Testing section", () => {
     });
 
     test("Tests can read files from the assets file system", async ({page}) => {
-        await page.locator("#frameContainer_-4 .frame-container-btn-collapse").click();
-        await waitForEditorSettled(page);
-        await page.locator("#frameContainer_-4 .container-frames").click();
-        await waitForEditorSettled(page);
+        await enterTestingSection(page);
         await pressFrameShortcut(page, "s");
         await waitForEditorSettled(page);
         await page.keyboard.type("reads_asset");
@@ -224,7 +259,7 @@ test.describe("Testing section", () => {
         await page.keyboard.type("open(\"/images/animals/panda.png\", \"rb\").read()");
         await waitForEditorSettled(page);
 
-        const runTestsButton = page.locator("#runTestsButton");
+        const runTestsButton = runButton(page);
         await expect(runTestsButton).toBeEnabled({timeout: 120000});
         await runTestsButton.click();
         const consoleLoc = page.locator("#peaConsole");
@@ -251,10 +286,8 @@ test.describe("Testing section", () => {
         await expect(page.locator("#frameContainer_-2 .frame-div[data-frameType='funcdef']")).toHaveCount(1);
 
         // Then a test that calls it (an unimported name would be a NameError):
-        await page.locator("#frameContainer_-4 .frame-container-btn-collapse").click();
-        await waitForEditorSettled(page);
-        await page.locator("#frameContainer_-4 .container-frames").click();
-        await waitForEditorSettled(page);
+        await goToTopOfMainCode(page);
+        await enterTestingSection(page);
         await pressFrameShortcut(page, "s");
         await waitForEditorSettled(page);
         await page.keyboard.type("calls_five");
@@ -268,7 +301,7 @@ test.describe("Testing section", () => {
         await page.keyboard.type("five()");
         await waitForEditorSettled(page);
 
-        const runTestsButton = page.locator("#runTestsButton");
+        const runTestsButton = runButton(page);
         await expect(runTestsButton).toBeEnabled({timeout: 120000});
         await runTestsButton.click();
         const consoleLoc = page.locator("#peaConsole");

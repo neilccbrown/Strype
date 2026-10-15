@@ -78,7 +78,7 @@ const initialPythonState: EditorFrameObjects = {
         jointFrameIds: [],
         labelSlotsDict: {},
         caretVisibility: CaretPosition.none,
-        collapsedState: CollapsedState.ONLY_HEADER_VISIBLE,
+        collapsedState: CollapsedState.FULLY_VISIBLE,
     },
 
     1: {
