@@ -14,7 +14,7 @@ import en from "@/localisation/en/en_main.json";
 import "../support/expression-test-support";
 import { scssVars, standardBeforeEach, strypeElIds } from "../support/standard-setup";
 import {checkDownloadedFileEquals, loadFile} from "../support/load-save-support";
-import { getDefaultStrypeProjectDocumentationFullLine, focusEditorAndClear, upFromMain } from "../support/test-support";
+import { getDefaultStrypeProjectDocumentationFullLine, focusEditorAndClear, upFromMain, DOWN_EXTRA_PAST_HEADING } from "../support/test-support";
 
 beforeEach(standardBeforeEach);
 
@@ -189,7 +189,7 @@ describe("Tests blanks", () => {
             " f","{downarrow}{downarrow}" +
             " i","{rightarrow}" +
             " c{downarrow}{downarrow}" +
-            " r{rightarrow}{downarrow}{downarrow}" +
+            " r{rightarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING +
             " a{rightarrow} ={rightarrow}1+*/()-{downarrow}" +
             "test.({downarrow}" +
             "test.a+({downarrow}" +

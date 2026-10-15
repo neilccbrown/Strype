@@ -1,5 +1,5 @@
 import { scssVars } from "../support/standard-setup";
-import {clearDefaultImports, pressFrameShortcut, pressFrameShortcutThenType, waitForEditorSettled, UP_MAIN_TO_DEFS} from "../support/test-support";
+import {clearDefaultImports, pressFrameShortcut, pressFrameShortcutThenType, waitForEditorSettled, UP_MAIN_TO_DEFS, DOWN_EXTRA_PAST_HEADING} from "../support/test-support";
 
 require("cypress-terminal-report/src/installLogsCollector")();
 import "@testing-library/cypress/add-commands";
@@ -229,7 +229,7 @@ describe("Function params: types inferred from callers (Actor, multiple params)"
     it("Shows Actor members for a top-level function param, inferred from a caller", () => {
         focusEditorAC();
         clearDefaultImports();
-        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
+        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING);
         pressFrameShortcutThenType("=", "myActor=Actor(\"cat-test.jpg\",0,0,\"t\"){enter}");
         cy.get("body").type("foo(myActor){enter}");
         waitForEditorSettled();
@@ -248,7 +248,7 @@ describe("Function params: types inferred from callers (Actor, multiple params)"
     it("Infers 3+ top-level function params independently from a single caller", () => {
         focusEditorAC();
         clearDefaultImports();
-        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
+        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING);
         pressFrameShortcutThenType("=", "myActor=Actor(\"cat-test.jpg\",0,0,\"t\"){enter}");
         // One caller gives evidence for all 3 params at once (string, int, Actor):
         cy.get("body").type("foo(\"hi\",5,myActor){enter}");
@@ -303,7 +303,7 @@ describe("Function params: types inferred from callers (Actor, multiple params)"
     it("Shows Actor members for a top-level function param, inferred from a get_actors() for-loop variable (blocked by Strype's loop-exclusion in getCodeWithoutErrors(), not TigerPython)", () => {
         focusEditorAC();
         clearDefaultImports();
-        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
+        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING);
         pressFrameShortcutThenType("=", "a=Actor(\"cat-test.jpg\",0,0,\"t\"){enter}");
         pressFrameShortcutThenType("f", "p{rightarrow}get_actors(){rightarrow}foo(p){enter}");
         cy.get("body").type("{uparrow}{uparrow}{uparrow}" + UP_MAIN_TO_DEFS);
@@ -323,7 +323,7 @@ describe("Function params: types inferred from callers (Actor, multiple params)"
     it("Shows Actor members for a get_actors() for-loop variable directly (blocked by Strype's loop-exclusion in getCodeWithoutErrors(), not TigerPython)", () => {
         focusEditorAC();
         clearDefaultImports();
-        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
+        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING);
         pressFrameShortcutThenType("f", "p{rightarrow}get_actors(){rightarrow}p.");
         cy.wait(500);
         cy.get("body").type("{ctrl} ");
@@ -345,7 +345,7 @@ describe("Function params: types inferred from callers (Actor, multiple params)"
         // than also tripping the separate call-must-be-after-definition ordering requirement.)
         focusEditorAC();
         clearDefaultImports();
-        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
+        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING);
         cy.get("body").type("=myActor=Actor(\"cat-test.jpg\",0,0,\"t\"){enter}");
         cy.get("body").type("{uparrow}" + UP_MAIN_TO_DEFS);
         pressFrameShortcut("c");
@@ -367,7 +367,7 @@ describe("Function params: types inferred from callers (Actor, multiple params)"
     it("Infers 3+ class method params independently from a single sibling method caller", () => {
         focusEditorAC();
         clearDefaultImports();
-        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
+        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING);
         cy.get("body").type("=myActor=Actor(\"cat-test.jpg\",0,0,\"t\"){enter}");
         cy.get("body").type("{uparrow}" + UP_MAIN_TO_DEFS);
         pressFrameShortcut("c");

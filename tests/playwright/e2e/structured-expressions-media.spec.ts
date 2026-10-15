@@ -1,5 +1,6 @@
 import {test, expect} from "@playwright/test";
-import { typeIndividually, doPagePaste, doTextHomeEndKeyPress, assertStateOfIfFrame, checkFrameXorTextCursor, clearDefaultProject, MEDIA_SLOT_PARSED_PLACEHOLDER, assertStateOfFuncCallFrame, pressFrameShortcut, waitForEditorSettled } from "../support/editor";
+import { typeIndividually, doPagePaste, doTextHomeEndKeyPress, assertStateOfIfFrame, checkFrameXorTextCursor, clearDefaultProject, MEDIA_SLOT_PARSED_PLACEHOLDER, assertStateOfFuncCallFrame, pressFrameShortcut, pressN, waitForEditorSettled } from "../support/editor";
+import { ARROWS_IMPORTS_TO_MAIN } from "../../shared/main-heading-focus";
 import fs from "fs";
 import { setupStrypeTest } from "../support/general";
 import { save } from "../support/loading-saving";
@@ -177,8 +178,7 @@ test.describe("Media literal manipulation", () => {
         // pasted media literal, once via the module's own general completion), which would
         // otherwise make the "not visible" check below fail for reasons unrelated to this test:
         await clearDefaultProject(page);
-        await page.keyboard.press("ArrowDown");
-        await page.keyboard.press("ArrowDown");
+        await pressN("ArrowDown", ARROWS_IMPORTS_TO_MAIN, true)(page); // Imports -> Definitions -> heading -> Main
         await pressFrameShortcut(page, "i");
         await waitForEditorSettled(page);
         await assertStateOfIfFrame(page, "{$}");
@@ -201,8 +201,7 @@ test.describe("Media literal manipulation", () => {
         // media literal, once via the module's own general completion), which would otherwise
         // make the "not visible" check below fail for reasons unrelated to this test:
         await clearDefaultProject(page);
-        await page.keyboard.press("ArrowDown");
-        await page.keyboard.press("ArrowDown");
+        await pressN("ArrowDown", ARROWS_IMPORTS_TO_MAIN, true)(page); // Imports -> Definitions -> heading -> Main
         await pressFrameShortcut(page, "i");
         await waitForEditorSettled(page);
         await assertStateOfIfFrame(page, "{$}");
