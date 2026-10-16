@@ -888,7 +888,27 @@ export default class Parser {
         const isEditingInTests = getFrameSectionIdFromFrameId(endFrameId) == useStore().getTestsFrameContainerId;
         // The tests can't see the main code when they run, so it isn't used as evidence when editing in the Testing section.
         const code = this.parse({excludeComments: true, ignoreSpecificFrameId: endFrameId, ignoreSpecificFrameIdReplacement: AC_PROBE_MARKER, stopAt: isEditingInTests ? undefined : {frameId: useStore().getTestsFrameContainerId, includeThisFrame: false}, excludeMainCode: isEditingInTests});
+        // Fast path: finding the lines to drop needs a whole-program TigerPython pass, which is the same expensive
+        // pass for every frame we're called for.  Most of the time the program has no errors at all, so there is
+        // nothing to drop; we check that once for the program (not per frame) and skip the pass.  (The version of the
+        // program we're given here has the frame we're editing replaced by the marker, so it is not identical to the
+        // program we check, but replacing a statement or block by a call statement doesn't introduce syntax errors.)
+        if (!this.saveAsSPY && !this.programHasErrors()) {
+            // Same shape as removeErrorsFromParsedCode() gives when it drops nothing:
+            return "\n" + code.split(/\r?\n/g).join("\n");
+        }
         return this.removeErrorsFromParsedCode(code);
+    }
+
+    // Whether TigerPython finds any errors in the whole program, generated with this parser's settings (and with no
+    // frame replaced).  The result is cached against the generated program text itself, rather than against some
+    // "document modified" signal, so it can never be stale: generating the text is cheap next to the TigerPython pass.
+    private programHasErrors(): boolean {
+        const wholeProgram = new Parser(this.ignoreCheckErrors, "py", this.omitMediaLiterals).parse({excludeComments: true});
+        if (lastProgramErrorCheck?.code !== wholeProgram) {
+            lastProgramErrorCheck = {code: wholeProgram, hasErrors: this.getErrors(wholeProgram).length > 0};
+        }
+        return lastProgramErrorCheck.hasErrors;
     }
 
     public getFullCode(): string {
@@ -1060,6 +1080,9 @@ export default class Parser {
 // on the latter would miss it) and a couple of other content/state-modifying actions -- so this
 // self-invalidates on any edit without needing new invalidation call sites scattered around.
 const codeWithoutErrorsCache = new Map<number, {modifiedAt: number; result: string}>();
+
+// The most recent result of Parser.programHasErrors() (see there), keyed by the program text it was for.
+let lastProgramErrorCheck: {code: string; hasErrors: boolean} | undefined;
 
 export function getCachedCodeWithoutErrors(parser: Parser, frameId: number): string {
     const modifiedAt = useStore().editorLastModificationAt;

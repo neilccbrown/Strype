@@ -39,6 +39,7 @@
     </div>
     <teleport to="body">    
         <BPopover
+            v-if="showRenameIdentifierPopup"
             :show="showRenameIdentifierPopup"
             :target="labelSlotsStructDivId"
             :key="refactorCount"
@@ -346,8 +347,10 @@ export default defineComponent({
         updateParamPromptsIfInList(frameIds: number[]) {
             if (frameIds.includes(this.frameId)) {
                 // The refactor doesn't actually update the state (we're only updating param prompts)
-                // so this param shouldn't matter but supply valid one just in case:
-                const stateBeforeChanges = cloneDeep(this.appStore.$state);
+                // so this param shouldn't matter but supply valid one just in case.  We scope the clone to
+                // this frame: this runs for every frame after a load/paste, so a full clone of the whole
+                // project each time is quadratic (several seconds for a few hundred frames):
+                const stateBeforeChanges = this.appStore.cloneStateForUndo([this.frameId]);
                 this.checkSlotRefactoring("", stateBeforeChanges, {useFlatMediaDataCode: true, skipCursorSetAndStateSave: true});
             }
         },

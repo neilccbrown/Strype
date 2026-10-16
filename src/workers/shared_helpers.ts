@@ -52,7 +52,7 @@ export async function serviceWorkerReadyAndInControl() : Promise<void> {
 // python-execution.ts) -- `document` and `navigator.serviceWorker` aren't necessarily defined
 // there (Chromium doesn't expose navigator.serviceWorker to Workers at all: crbug.com/40364838),
 // so both are guarded rather than assumed:
-export async function isServiceWorkerChannelResponsive(channelBaseUrl: string, timeoutMs = 800) : Promise<boolean> {
+export async function isServiceWorkerChannelResponsive(channelBaseUrl: string, timeoutMs = 800, onFailureDetail?: (detail: string) => void) : Promise<boolean> {
     // Logged (temporarily, while we're chasing down a report of the Run button getting stuck on
     // "Stop" with nothing happening, even though the page stayed foregrounded/visible throughout)
     // so a repro can confirm whether this pre-flight check is the thing catching (or failing to
@@ -72,10 +72,15 @@ export async function isServiceWorkerChannelResponsive(channelBaseUrl: string, t
         // unmatched path correctly falls through to a real 404 instead:
         const response = await fetch(channelBaseUrl + "/version", {method: "POST", signal: AbortSignal.timeout(timeoutMs)});
         console.info(`${logPrefix} -> responsive=${response.ok} (status ${response.status})`);
+        if (!response.ok) {
+            // A fast 404 means the request reached the real server, i.e. we are not controlled:
+            onFailureDetail?.(`status ${response.status}`);
+        }
         return response.ok;
     }
     catch (err) {
         console.info(`${logPrefix} -> responsive=false (${err})`);
+        onFailureDetail?.(`${err}`);
         return false;
     }
 }

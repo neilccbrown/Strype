@@ -1,6 +1,6 @@
 {
     "name": "strype-editor",
-    "version": "2.4.0",
+    "version": "2.4.1",
     "private": true,
     "scripts": {
         "serve:microbit": "cross-env STRYPE_PLATFORM=microbit vite --port 8081",
@@ -142,7 +142,7 @@
         "mkdirp": "^3.0.1",
         "pixelmatch": "^7.1.0",
         "pngjs": "^7.0.0",
-        "pyodide": "^0.29.4",
+        "pyodide": "0.29.4",
         "rimraf": "^5.0.10",
         "sass": "^1.97.2",
         "seedrandom": "^3.0.5",

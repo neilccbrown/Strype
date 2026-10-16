@@ -1546,7 +1546,11 @@ export function pasteMixedPython(completeSource: string, at: CurrentFrame, clear
     ].flat().map(Number);
     void nextTick(() => {
         eventBus.emit(CustomEventTypes.updateParamPrompts, framesAdded);
-        framesAdded.forEach((pastedFrameId) => checkCodeErrors(pastedFrameId));
+        // One call for all the frames: the whole-project TigerPython pass in checkCodeErrors() is expensive,
+        // so calling it once per added frame is quadratic (several seconds when loading a few hundred lines).
+        if (framesAdded.length > 0) {
+            checkCodeErrors(framesAdded);
+        }
     });
     
     return {headers: s.headers};

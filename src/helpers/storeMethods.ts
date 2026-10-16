@@ -1185,10 +1185,12 @@ export function checkPrecompiledErrorsForFrame(frameId: number): void {
     }
 }
 
-export function checkCodeErrors(frameIdForPrecompiled?: number): void {
+export function checkCodeErrors(frameIdsForPrecompiled?: number | number[]): void {
     // We check errors in in three passes (all code errors are cleared in 1) and 2)): 
-    //   1) check for the UI pre-compiled errors for each frame unless if a specific frame is specified, then we check that frame only
-    const frameArray = ((frameIdForPrecompiled) ? [frameIdForPrecompiled.toString()] : Object.keys(useStore().frameObjects));
+    //   1) check for the UI pre-compiled errors for each frame unless if specific frame(s) are specified, then we check those frames only
+    //      (Passes 2) and 3) are always for the whole project, and 3) is expensive, so when several frames have changed, pass them all
+    //      in one call rather than calling this once per frame.)
+    const frameArray = (frameIdsForPrecompiled) ? [frameIdsForPrecompiled].flat().map(String) : Object.keys(useStore().frameObjects);
     for(const frameId of frameArray){
         checkPrecompiledErrorsForFrame(parseInt(frameId));
     } 

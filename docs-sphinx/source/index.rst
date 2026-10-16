@@ -52,7 +52,7 @@ Module strype.sound
     Module strype.sound
 
 Module strype.builtins
--------------------
+----------------------
 
 .. container:: module-wrapper
 
