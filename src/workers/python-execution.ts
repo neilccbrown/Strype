@@ -962,9 +962,12 @@ self.addEventListener("message", (e : any) => {
 const workerServiceWorkerChannel = makeServiceWorkerChannel({scope: import.meta.env.BASE_URL});
 let lastReportedControlled : boolean | null = null;
 async function checkAndReportControllerStatus() : Promise<boolean> {
-    const controlled = await isServiceWorkerChannelResponsive(workerServiceWorkerChannel.baseUrl);
+    let failureDetail = "";
+    const controlled = await isServiceWorkerChannelResponsive(workerServiceWorkerChannel.baseUrl, undefined, (detail) => failureDetail = detail);
     if (controlled !== lastReportedControlled) {
-        debugToMain(`service worker channel check: responsive=${controlled}`);
+        // The detail tells an uncontrolled worker (a fast 404 from the real server) apart from a
+        // slow/overloaded one (a timeout):
+        debugToMain(`service worker channel check: responsive=${controlled}${failureDetail ? ` (${failureDetail})` : ""}`);
         lastReportedControlled = controlled;
     }
     (self as unknown as DedicatedWorkerGlobalScope).postMessage({controllerStatus: controlled});
@@ -976,16 +979,25 @@ if ("serviceWorker" in navigator) {
 // The very first check can easily race the service worker's own install/activate/claim sequence,
 // especially for the worker created synchronously at page load -- so retry with a short backoff
 // for a while rather than only trying once and relying solely on a controllerchange event that,
-// per above, isn't a reliable signal to wait on in every engine:
+// per above, isn't a reliable signal to wait on in every engine.
+// The deadline is measured from when this worker started, and Pyodide's own loading runs in the
+// same worker: under CPU contention (several browsers at once, as on CI) that load alone can take
+// 15-20s, which with the previous flat 20s deadline left only a few seconds of probing after the
+// load finished -- all of which could time out -- and then probing stopped for good, leaving Run
+// disabled on "Initialising..." forever. So probe for much longer (matching the longest wait the
+// e2e tests give Run), at a gentler pace once the quick early attempts are over; the main thread
+// keeps re-requesting a service-worker claim meanwhile (see keepReclaimingUntilControlled() in
+// main_thread_python_handler.ts):
 (async () => {
-    const deadline = Date.now() + 20000;
+    const probeDeadlineMs = 120000;
+    const deadline = Date.now() + probeDeadlineMs;
     let attempts = 0;
     while (!(await checkAndReportControllerStatus()) && Date.now() < deadline) {
         attempts++;
-        await new Promise((resolve) => setTimeout(resolve, 300));
+        await new Promise((resolve) => setTimeout(resolve, attempts < 60 ? 300 : 1000));
     }
     if (lastReportedControlled !== true) {
         // Nothing retries after this (apart from a controllerchange event), so Run stays disabled:
-        debugToMain(`gave up probing for a service worker controller after ${attempts} attempts / 20s`);
+        debugToMain(`gave up probing for a service worker controller after ${attempts} attempts / ${probeDeadlineMs / 1000}s`);
     }
 })();
