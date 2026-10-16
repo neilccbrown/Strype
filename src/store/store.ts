@@ -1723,10 +1723,28 @@ export const useStore = defineStore("app", {
             this.testRunRequestId++;
         },
 
-        // Switches the third section of the editor between the main code and the testing code.
-        // The frame cursor stays where it is, which is on the heading (the only place this is called from).
+        // Switches the third section of the editor between the main code and the testing code, from the
+        // "My code"/"Testing" heading (by keyboard when the frame cursor is on it, or by clicking it).
+        // Whatever was selected (text in a slot, or frames) is cancelled -- it's in code that may no longer be
+        // showing -- and the frame cursor goes to the heading. Nothing happens while a program (or the tests) is
+        // running: the section being shown has to stay put until it finishes.
         toggleMainSectionShowsTests() {
+            if (this.pythonExecRunningState != PythonExecRunningState.NotRunning) {
+                return;
+            }
+            // Moving away supersedes any earlier, still-pending request to put the cursor in a slot (see leftRightKey()):
+            bumpCaretRequestSeq();
+            // If a slot is being edited, ask it to lose the caret (as leftRightKey() does) so its content is checked and saved:
+            if (this.isEditing && this.focusSlotCursorInfos) {
+                document.getElementById(getLabelSlotUID(this.focusSlotCursorInfos.slotInfos))?.dispatchEvent(new CustomEvent(CustomEventTypes.editableSlotLostCaret));
+            }
+            this.isEditing = false;
+            this.isFrameCommandsPaneActive = false;
+            // This also clears any text selection on the page:
+            this.setSlotTextCursors(undefined, undefined);
+            this.unselectAllFrames();
             this.mainSectionShowsTests = !this.mainSectionShowsTests;
+            this.setCurrentFrame({id: this.getMainCodeFrameContainerId, caretPosition: CaretPosition.header});
         },
 
         cycleFrameCollapsedState(frameId: number) {

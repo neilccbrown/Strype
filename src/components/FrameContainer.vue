@@ -3,11 +3,14 @@
         <!-- The Testing container has no heading of its own: it shares the "My code" heading, which switches between the two -->
         <div v-if="!isTestsFrameContainer" class="frame-container-header" @click.self="onOuterContainerClick">
             <button v-if="!isMainCodeFrameContainer && !isDefsFrameContainer" class="frame-container-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
-            <span :class="{[scssVars.frameContainerLabelSpanClassName]: true,'no-toggle-frame-container-span': isMainCodeFrameContainer || isDefsFrameContainer, 'frame-container-heading-focused': isHeadingFocused, 'frame-container-heading-focused-pane': isHeadingFocused && isFrameCommandsPaneActive}" @click.self="toggleCollapse">{{headingLabel}}</span>
-            <!-- While the heading has the frame cursor, left/right arrow switch between My code and Testing: the triangles hint at that -->
-            <span v-if="isHeadingFocused" :class="{'frame-container-heading-arrows': true, 'frame-container-heading-arrows-pane': isFrameCommandsPaneActive}" aria-hidden="true">
-                <span class="frame-container-heading-arrow frame-container-heading-arrow-left"></span>
-                <span class="frame-container-heading-arrow frame-container-heading-arrow-right"></span>
+            <span :class="{[scssVars.frameContainerLabelSpanClassName]: true,'no-toggle-frame-container-span': isMainCodeFrameContainer || isDefsFrameContainer, 'frame-container-heading-focused': isHeadingFocused, 'frame-container-heading-focused-pane': isHeadingFocused && isFrameCommandsPaneActive, 'frame-container-heading-clickable': isMainCodeFrameContainer && !isPythonExecuting}" @click.self="onLabelClicked">{{headingLabel}}</span>
+            <!-- While the heading has the frame cursor, left/right arrow (or clicking this or the heading) switch between My code and Testing: the double-headed arrow hints at that -->
+            <span v-if="isHeadingFocused" :class="{'frame-container-heading-arrows': true, 'frame-container-heading-arrows-pane': isFrameCommandsPaneActive, 'frame-container-heading-clickable': !isPythonExecuting}" aria-hidden="true" @click.stop="onHeadingClicked">
+                <svg width="32" height="14" viewBox="0 0 32 14">
+                    <path d="M6 9 Q16 3 26 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M1 9 L8 5 L8 13 Z" fill="currentColor"/>
+                    <path d="M31 9 L24 5 L24 13 Z" fill="currentColor"/>
+                </svg>
             </span>
             <ChildrenFrameStateToggle v-if="isDefsFrameContainer" :frames="frames" :parentIsFrozen="false"/>
         </div>
@@ -53,7 +56,7 @@ import { defineComponent } from "vue";
 import Frame from "@/components/Frame.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
 import { useStore } from "@/store/store";
-import { CaretPosition, CollapsedState, FrameObject, DefaultFramesDefinition, FramesDefinitions, FrameContainersDefinitions, getFrameDefType, AllFrameTypesIdentifier } from "@/types/types";
+import { CaretPosition, CollapsedState, FrameObject, DefaultFramesDefinition, FramesDefinitions, FrameContainersDefinitions, getFrameDefType, AllFrameTypesIdentifier, PythonExecRunningState } from "@/types/types";
 import { mapStores } from "pinia";
 import { CustomEventTypes, getCaretContainerRef, getFrameUID} from "@/helpers/editor";
 import scssVars from "@/assets/style/_export.module.scss";
@@ -132,6 +135,10 @@ export default defineComponent({
 
         isFrameCommandsPaneActive(): boolean {
             return this.appStore.isFrameCommandsPaneActive;
+        },
+
+        isPythonExecuting(): boolean {
+            return (this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
         },
 
         // Whether the third section of the editor is currently showing the testing code rather than the main code
@@ -225,6 +232,23 @@ export default defineComponent({
             return getFrameUID(frameId);
         },
         
+        // Clicking the "My code"/"Testing" heading (or its arrow) switches between the two, and puts the frame cursor on it.
+        // (Not while a program is running: the store ignores it then, and the heading isn't styled as clickable.)
+        onHeadingClicked(): void {
+            if (this.isMainCodeFrameContainer && !this.isPythonExecuting) {
+                this.appStore.toggleMainSectionShowsTests();
+            }
+        },
+
+        onLabelClicked(): void {
+            if (this.isMainCodeFrameContainer) {
+                this.onHeadingClicked();
+            }
+            else {
+                this.toggleCollapse();
+            }
+        },
+
         toggleCollapse(): void {
             // Only collapse Imports and Definitions frame containers.
             if(!this.isMainCodeFrameContainer){
@@ -373,36 +397,20 @@ export default defineComponent({
     outline-color: #b8bac0;
 }
 
-// Filled triangles to the right of the focused heading, pointing left and right (the keys that switch section)
+// A double-headed (slightly curved) arrow to the right of the focused heading, pointing left and right (the keys that switch section)
 .frame-container-heading-arrows {
     display: flex;
     align-items: center;
-    gap: 4px;
     margin-left: 10px;
-    pointer-events: none;
+    color: #3467FE;
 }
 
-.frame-container-heading-arrow {
-    width: 0;
-    height: 0;
-    border-top: 6px solid transparent;
-    border-bottom: 6px solid transparent;
+.frame-container-heading-arrows-pane {
+    color: #b8bac0;
 }
 
-.frame-container-heading-arrow-left {
-    border-right: 9px solid #3467FE;
-}
-
-.frame-container-heading-arrow-right {
-    border-left: 9px solid #3467FE;
-}
-
-.frame-container-heading-arrows-pane .frame-container-heading-arrow-left {
-    border-right-color: #b8bac0;
-}
-
-.frame-container-heading-arrows-pane .frame-container-heading-arrow-right {
-    border-left-color: #b8bac0;
+.frame-container-heading-clickable {
+    cursor: pointer;
 }
 
 .frame-container-header {

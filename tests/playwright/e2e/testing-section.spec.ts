@@ -64,17 +64,15 @@ test.describe("Testing section", () => {
         // The cursor on the heading is shown as an outline round its text, not as a frame cursor:
         await expect(headingText).toHaveClass(/frame-container-heading-focused/);
         await expect(visibleFrameCursors).toHaveCount(0);
-        // Two triangles, left and right, appear to the right of the heading to show that those keys do something:
-        const arrows = heading(page).locator(".frame-container-heading-arrow");
-        await expect(arrows).toHaveCount(2);
+        // A double-headed arrow appears to the right of the heading to show that left/right do something:
+        const arrow = heading(page).locator(".frame-container-heading-arrows svg");
+        await expect(arrow).toHaveCount(1);
         const textBox = await headingText.boundingBox();
-        const leftArrowBox = await arrows.first().boundingBox();
-        const rightArrowBox = await arrows.last().boundingBox();
-        if (!textBox || !leftArrowBox || !rightArrowBox) {
-            throw new Error("Could not measure the heading or its arrows");
+        const arrowBox = await arrow.boundingBox();
+        if (!textBox || !arrowBox) {
+            throw new Error("Could not measure the heading or its arrow");
         }
-        expect(leftArrowBox.x).toBeGreaterThanOrEqual(textBox.x + textBox.width);
-        expect(rightArrowBox.x).toBeGreaterThan(leftArrowBox.x);
+        expect(arrowBox.x).toBeGreaterThanOrEqual(textBox.x + textBox.width);
         await page.keyboard.press("ArrowRight");
         await waitForEditorSettled(page);
         await expect(heading(page)).toContainText("Testing");
@@ -96,7 +94,7 @@ test.describe("Testing section", () => {
         await page.keyboard.press("ArrowDown");
         await waitForEditorSettled(page);
         await expect(headingText).not.toHaveClass(/frame-container-heading-focused/);
-        await expect(heading(page).locator(".frame-container-heading-arrow")).toHaveCount(0);
+        await expect(heading(page).locator(".frame-container-heading-arrows")).toHaveCount(0);
         await expect(visibleFrameCursors).toHaveCount(1);
         await page.keyboard.press("ArrowUp");
         await waitForEditorSettled(page);
@@ -210,6 +208,102 @@ def test_errors ( ) :
         await runButton(page).click();
         await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toMatch(/^Running tests\.\.\.\n4 passed, 0 failed\n$/);
         await checkFrameErrorCount(page, 0);
+    });
+
+    test("Clicking the heading, or its arrow, switches between My code and Testing and puts the cursor on the heading", async ({page}) => {
+        const headingText = heading(page).locator(".frame-container-label-span");
+        const arrow = heading(page).locator(".frame-container-heading-arrows");
+        await expect(headingText).not.toHaveClass(/frame-container-heading-focused/);
+        await expect(arrow).toHaveCount(0);
+
+        await headingText.click();
+        await waitForEditorSettled(page);
+        await expect(heading(page)).toContainText("Testing");
+        await expect(page.locator("#frameContainer_-4")).toBeVisible();
+        await expect(headingText).toHaveClass(/frame-container-heading-focused/);
+        await expect(runButton(page)).toHaveText(/^\s*Run tests$/);
+
+        // The arrow is clickable too, and the keys work from where the click left the cursor:
+        await arrow.click();
+        await waitForEditorSettled(page);
+        await expect(heading(page)).toContainText("My code");
+        await expect(headingText).toHaveClass(/frame-container-heading-focused/);
+        await expect(runButton(page)).toHaveText(/^\s*Run$/);
+        await page.keyboard.press("ArrowRight");
+        await waitForEditorSettled(page);
+        await expect(heading(page)).toContainText("Testing");
+    });
+
+    test("Switching with frames selected cancels the selection and puts the cursor on the heading", async ({page}) => {
+        // Select the two frames in My code with the keyboard (the cursor starts at the top of My code):
+        await page.keyboard.press("Shift+ArrowDown");
+        await page.keyboard.press("Shift+ArrowDown");
+        await waitForEditorSettled(page);
+        const selectedFrames = page.locator("#frameContainer_-3 .frame-div.selected, #frameContainer_-3 .selected .frame-div");
+        await expect(selectedFrames.first()).toBeVisible();
+
+        await heading(page).locator(".frame-container-label-span").click();
+        await waitForEditorSettled(page);
+        await expect(heading(page)).toContainText("Testing");
+        await expect(page.locator(".selected")).toHaveCount(0);
+        await expect(heading(page).locator(".frame-container-label-span")).toHaveClass(/frame-container-heading-focused/);
+        // Back in My code, the frames are still not selected, and the heading still has the cursor:
+        await heading(page).locator(".frame-container-heading-arrows").click();
+        await waitForEditorSettled(page);
+        await expect(heading(page)).toContainText("My code");
+        await expect(page.locator(".selected")).toHaveCount(0);
+        await expect(heading(page).locator(".frame-container-label-span")).toHaveClass(/frame-container-heading-focused/);
+    });
+
+    test("Switching with text selected in a slot cancels the selection and puts the cursor on the heading", async ({page}) => {
+        // Select the text of the argument to print in My code ("myString"):
+        const slot = page.locator("#frameContainer_-3 .label-slot-input", {hasText: /^myString$/}).last();
+        await slot.click();
+        await waitForEditorSettled(page);
+        // (The click puts the cursor part-way through the text, so go to the start first:)
+        await page.keyboard.press("Home");
+        await page.keyboard.press("Shift+End");
+        await waitForEditorSettled(page);
+        expect(await page.evaluate(() => (document.getSelection()?.toString() ?? ""))).toContain("myString");
+
+        await heading(page).locator(".frame-container-label-span").click();
+        await waitForEditorSettled(page);
+        await expect(heading(page)).toContainText("Testing");
+        // No text is selected any more, and no slot is being edited:
+        expect(await page.evaluate(() => (document.getSelection()?.toString() ?? ""))).toEqual("");
+        expect(await page.evaluate(() => document.activeElement?.classList.contains("label-slot-input") ?? false)).toBe(false);
+        await expect(heading(page).locator(".frame-container-label-span")).toHaveClass(/frame-container-heading-focused/);
+        await expect(page.locator(".caret:not(.invisible)")).toHaveCount(0);
+    });
+
+    test("The heading can't be clicked or triggered while a program is running", async ({page}) => {
+        await loadContent(page, `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+while True  :
+#(=> Section:End
+`);
+        const headingText = heading(page).locator(".frame-container-label-span");
+        await expect(runButton(page)).toBeEnabled({timeout: 120000});
+        await runButton(page).click();
+        await expect(runButton(page)).toHaveText(/Stop$/, {timeout: 120000});
+
+        // Clicking the heading does nothing while it runs, and the heading doesn't look clickable:
+        await expect(headingText).not.toHaveClass(/frame-container-heading-clickable/);
+        await headingText.click();
+        await waitForEditorSettled(page);
+        await expect(heading(page)).toContainText("My code");
+        await expect(headingText).not.toHaveClass(/frame-container-heading-focused/);
+        await expect(runButton(page)).toHaveText(/Stop$/);
+
+        // Once stopped, it works again:
+        await runButton(page).click();
+        await expect(runButton(page)).toHaveText(/^\s*Run$/, {timeout: 120000});
+        await expect(headingText).toHaveClass(/frame-container-heading-clickable/);
+        await headingText.click();
+        await waitForEditorSettled(page);
+        await expect(heading(page)).toContainText("Testing");
     });
 
     test("Which of My code and Testing is showing survives a page refresh", async ({page}) => {
