@@ -35,14 +35,26 @@ async function openColourPickerViaShortcut(page: Page) {
     // still isn't active (the slot is empty here, so a second Space is harmless), with short waits
     // between attempts instead of one long one.
     const panel = page.locator("#addSlotShortcutsPanel");
+    const dialog = page.locator("#colourPickerDlg");
+    // If the previous picker dialog is still fading out, the new one can't (visibly) open over
+    // it: the "c" below is then swallowed, and the next click on the dialog's contents waits out
+    // the whole 180s test timeout on an element that is never visible (seen on CI, in
+    // "Editing an adjacent colour literal", which opens the picker twice in a row):
+    await expect(dialog).toBeHidden();
+    // As above, a lost "c" can't be fixed by waiting either, so the whole sequence is retried
+    // until the dialog is actually visible (the pane closes on "c", so a retry starts afresh by
+    // reopening it with Space):
     await expect(async () => {
-        // The panel is shown whenever the slot offers shortcuts; this class marks it as open:
-        if (await panel.locator("xpath=self::*[contains(@class, 'frame-commands-pane-active')]").count() === 0) {
-            await page.keyboard.press(" ");
-        }
-        await expect(panel.locator(".frame-cmd-btn").first()).toBeFocused({timeout: 3000});
-    }).toPass({timeout: 30000});
-    await page.keyboard.press("c");
+        await expect(async () => {
+            // The panel is shown whenever the slot offers shortcuts; this class marks it as open:
+            if (await panel.locator("xpath=self::*[contains(@class, 'frame-commands-pane-active')]").count() === 0) {
+                await page.keyboard.press(" ");
+            }
+            await expect(panel.locator(".frame-cmd-btn").first()).toBeFocused({timeout: 3000});
+        }).toPass({timeout: 30000});
+        await page.keyboard.press("c");
+        await expect(dialog).toBeVisible({timeout: 5000});
+    }).toPass({timeout: 60000});
 }
 
 // Reads the raw (unstripped -- deliberately keeping any stray U+200B placeholder rather than
