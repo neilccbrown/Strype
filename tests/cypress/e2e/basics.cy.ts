@@ -128,13 +128,15 @@ function noFrameDivBetween(parent: Element, descendent: Element) : boolean {
  * Sanity check the state of the editor (e.g. only one caret visible)
  */
 function sanityCheck(): Cypress.Chainable<JQuery<HTMLElement>> {
-    // Check exactly one caret visible or focused input field:
+    // Check exactly one caret visible or focused input field.
+    // (The frame cursor on the My code/Testing heading isn't drawn as a caret: the heading's text is outlined instead.)
+    const frameCursorSelector = "." + scssVars.caretClassName + ":not(." + scssVars.invisibleClassName + "), .frame-container-heading-focused";
     return cy.document().then((doc) => {
         if (doc?.getSelection()?.focusNode == null) {
-            return cy.get("."+ scssVars.caretClassName + ":not(." + scssVars.invisibleClassName +")").should("have.length", 1);
+            return cy.get(frameCursorSelector).should("have.length", 1);
         }
         else {
-            return cy.get("." + scssVars.caretClassName + ":not(." + scssVars.invisibleClassName + ")").should("not.exist");
+            return cy.get(frameCursorSelector).should("not.exist");
         }
     });
 }

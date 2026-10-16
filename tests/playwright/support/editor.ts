@@ -108,6 +108,8 @@ export async function checkFrameXorTextCursor(page: Page, specificFrameCursor?: 
         for (let i = 0; i < nodes.length; i++) {
             r.push("#" + (nodes[i].id ?? "<unknown>"));
         }
+        // The frame cursor on the My code/Testing heading isn't drawn as a caret: the heading's text is outlined instead
+        document.querySelectorAll(".frame-container-heading-focused").forEach(() => r.push("<heading>"));
         return r;
     });
     const numFrameCursors = frameCursorIds.length;
