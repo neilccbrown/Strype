@@ -43,8 +43,8 @@
                                                 <p class="frame-cmd-row add-frame-commands-list">
                                                     <AddFrameCommand
                                                         v-for="addFrameCommand in addFrameCommands"
-                                                        :id="addFrameCommandUID(addFrameCommand[0].type.type)"
-                                                        :key="addFrameCommand[0].type.type"
+                                                        :id="addFrameCommandUID(addFrameCommand[0].testsSectionOnly ? 'testfunc' : addFrameCommand[0].type.type)"
+                                                        :key="addFrameCommand[0].testsSectionOnly ? 'testfunc' : addFrameCommand[0].type.type"
                                                         :type="addFrameCommand[0].type.type"
                                                         :shortcut="addFrameCommand[0].shortcuts[0]"
                                                         :symbol="
@@ -179,7 +179,7 @@ import odIcon from "@/assets/images/logoOneDrive.svg";
 import { findCurrentStrypeLocation, STRYPE_LOCATION } from "@/helpers/pythonToFrames";
 import { clamp } from "lodash";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
-import { eventBus } from "@/helpers/appContext";
+import { eventBus, TestingSectionAvailable } from "@/helpers/appContext";
 import { BTab, BTabs } from "bootstrap-vue-next";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import {Splitpanes, Pane} from "splitpanes";
@@ -975,7 +975,7 @@ export default defineComponent({
         insertFrameForShortcutKey(eventKeyLowCase: string): boolean {
             const isHiddenShorthandFrameCommand = (hiddenShorthandFrames[eventKeyLowCase] !== undefined
                 && (!hiddenShorthandFrames[eventKeyLowCase].testsSectionOnly
-                    || getFrameSectionIdFromFrameId(this.appStore.currentFrame.id) == this.appStore.getTestsFrameContainerId)
+                    || (TestingSectionAvailable && getFrameSectionIdFromFrameId(this.appStore.currentFrame.id) == this.appStore.getTestsFrameContainerId))
                 && Object.values(this.addFrameCommands).flat().flatMap((addFrameDef) => addFrameDef.type.type).includes(hiddenShorthandFrames[eventKeyLowCase].type.type));
 
             if(this.addFrameCommands[eventKeyLowCase] === undefined

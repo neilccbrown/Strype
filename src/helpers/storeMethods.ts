@@ -2,6 +2,7 @@ import { getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import Parser from "@/parser/parser";
 import { useStore } from "@/store/store";
+import { TestingSectionAvailable } from "@/helpers/appContext";
 import { AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CurrentFrame, DefsContainerDefinition, EditorFrameObjects, FieldSlot, FlatSlotBase, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameLabel, FrameObject, FrozenState, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, MessageDefinitions, NavigationPosition, OptionalSlotType, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
 import { nextTick} from "vue";
 import { checkEditorCodeErrors, countEditorCodeErrors, getCaretContainerUID, getLabelSlotUID, getMatchingBracket, parseLabelSlotUID, slotStructureParserToString } from "./editor";
@@ -923,7 +924,7 @@ export const isAncestorGatedFrameTypeAllowed = function (frameId: number, caretP
         return isContainedInFrame(frameId, caretPosition, [AllFrameTypesIdentifier.for, AllFrameTypesIdentifier.while]);
     case AllFrameTypesIdentifier.assert:
         // Anywhere in the Testing section (inside test functions, or at its top level), and nowhere else:
-        return getFrameSectionIdFromFrameId(frameId) == useStore().getTestsFrameContainerId;
+        return TestingSectionAvailable && getFrameSectionIdFromFrameId(frameId) == useStore().getTestsFrameContainerId;
     default:
         return true;
     }
@@ -996,12 +997,13 @@ export const getAncestorFrameOfTypeId = (frameId: number, ancestorType: string):
 // the store's mainSectionShowsTests). Positions inside the one that isn't showing can't be navigated to;
 // the "My code" heading's own cursor stays reachable in both cases, as it is what switches between them.
 const isNavigationPositionInHiddenSection = function (navigationPosition: NavigationPosition): boolean {
-    const store = useStore();
-    const hiddenSectionId = store.mainSectionShowsTests ? store.getMainCodeFrameContainerId : store.getTestsFrameContainerId;
-    if (getFrameSectionIdFromFrameId(navigationPosition.frameId) !== hiddenSectionId) {
+    // (Only one heading cursor is ever in the page: it belongs to whichever section is showing.)
+    if (navigationPosition.caretPosition === CaretPosition.header) {
         return false;
     }
-    return !(navigationPosition.frameId === hiddenSectionId && navigationPosition.caretPosition === CaretPosition.header);
+    const store = useStore();
+    const hiddenSectionId = store.mainSectionShowsTests ? store.getMainCodeFrameContainerId : store.getTestsFrameContainerId;
+    return getFrameSectionIdFromFrameId(navigationPosition.frameId) === hiddenSectionId;
 };
 
 // Instead of calculating the available caret positions through the store (where the frameObjects object is hard to use for this)
@@ -1202,8 +1204,16 @@ export function checkCodeErrors(frameIdForPrecompiled?: number): void {
     // We don't want to crash the application if something isn't handled correctly in TP.
     // So in case of an error, we catch it to allow the rest of the code to execute...
     try{
+        const testsContainerId = useStore().getTestsFrameContainerId;
+        const hasTests = useStore().frameObjects[testsContainerId].childrenIds.length > 0;
         const parser = new Parser(true, "py", true);
-        parser.getErrorsFormatted(parser.parse({}));
+        // When there are tests, the main program (imports, definitions, main code) is checked without them, and the tests
+        // are checked separately, as they run: seeing the imports and definitions but not the main code.
+        parser.getErrorsFormatted(parser.parse(hasTests ? {stopAt: {frameId: testsContainerId, includeThisFrame: false}} : {}));
+        if (hasTests) {
+            const testsParser = new Parser(true, "py", true);
+            testsParser.getErrorsFormatted(testsParser.parse({excludeMainCode: true}));
+        }
     }
     catch(error){
         console.warn(error);

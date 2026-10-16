@@ -32,6 +32,10 @@ export const AppPlatform = appPlatform;
 // The tests mirror this in tests/shared/main-heading-focus.ts, which must be kept in step.
 export const MainHeadingTakesFocus = (AppPlatform as StrypePlatform) === StrypePlatform.standard;
 
+// Whether the Testing section (which shares the "My code" heading, and runs its tests with pytest) is available. It
+// needs somewhere to run the tests, which the micro:bit version doesn't have (its code isn't executed in the browser).
+export const TestingSectionAvailable = (AppPlatform as StrypePlatform) === StrypePlatform.standard;
+
 // The project defintion slot isn't attached to a "real" frame.
 // We declare the fake frame ID we used for it here.
 export const projectDocumentationFrameId = -10;

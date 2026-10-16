@@ -4,7 +4,7 @@ import { getObjectPropertiesDifferences } from "@/helpers/common";
 import { loadPinnedLocalFiles, pinnedLocalFilesStateKey, savePinnedLocalFiles } from "@/helpers/load-save";
 import i18n from "@/i18n";
 import {calculateNextCollapseState, checkCodeErrors, checkStateDataIntegrity, evaluateSlotType, filterAllowedJointChildrenAfter, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getFrameSectionIdFromFrameId, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isAncestorGatedFrameTypeAllowed, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
-import { AppPlatform, AppVersion, eventBus, projectDocumentationFrameId } from "@/helpers/appContext";
+import { AppPlatform, AppVersion, eventBus, projectDocumentationFrameId, TestingSectionAvailable } from "@/helpers/appContext";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
 import { bumpCaretRequestSeq, CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, getCaretContainerUID, focusCaretContainerInput, AutoSaveKeyNames, isFullyInViewport, copyFrameTextReadyForClipboard, waitForElementId } from "@/helpers/editor";
@@ -396,7 +396,7 @@ export const useStore = defineStore("app", {
             // Two possible cases:
             // 1) If we are in an (a)EMPTY (b)BODY, of (C)SOMETHING that is a (C)JOINT frame
             // (b) and (a) 
-            if ((caretPosition === CaretPosition.body && currentFrame.childrenIds.length === 0)){
+            if (((caretPosition === CaretPosition.body || caretPosition === CaretPosition.header) && currentFrame.childrenIds.length === 0)){
                 focusedFrame = currentFrame;
             }
             // 2) If we are (a)BELOW the (b)FINAL frame of (C)SOMETHING that is a (C)JOINT frame, OR if we are in a moving condition as explained above (M)
@@ -450,7 +450,8 @@ export const useStore = defineStore("app", {
             }
 
             //forbidden frames are those of the current frame's type if caret is body, those of the parent/joint root otherwise
-            const forbiddenTypes = (caretPosition === CaretPosition.body) ? 
+            // (The cursor on the My code/Testing heading counts as the top of that section's body.)
+            const forbiddenTypes = (caretPosition === CaretPosition.body || caretPosition === CaretPosition.header) ? 
                 [...currentFrame.frameType.forbiddenChildrenTypes] :
                 ((currentFrame.jointParentId > 0) ? [...state.frameObjects[currentFrame.jointParentId].frameType.forbiddenChildrenTypes] : [...state.frameObjects[currentFrame.parentId].frameType.forbiddenChildrenTypes]);
 
@@ -489,6 +490,7 @@ export const useStore = defineStore("app", {
 
             // If frames are selected, we only show the frames commands that can be used for wrapping.
             // (For the definitions section, we won't allow any wrapping.)
+            const isInTestingSection = TestingSectionAvailable && getFrameSectionIdFromFrameId(currentFrame.id) == useStore().getTestsFrameContainerId;
             const isSelectingInsideDefsSection = ((currentFrame.id == useStore().getDefsFrameContainerId || state.frameObjects[currentFrame.id].parentId == useStore().getDefsFrameContainerId) 
                 && state.selectedFrames.length > 0);
 
@@ -509,6 +511,7 @@ export const useStore = defineStore("app", {
                 }
                 else{
                     filteredCommands[frameShortcut] = filteredCommands[frameShortcut].filter((x) => !forbiddenTypes.includes(x.type.type) && !x.type.isJointFrame
+                        && (!x.testsSectionOnly || isInTestingSection)
                         && (lookingForTargetPos || state.selectedFrames.length == 0 || (state.selectedFrames.length > 0 && x.type.allowChildren)));
                 }
                 
@@ -1729,7 +1732,7 @@ export const useStore = defineStore("app", {
         // showing -- and the frame cursor goes to the heading. Nothing happens while a program (or the tests) is
         // running: the section being shown has to stay put until it finishes.
         toggleMainSectionShowsTests() {
-            if (this.pythonExecRunningState != PythonExecRunningState.NotRunning) {
+            if (!TestingSectionAvailable || this.pythonExecRunningState != PythonExecRunningState.NotRunning) {
                 return;
             }
             // Moving away supersedes any earlier, still-pending request to put the cursor in a slot (see leftRightKey()):
@@ -1744,7 +1747,8 @@ export const useStore = defineStore("app", {
             this.setSlotTextCursors(undefined, undefined);
             this.unselectAllFrames();
             this.mainSectionShowsTests = !this.mainSectionShowsTests;
-            this.setCurrentFrame({id: this.getMainCodeFrameContainerId, caretPosition: CaretPosition.header});
+            // The heading's cursor belongs to whichever of the two sections is showing (see FrameContainer.vue):
+            this.setCurrentFrame({id: this.mainSectionShowsTests ? this.getTestsFrameContainerId : this.getMainCodeFrameContainerId, caretPosition: CaretPosition.header});
         },
 
         cycleFrameCollapsedState(frameId: number) {
@@ -2701,7 +2705,7 @@ export const useStore = defineStore("app", {
                                         else{
                                             // Check 4) and 5) as 3) is validated
                                             // Projects saved before the heading could show the testing code don't have the flag:
-                                            newStateObj["mainSectionShowsTests"] = newStateObj["mainSectionShowsTests"] ?? false;
+                                            newStateObj["mainSectionShowsTests"] = TestingSectionAvailable && (newStateObj["mainSectionShowsTests"] ?? false);
 
                                             // If missing project doc frame, copy it in from the empty state and add it as first root child:
                                             if (!newStateObj["frameObjects"][projectDocumentationFrameId]) {

@@ -886,6 +886,13 @@ export function generateAllFrameCommandsDefs():void {
             // "f" is kept working as a secret/legacy shortcut alongside the official "d".
             shortcuts: ["d", "f"],
         }],
+        // Only offered in the Testing section, where it adds a function named "test_" (see hiddenShorthandFrames)
+        "s": [{
+            type: getFrameDefType(AllFrameTypesIdentifier.funcdef),
+            description: i18n.global.t("frame.testfunc_desc"),
+            shortcuts: ["s"],
+            testsSectionOnly: true,
+        }],
         "c": [
             {
                 type: getFrameDefType(AllFrameTypesIdentifier.classdef),

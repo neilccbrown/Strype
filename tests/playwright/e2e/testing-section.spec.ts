@@ -1,7 +1,7 @@
 import { test, expect, Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { loadContent } from "../support/loading-saving";
-import { enterTestingSection, pressFrameShortcut, switchToTestingFromMain, waitForEditorSettled } from "../support/editor";
+import { doPagePaste, enterTestingSection, pressFrameShortcut, switchToTestingFromMain, waitForEditorSettled } from "../support/editor";
 import { checkFrameErrorCount } from "../support/execution";
 import { setupStrypeTest } from "../support/general";
 
@@ -304,6 +304,117 @@ while True  :
         await headingText.click();
         await waitForEditorSettled(page);
         await expect(heading(page)).toContainText("Testing");
+    });
+
+    test("pytest is imported for the tests automatically, so pytest.raises works without an import", async ({page}) => {
+        await loadContent(page, `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+print("hi") 
+#(=> Section:Testing
+def test_raises ( ) :
+    with pytest.raises(ZeroDivisionError)  as error  :
+        result  = 1 / 0 
+#(=> Section:End
+`);
+        await goToTopOfMainCode(page);
+        await switchToTestingFromMain(page);
+        // The editor doesn't flag pytest as unknown:
+        await checkFrameErrorCount(page, 0);
+        await expect(runButton(page)).toBeEnabled({timeout: 120000});
+        await runButton(page).click();
+        await expect.poll(async () => await page.locator("#peaConsole").inputValue(), {timeout: 120000}).toMatch(/^Running tests\.\.\.\n1 passed, 0 failed\n$/);
+        await checkFrameErrorCount(page, 0);
+    });
+
+    test("Pasting Python with test functions at the Testing section puts them there, and an assert can't be pasted into an ordinary function", async ({page}) => {
+        await enterTestingSection(page);
+        await doPagePaste(page, "def test_pasted():\n    assert 1 < 2\n");
+        await expect(page.locator("#frameContainer_-4 .frame-div[data-frameType='funcdef']")).toHaveCount(1);
+        await expect(page.locator("#frameContainer_-4 .frame-div[data-frameType='assert']")).toHaveCount(1);
+        await expect(page.locator("#frameContainer_-2 .frame-div")).toHaveCount(0);
+        // The tests have the new function:
+        await expect(runButton(page)).toBeEnabled({timeout: 120000});
+        await runButton(page).click();
+        await expect.poll(async () => await page.locator("#peaConsole").inputValue(), {timeout: 120000}).toContain("1 passed, 0 failed");
+
+        // An assert doesn't go in an ordinary function in Definitions (the paste is refused). Clicking the heading
+        // goes back to My code, with the cursor on the heading, and one step up from there is Definitions:
+        await heading(page).locator(".frame-container-label-span").click();
+        await waitForEditorSettled(page);
+        await expect(heading(page)).toContainText("My code");
+        await page.keyboard.press("ArrowUp");
+        await waitForEditorSettled(page);
+        await doPagePaste(page, "def helper():\n    assert 1 < 2\n");
+        await waitForEditorSettled(page);
+        await expect(page.locator("#frameContainer_-2 .frame-div")).toHaveCount(0);
+        await expect(page.locator(".frame-div[data-frameType='assert']")).toHaveCount(1);
+    });
+
+    test("Frames added or pasted from the Testing heading go into the testing code", async ({page}) => {
+        await page.locator("#frameContainer_-3 .frame-container-label-span").click();
+        await waitForEditorSettled(page);
+        await expect(heading(page)).toContainText("Testing");
+        // Tab opens the frame commands pane at the heading, whose commands are those of the Testing section:
+        await page.keyboard.press("Tab");
+        await expect(page.locator("#addFramePanel .frame-cmd-container", {hasText: "test function"})).toBeVisible();
+        await expect(page.locator("#addFramePanel .frame-cmd-container", {hasText: /^\s*i\s+if\s*$/})).toHaveCount(0);
+        await page.keyboard.press("c");
+        await waitForEditorSettled(page);
+        await expect(page.locator("#frameContainer_-4 .frame-div[data-frameType='funccall']")).toHaveCount(1);
+        await expect(page.locator("#frameContainer_-3 .frame-div[data-frameType='funccall']")).toHaveCount(1);
+    });
+
+    test("The frame commands pane offers a new test function in the Testing section only", async ({page}) => {
+        // In My code, there is no test function command:
+        await page.keyboard.press("Tab");
+        await expect(page.locator("#addFramePanel .frame-cmd-container", {hasText: "function"}).first()).toBeVisible();
+        await expect(page.locator("#addFramePanel .frame-cmd-container", {hasText: "test function"})).toHaveCount(0);
+        await page.keyboard.press("Escape");
+
+        // In Testing, it is there, and clicking it adds a function named test_ with the cursor after the name:
+        await enterTestingSection(page);
+        await page.keyboard.press("Tab");
+        const testFunctionCommand = page.locator("#addFramePanel .frame-cmd-container", {hasText: "test function"});
+        await expect(testFunctionCommand).toBeVisible();
+        await testFunctionCommand.click();
+        await waitForEditorSettled(page);
+        const newFunction = page.locator("#frameContainer_-4 .frame-div[data-frameType='funcdef']");
+        await expect(newFunction).toHaveCount(1);
+        await expect(newFunction.locator(".label-slot-input").first()).toHaveText("test_");
+        await page.keyboard.type("clicked");
+        await waitForEditorSettled(page);
+        await expect(newFunction.locator(".label-slot-input").first()).toHaveText("test_clicked");
+    });
+
+    test("Stopping a run of tests that doesn't finish works", async ({page}) => {
+        await loadContent(page, `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+print("hi") 
+#(=> Section:Testing
+def test_forever ( ) :
+    while True  :
+#(=> Section:End
+`);
+        await goToTopOfMainCode(page);
+        await switchToTestingFromMain(page);
+        await expect(runButton(page)).toBeEnabled({timeout: 120000});
+        await runButton(page).click();
+        await expect(runButton(page)).toHaveText(/Stop$/, {timeout: 120000});
+        // The heading can't be used while the tests are running:
+        await heading(page).locator(".frame-container-label-span").click();
+        await expect(heading(page)).toContainText("Testing");
+        await expect(runButton(page)).toHaveText(/Stop$/);
+        await runButton(page).click();
+        await expect(runButton(page)).toHaveText(/Run tests$/, {timeout: 120000});
+        // And we can go on to run (and stop) again:
+        await runButton(page).click();
+        await expect(runButton(page)).toHaveText(/Stop$/, {timeout: 120000});
+        await runButton(page).click();
+        await expect(runButton(page)).toHaveText(/Run tests$/, {timeout: 120000});
     });
 
     test("Which of My code and Testing is showing survives a page refresh", async ({page}) => {

@@ -15,10 +15,11 @@
             <ChildrenFrameStateToggle v-if="isDefsFrameContainer" :frames="frames" :parentIsFrozen="false"/>
         </div>
         <!-- The "My code" header can take the frame cursor, so that up/down arrows stop on it between the definitions and the main code -->
+        <!-- While Testing is showing, the heading's cursor belongs to the Testing container, so that anything done there (adding or pasting frames) goes into the testing code -->
         <CaretContainer
             v-if="isMainCodeFrameContainer && mainHeadingTakesFocus"
-            :frameId="frameId"
-            :caretVisibility="caretVisibility"
+            :frameId="headingCaretFrameId"
+            :caretVisibility="appStore.frameObjects[headingCaretFrameId].caretVisibility"
             :caretAssignedPosition="caretPosition.header"
         />
 
@@ -128,9 +129,14 @@ export default defineComponent({
 
         // Whether the frame cursor is on the "My code"/"Testing" heading, which shows as an outline round its text
         // rather than as a frame cursor (see isInvisible in CaretContainer.vue)
+        // The container the "My code"/"Testing" heading's frame cursor belongs to: whichever of the two is showing
+        headingCaretFrameId(): number {
+            return this.appStore.mainSectionShowsTests ? this.appStore.getTestsFrameContainerId : this.appStore.getMainCodeFrameContainerId;
+        },
+
         isHeadingFocused(): boolean {
             return this.isMainCodeFrameContainer && !this.appStore.isEditing
-                && this.appStore.currentFrame.id == this.frameId && this.appStore.currentFrame.caretPosition == CaretPosition.header;
+                && this.appStore.currentFrame.id == this.headingCaretFrameId && this.appStore.currentFrame.caretPosition == CaretPosition.header;
         },
 
         isFrameCommandsPaneActive(): boolean {

@@ -306,10 +306,15 @@ export default class Parser {
     private saveAsSPY = false;
     private libraries : string[] = [];
     private omitMediaLiterals = false;
+    private excludeMainCode = false; // Leaves out the main code section (see parse()), as the Testing section can't see it
+    private addPytestImport = false; // Adds "import pytest" at the start of the Testing section's code (see parseFrames())
     
     constructor(ignoreCheckErrors = false, destination: "spy" | "py-export" | "py" = "py", omitMediaLiterals = false) {
         this.ignoreCheckErrors = ignoreCheckErrors;
         this.saveAsSPY = destination == "spy";
+        // The tests' own code starts with an "import pytest" when it is going to be run or analysed, but not when it is
+        // saved, nor exported (where it would need pytest installed just to be imported):
+        this.addPytestImport = destination == "py";
         this.omitMediaLiterals = omitMediaLiterals;
     }
 
@@ -530,6 +535,10 @@ export default class Parser {
                 }
             }
 
+            if (this.excludeMainCode && frame.frameType.type === ContainerTypesIdentifiers.framesMainContainer) {
+                continue;
+            }
+
             if(frame.id == this.ignoreSpecificFrameId){
                 // We still need to put something here, in case we are in an empty block. Defaults to
                 // "pass"; getCodeWithoutErrors() instead substitutes AC_PROBE_MARKER here, so it can find
@@ -549,6 +558,11 @@ export default class Parser {
             }
             else if (this.saveAsSPY && frame.frameType.type === ContainerTypesIdentifiers.importsContainer) {
                 output += AppSPYFullPrefix + " Section:Imports\n";
+                this.line += 1;
+            }
+            else if (this.addPytestImport && frame.frameType.type === ContainerTypesIdentifiers.testsContainer) {
+                // pytest is imported for the tests automatically, so that e.g. pytest.raises is available without an import frame:
+                output += "import pytest\n";
                 this.line += 1;
             }
             else if (this.saveAsSPY && frame.frameType.type === ContainerTypesIdentifiers.testsContainer && frame.childrenIds.length > 0) {
@@ -639,7 +653,9 @@ export default class Parser {
     // a particular line to do code completion, so we may need just stop.  But we never
     // need the opposite, to start at an arbitrary place and run to the end -- and this
     // could cause invalid indentation if you started at an indented item.)
-    public parse({startAtFrameId, stopAt, excludeComments, ignoreSpecificFrameId, ignoreSpecificFrameIdReplacement}: {startAtFrameId?: number, stopAt?: {frameId: number, includeThisFrame: boolean}, excludeComments?: boolean; ignoreSpecificFrameId?: number; ignoreSpecificFrameIdReplacement?: string}): string {
+    // excludeMainCode leaves out the main code section ("My code"), for analysing the Testing section as it will run: the tests
+    // import the imports and definitions, but not the main code (see parseJustImportsAndDefs()).
+    public parse({startAtFrameId, stopAt, excludeComments, ignoreSpecificFrameId, ignoreSpecificFrameIdReplacement, excludeMainCode}: {startAtFrameId?: number, stopAt?: {frameId: number, includeThisFrame: boolean}, excludeComments?: boolean; ignoreSpecificFrameId?: number; ignoreSpecificFrameIdReplacement?: string; excludeMainCode?: boolean}): string {
         let output = "";
         if(startAtFrameId){
             this.startAtFrameId = startAtFrameId;
@@ -651,6 +667,10 @@ export default class Parser {
 
         if(excludeComments){
             this.excludeComments = excludeComments;
+        }
+
+        if(excludeMainCode){
+            this.excludeMainCode = excludeMainCode;
         }
 
         if(ignoreSpecificFrameId){
@@ -866,7 +886,8 @@ export default class Parser {
         // If we're editing inside the Testing section itself, we must not stop before it (or endFrameId would
         // never be found/replaced); otherwise, exclude Testing code from the evidence used for Imports/Defs/Main.
         const isEditingInTests = getFrameSectionIdFromFrameId(endFrameId) == useStore().getTestsFrameContainerId;
-        const code = this.parse({excludeComments: true, ignoreSpecificFrameId: endFrameId, ignoreSpecificFrameIdReplacement: AC_PROBE_MARKER, stopAt: isEditingInTests ? undefined : {frameId: useStore().getTestsFrameContainerId, includeThisFrame: false}});
+        // The tests can't see the main code when they run, so it isn't used as evidence when editing in the Testing section.
+        const code = this.parse({excludeComments: true, ignoreSpecificFrameId: endFrameId, ignoreSpecificFrameIdReplacement: AC_PROBE_MARKER, stopAt: isEditingInTests ? undefined : {frameId: useStore().getTestsFrameContainerId, includeThisFrame: false}, excludeMainCode: isEditingInTests});
         return this.removeErrorsFromParsedCode(code);
     }
 

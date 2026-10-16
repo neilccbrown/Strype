@@ -29,6 +29,7 @@
     },
     "classdef_desc": "class definition",
     "funcdef_desc": "define function",
+    "testfunc_desc": "test function",
     "varassign_desc": "assignment",
     "funccall_desc": "function call",
     "blank_desc": "blank line",

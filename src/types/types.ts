@@ -349,6 +349,7 @@ export interface AddFrameCommandDef {
     symbol?: string; // The SVGIcon name for a symbol OR a string representation of the symbol to show in the key shortcut button when the key it's not easily representable
     isSVGIconSymbol?: boolean; // To differenciate between the two situations mentioned above
     index?: number; // the index of frame type when a shortcut matches more than 1 context-distinct frames
+    testsSectionOnly?: boolean; // for a command that is only offered in the Testing section (e.g. a new test function, a function definition prefilled with "test_")
 }
 
 export interface AddShorthandFrameCommandDef {

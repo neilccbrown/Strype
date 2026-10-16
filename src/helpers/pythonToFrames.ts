@@ -1,10 +1,10 @@
 import { AllFrameTypesIdentifier, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CurrentFrame, EditorFrameObjects, FrameObject, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, LabelSlotsContent, SlotsStructure, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrozenState, TestsContainerDefinition } from "@/types/types";
 import {useStore} from "@/store/store";
-import {checkCodeErrors} from "@/helpers/storeMethods";
+import {checkCodeErrors, getFrameSectionIdFromFrameId} from "@/helpers/storeMethods";
 import {CustomEventTypes, getLastCaretPosInsideParent} from "@/helpers/editor";
 import i18n from "@/i18n";
 import {cloneDeep, escapeRegExp} from "lodash";
-import {AppName, AppSPYFullPrefix, eventBus, projectDocumentationFrameId} from "@/helpers/appContext";
+import {AppName, AppSPYFullPrefix, eventBus, projectDocumentationFrameId, TestingSectionAvailable} from "@/helpers/appContext";
 import {stringToCollapsed, stringToFrozen} from "@/parser/parser";
 import {nextTick} from "vue";
 import type Parser from "web-tree-sitter";
@@ -49,7 +49,8 @@ export enum STRYPE_LOCATION {
     IN_CLASSDEF,
     DEFS_SECTION,
     IMPORTS_SECTION,
-    TESTS_SECTION
+    TESTS_SECTION, // In the Testing section, but not inside one of its functions
+    IN_TESTS_FUNCDEF // Inside a function in the Testing section
 }
 
 // Copies nextId and lastLineProcessed from src to dest
@@ -1072,9 +1073,15 @@ export function findCurrentStrypeLocation(options?: {lookForGivenFramePosition?:
             return {strypeLocation: STRYPE_LOCATION.MAIN_CODE_SECTION, locationFrameId: navigFrameId};
         case AllFrameTypesIdentifier.classdef:
             return {strypeLocation: (navigFrameCaretPos == CaretPosition.body) ? STRYPE_LOCATION.IN_CLASSDEF : STRYPE_LOCATION.DEFS_SECTION, locationFrameId: navigFrameId};
+        case ContainerTypesIdentifiers.testsContainer:
+            return {strypeLocation: STRYPE_LOCATION.TESTS_SECTION, locationFrameId: navigFrameId};
         case AllFrameTypesIdentifier.funcdef:
             // We are at the body of a function definition, or at the bottom: in the first case, we are
-            // inside a function definition; in the second, we are inside the definitions section.
+            // inside a function definition; in the second, we are inside the definitions section
+            // (or the Testing section, for a function in there).
+            if (getFrameSectionIdFromFrameId(navigFrameId) == useStore().getTestsFrameContainerId) {
+                return {strypeLocation: (navigFrameCaretPos == CaretPosition.body) ? STRYPE_LOCATION.IN_TESTS_FUNCDEF : STRYPE_LOCATION.TESTS_SECTION, locationFrameId: navigFrameId};
+            }
             return {strypeLocation: (navigFrameCaretPos == CaretPosition.body) ? STRYPE_LOCATION.IN_FUNCDEF : STRYPE_LOCATION.DEFS_SECTION, locationFrameId: navigFrameId};
         case ContainerTypesIdentifiers.defsContainer:
             return {strypeLocation: STRYPE_LOCATION.DEFS_SECTION, locationFrameId: navigFrameId};
@@ -1112,6 +1119,9 @@ function canPastePythonAtStrypeLocation(currentStrypeLocation : STRYPE_LOCATION,
     case STRYPE_LOCATION.MAIN_CODE_SECTION:
         return !copiedPythonToFrames.some((frame) => [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.classdef, AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.global, AllFrameTypesIdentifier.assert].includes(frame.frameType.type));
     case STRYPE_LOCATION.IN_FUNCDEF:
+        // (assert is for tests: it's only for the Testing section)
+        return !copiedPythonToFrames.some((frame) => [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.classdef, AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.assert].includes(frame.frameType.type));
+    case STRYPE_LOCATION.IN_TESTS_FUNCDEF:
         return !copiedPythonToFrames.some((frame) => [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.classdef, AllFrameTypesIdentifier.funcdef].includes(frame.frameType.type));
     case STRYPE_LOCATION.DEFS_SECTION:
         frames = removeTopLevelBlankFrames(frames);
@@ -1122,7 +1132,7 @@ function canPastePythonAtStrypeLocation(currentStrypeLocation : STRYPE_LOCATION,
                 // Look only at non-top-level (i.e. child) frames    
                 !topLevelCopiedFrameIds.includes(frame.id) &&
                 // Look for frames which are outright banned as children: 
-                ([AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.classdef].includes(frame.frameType.type)
+                ([AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.classdef, AllFrameTypesIdentifier.assert].includes(frame.frameType.type)
                 // Funcdefs are a special case; they can be children, but only inside classes:
                 ||
                 (frame.frameType.type === AllFrameTypesIdentifier.funcdef
@@ -1182,7 +1192,7 @@ function makeMapping(section: NumberedLine[]) : Record<number, number> {
 // Each line of the original will end up in exactly one of the four parts of the return.
 // With Python's indentation rules, this operation is actually easier at line level than it is post-parse.
 // The mappings map line numbers in the returned sections to line numbers in the original
-function splitLinesToSections(allLines : string[], leadingAssignmentsGoInDefs: boolean) : {projectDoc: string[], imports: string[]; funcDefs: string[]; classDefs: string[]; main: string[], tests: string[], importsMapping: Record<number, number>, funcDefsMapping: Record<number, number>, classDefsMapping: Record<number, number>, mainMapping: Record<number, number>, testsMapping: Record<number, number>, headers: Record<string, string>, format: "py" | "spy"} {
+function splitLinesToSections(allLines : string[], leadingAssignmentsGoInDefs: boolean, functionsStayInMain = false) : {projectDoc: string[], imports: string[]; funcDefs: string[]; classDefs: string[]; main: string[], tests: string[], importsMapping: Record<number, number>, funcDefsMapping: Record<number, number>, classDefsMapping: Record<number, number>, mainMapping: Record<number, number>, testsMapping: Record<number, number>, headers: Record<string, string>, format: "py" | "spy"} {
     // There's two possibilities:
     //  - we're loading a .spy with section headings, or
     //  - we're loading a .py where we must infer it.
@@ -1291,7 +1301,8 @@ function splitLinesToSections(allLines : string[], leadingAssignmentsGoInDefs: b
             outermostDefIndentLevel = indentLevel;
             curDefTypeIsClass = true;
         }
-        else if (line.match(/^\s*def\s+/) && outermostDefIndentLevel == -1) {
+        // (When pasting into the Testing section, functions are kept with the rest of the code, to paste there rather than in Definitions)
+        else if (line.match(/^\s*def\s+/) && outermostDefIndentLevel == -1 && !functionsStayInMain) {
             funcDefs.push(...latestComments.map((l) => ({...l, text: l.text.trimStart() + " ".repeat(indentLevel)})));
             latestComments = [];
             funcDefs.push(...latestAssignments);
@@ -1373,7 +1384,8 @@ export function pasteMixedPython(completeSource: string, at: CurrentFrame, clear
     // If we are clearing all, we are effectively pasting into the main section,
     // no matter where the frame cursor happens to be:
     const curLocation = clearExisting ? STRYPE_LOCATION.MAIN_CODE_SECTION : findCurrentStrypeLocation({lookForGivenFramePosition: at}).strypeLocation;
-    const s = splitLinesToSections(allLines, curLocation == STRYPE_LOCATION.DEFS_SECTION || curLocation == STRYPE_LOCATION.IMPORTS_SECTION);
+    const isInTestsSection = (curLocation == STRYPE_LOCATION.TESTS_SECTION || curLocation == STRYPE_LOCATION.IN_TESTS_FUNCDEF);
+    const s = splitLinesToSections(allLines, curLocation == STRYPE_LOCATION.DEFS_SECTION || curLocation == STRYPE_LOCATION.IMPORTS_SECTION, isInTestsSection);
 
 
     let importFrames : CopiedFrames;
@@ -1390,7 +1402,7 @@ export function pasteMixedPython(completeSource: string, at: CurrentFrame, clear
         // The "content" to paste is seen as if it was to paste in the main section,
         // however the rules are slightly different: we use the current location to decide
         // what container we should check the code against.
-        const pastingSectionTarget = (curLocation == STRYPE_LOCATION.IN_FUNCDEF) ? STRYPE_LOCATION.IN_FUNCDEF : STRYPE_LOCATION.MAIN_CODE_SECTION;
+        const pastingSectionTarget = (curLocation == STRYPE_LOCATION.IN_FUNCDEF || isInTestsSection) ? curLocation : STRYPE_LOCATION.MAIN_CODE_SECTION;
         mainFrames = copyFramesFromParsedPython(s.main, pastingSectionTarget, s.format, s.mainMapping);
         testsFrames = copyFramesFromParsedPython(s.tests, STRYPE_LOCATION.TESTS_SECTION, s.format, s.testsMapping);
         docFrames = copyFramesFromParsedPython(s.projectDoc, STRYPE_LOCATION.PROJECT_DOC_SECTION, s.format, s.mainMapping);
@@ -1444,7 +1456,7 @@ export function pasteMixedPython(completeSource: string, at: CurrentFrame, clear
         if (curLocation == STRYPE_LOCATION.DEFS_SECTION) {
             currentCaretContainerPosition = {...at};
         }
-        else if (curLocation == STRYPE_LOCATION.IMPORTS_SECTION || curLocation == STRYPE_LOCATION.IN_FUNCDEF || curLocation == STRYPE_LOCATION.IN_CLASSDEF) {
+        else if (curLocation == STRYPE_LOCATION.IMPORTS_SECTION || curLocation == STRYPE_LOCATION.IN_FUNCDEF || curLocation == STRYPE_LOCATION.IN_CLASSDEF || isInTestsSection) {
             // Closest to imports is top of defs:
             // And for defs... we could find the closest cursor in the defs but it's quite fiddly so let's just add at the beginning:
             currentCaretContainerPosition = {id: useStore().getDefsFrameContainerId, caretPosition: CaretPosition.body};
@@ -1467,7 +1479,7 @@ export function pasteMixedPython(completeSource: string, at: CurrentFrame, clear
         if (curLocation == STRYPE_LOCATION.DEFS_SECTION || curLocation == STRYPE_LOCATION.IN_CLASSDEF) {
             currentCaretContainerPosition = {...at};
         }
-        else if (curLocation == STRYPE_LOCATION.IMPORTS_SECTION || curLocation == STRYPE_LOCATION.IN_FUNCDEF) {
+        else if (curLocation == STRYPE_LOCATION.IMPORTS_SECTION || curLocation == STRYPE_LOCATION.IN_FUNCDEF || isInTestsSection) {
             // Closest to imports is top of defs:
             // And for defs... we could find the closest cursor in the defs but it's quite fiddly so let's just add at the beginning:
             currentCaretContainerPosition = {id: useStore().getDefsFrameContainerId, caretPosition: CaretPosition.body};
@@ -1499,7 +1511,7 @@ export function pasteMixedPython(completeSource: string, at: CurrentFrame, clear
     }
     if (mainFrames.frameIds.length > 0) {
         // If we're not in the main section, closest cursor will be the top:
-        const currentCaretContainerPosition = (curLocation == STRYPE_LOCATION.IN_FUNCDEF || curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION)
+        const currentCaretContainerPosition = (curLocation == STRYPE_LOCATION.IN_FUNCDEF || curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION || isInTestsSection)
             ? {...at}
             : {id : useStore().getMainCodeFrameContainerId, caretPosition: CaretPosition.body};
         offsetAllIds(mainFrames, useStore().nextAvailableId);
@@ -1509,11 +1521,12 @@ export function pasteMixedPython(completeSource: string, at: CurrentFrame, clear
             // Nothing was actually inserted, so make sure it's not treated as pasted below:
             mainFrames.frames = {};
         }
-        else if (curLocation == STRYPE_LOCATION.IN_FUNCDEF || curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION) {
+        else if (curLocation == STRYPE_LOCATION.IN_FUNCDEF || curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION || isInTestsSection) {
             posAfter = adjusted;
         }
     }
-    if (testsFrames.frameIds.length > 0) {
+    // (The micro:bit version has no Testing section, as it has nowhere to run tests, so anything in one is dropped.)
+    if (TestingSectionAvailable && testsFrames.frameIds.length > 0) {
         // Only .spy files have a Testing section, and they are only ever loaded wholesale, so they go at the end:
         offsetAllIds(testsFrames, useStore().nextAvailableId);
         useStore().insertFramesAtPosition({target: getLastCaretPosInsideParent(useStore().getTestsFrameContainerId), sourceFrames: testsFrames, ignoreStateBackup});

@@ -516,6 +516,23 @@ describe("Wrapping frames", () => {
     });
 });
  
+describe("The My code heading", () => {
+    it("Switches to the Testing section in the Python version only (the micro:bit version has nowhere to run tests)", () => {
+        const heading = "#frameContainer_-3 .frame-container-header .frame-container-label-span";
+        cy.get(heading).should("contain.text", "My code");
+        // One up from the top of My code is the heading (in the Python version, where it takes the cursor), then right arrow:
+        cy.get("body").type("{uparrow}{rightarrow}");
+        if (Cypress.env("mode") === "microbit") {
+            cy.get(heading).should("contain.text", "My code");
+            cy.get(".frame-container-heading-focused").should("not.exist");
+        }
+        else {
+            cy.get(heading).should("contain.text", "Testing");
+            cy.get(".frame-container-heading-focused").should("exist");
+        }
+    });
+});
+
 describe("Copying key combination", () => {
     it("Check C inserts a class", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode));
