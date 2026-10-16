@@ -97,6 +97,12 @@ export default defineConfig({
         {
             name: "webkit",
             testIgnore: excludeMediaRecordingSpec,
+            // WebKit is much slower at the editor's key-press-and-settle steps than the other browsers (a test like
+            // undo-redo's keyword-frame conversion takes ~26s even on a quiet fast Mac, and many tests run at 25-30s
+            // on the loaded CI runners), so the default 30s timeout is too close for them: whichever test the
+            // runner's load happens to push over it fails, a different one each run. Tests that need longer still
+            // set their own (see setupStrypeTest's timeoutMs).
+            timeout: 60_000,
             use: { ...devices["Desktop Safari"], deviceScaleFactor: 1 },
         },
 

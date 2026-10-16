@@ -994,16 +994,12 @@ export const getAncestorFrameOfTypeId = (frameId: number, ancestorType: string):
 
 
 // The third section of the editor shows either the main code or the testing code, never both (see
-// the store's mainSectionShowsTests). Positions inside the one that isn't showing can't be navigated to;
-// the "My code" heading's own cursor stays reachable in both cases, as it is what switches between them.
-const isNavigationPositionInHiddenSection = function (navigationPosition: NavigationPosition): boolean {
-    // (Only one heading cursor is ever in the page: it belongs to whichever section is showing.)
-    if (navigationPosition.caretPosition === CaretPosition.header) {
-        return false;
-    }
+// the store's mainSectionShowsTests). Positions inside the one that isn't showing can't be navigated to.
+// (The heading's own cursor is always reachable: only one is ever in the page, belonging to the section showing.)
+// Returns the id of the section whose positions can't be navigated to at the moment.
+const getHiddenSectionId = function (): number {
     const store = useStore();
-    const hiddenSectionId = store.mainSectionShowsTests ? store.getMainCodeFrameContainerId : store.getTestsFrameContainerId;
-    return getFrameSectionIdFromFrameId(navigationPosition.frameId) === hiddenSectionId;
+    return store.mainSectionShowsTests ? store.getMainCodeFrameContainerId : store.getTestsFrameContainerId;
 };
 
 // Instead of calculating the available caret positions through the store (where the frameObjects object is hard to use for this)
@@ -1016,6 +1012,8 @@ export const getAvailableNavigationPositions = function(showIsInCollapsedFrameCo
     const allCaretDOMpositions = document.getElementsByClassName(scssVars.navigationPositionClassName);
     // We create a list that hold objects of {frameId,isSlotNavigationPosition,caretPosition?,labelSlotsIndex?, slotId?) for each available navigation positions
     // and discard the locations that correspond to the editable slots of disable frames
+    // Worked out once, as this is called often (on every key press that moves the cursor) for many positions:
+    const hiddenSectionId = getHiddenSectionId();
     return Object.values(allCaretDOMpositions).map((e)=> {
         const isSlotNavigationPosition = e.id.startsWith("input");
         // Retrieves the identifier for the navigation position: the type of caret position for a caret (e.g. "caretBody"), the indexes/ids for a slot
@@ -1036,7 +1034,7 @@ export const getAvailableNavigationPositions = function(showIsInCollapsedFrameCo
             isInCollapsedFrameContainer: (showIsInCollapsedFrameContainer) ? ((useStore().frameObjects[getFrameSectionIdFromFrameId(parseInt(frameIdMatch?.[0]??"-100"))].collapsedState ?? CollapsedState.FULLY_VISIBLE) != CollapsedState.FULLY_VISIBLE) : undefined,            
         } as NavigationPosition;
     }).filter((navigationPosition) => useStore().frameObjects[navigationPosition.frameId] && !(navigationPosition.isSlotNavigationPosition && useStore().frameObjects[navigationPosition.frameId].isDisabled)
-        && !isNavigationPositionInHiddenSection(navigationPosition)) as NavigationPosition[]; 
+        && (navigationPosition.caretPosition === CaretPosition.header || getFrameSectionIdFromFrameId(navigationPosition.frameId) !== hiddenSectionId)) as NavigationPosition[]; 
 };
 
 const getPrecompiledErrorFrameId = (frameId: number): string => {

@@ -1,7 +1,7 @@
 import { test, expect, Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { loadContent } from "../support/loading-saving";
-import { doPagePaste, enterTestingSection, pressFrameShortcut, switchToTestingFromMain, waitForEditorSettled } from "../support/editor";
+import { clearDefaultProject, doPagePaste, enterTestingSection, pressFrameShortcut, switchToTestingFromMain, waitForEditorSettled } from "../support/editor";
 import { checkFrameErrorCount } from "../support/execution";
 import { setupStrypeTest } from "../support/general";
 
@@ -215,6 +215,8 @@ def test_errors ( ) :
         const arrow = heading(page).locator(".frame-container-heading-arrows");
         await expect(headingText).not.toHaveClass(/frame-container-heading-focused/);
         await expect(arrow).toHaveCount(0);
+        // (The Run button only shows its "Run"/"Run tests" label once the Python worker is ready, until then it says it is initialising:)
+        await expect(runButton(page)).toBeEnabled({timeout: 120000});
 
         await headingText.click();
         await waitForEditorSettled(page);
@@ -415,6 +417,29 @@ def test_forever ( ) :
         await expect(runButton(page)).toHaveText(/Stop$/, {timeout: 120000});
         await runButton(page).click();
         await expect(runButton(page)).toHaveText(/Run tests$/, {timeout: 120000});
+    });
+
+    test("clearDefaultProject() clears the Testing section too, and ends up at the top of Imports", async ({page}) => {
+        await loadContent(page, `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+print("hi") 
+#(=> Section:Testing
+def test_a ( ) :
+    assert 1 < 2 
+#(=> Section:End
+`);
+        await expect(page.locator(".frame-div")).toHaveCount(3);
+        await clearDefaultProject(page);
+        await expect(page.locator(".frame-div")).toHaveCount(0);
+        await expect(heading(page)).toContainText("My code");
+        await expect(page.locator("#frameContainer_-4")).toBeHidden();
+        // The cursor is at the top of Imports: a frame typed there goes there
+        await pressFrameShortcut(page, "i");
+        await waitForEditorSettled(page);
+        await expect(page.locator("#frameContainer_-1 .frame-div[data-frameType='if']")).toHaveCount(0);
+        await expect(page.locator("#frameContainer_-1 .frame-div")).toHaveCount(1);
     });
 
     test("Which of My code and Testing is showing survives a page refresh", async ({page}) => {
