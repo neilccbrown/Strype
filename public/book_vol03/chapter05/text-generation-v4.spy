@@ -18,30 +18,30 @@ def read_file (filename ) :
 def make_ngrams (text,n ) :
     '''Take a text as a parameter and return a list of the n-grams in the text. The parameter \'n\' specifies the length of the n-grams.'''
     words  = text.split() 
-    word_lists  = [words[i:] for i in range(n)] 
-    #without list comprehensions, the above statement could be written like this:
-    #(=> Disabled:word_lists  = [] 
-    #(=> Disabled:for i  in range(n)  :
-    #(=> Disabled:    word_lists.append(words[i:]) 
+    word_lists  = [] 
+    for i  in range(n)  :
+        word_lists.append(words[i:]) 
     
     ngrams  = zip(___strype_blank * word_lists) 
     return list(ngrams) 
 def generate_next_word (prev_words,ngrams ) :
     '''Given some previous words and a list of n-grams, return a next word by randomly selecting one of the n-grams that matches the previous words.
     \'prev_word\' is a tuple of words. \'ngrams\' is a list of tuples. The length of prev_words must be one less than the length of the ngrams.'''
-    following  = [t[-1] for t in ngrams if t[:-1] == prev_words] 
+    following  = [] 
+    for ngram  in ngrams  :
+        if ngram[:-1] == prev_words  :
+            following.append(ngram[-1]) 
     if len(following) == 0  :
         #if we don't find a match with all prev_words, take a match of only the last word
-        following  = [t[-1] for t in ngrams if t[-2] == prev_words[-1]] 
+        for ngram  in ngrams  :
+            if ngram[-2] == prev_words[-1]  :
+                following.append(ngram[-1]) 
     return random.choice(following) 
 #(=> Section:Main
 text  = "" 
 text  = text + read_file("/books/sherlock-holmes.txt") 
 text  = text + read_file("/books/fairy-tales.txt") 
 text  = text + read_file("/books/pride-and-prejudice.txt") 
-text  = text + read_file("/books/three-men-in-a-boat.txt") 
-text  = text + read_file("/books/war-and-peace.txt") 
-text  = text + read_file("/books/winnie-the-pooh.txt") 
 
 ngrams  = make_ngrams(text,4) 
 
