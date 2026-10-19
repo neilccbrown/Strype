@@ -61,6 +61,7 @@
         </teleport>
 
         <AutoCompletion
+            v-if="acActive"
             v-show="focused && showAC"
             :class="{ac: true}"
             :slotId="UID"
@@ -155,11 +156,7 @@ export default defineComponent({
 
     mounted(){
         // To make sure the a/c component shows just below the spans, we set its top position here based on the span height.
-        const spanH = document.getElementById(this.UID)?.clientHeight;
-        const acElement = document.getElementById(this.AC_UID);
-        if(spanH && acElement){
-            acElement.style.top = (spanH + "px");
-        }
+        this.positionAC();
         if (this.isMediaSlot) {
             this.loadMediaPreview().then((m) => {
                 this.mediaPreview = m;
@@ -186,6 +183,9 @@ export default defineComponent({
             //this flags indicates if the content of editable slot has been already modified during a sequence of action
             //as we don't want to save each single change of the content, but the full content change itself.
             isFirstChange: true,
+            // The AutoCompletion component (with its popup markup) is only mounted once this slot first gets
+            // the caret: a big project has thousands of slots and mounting one for each costs seconds on load.
+            acActive: false,
             showAC: false,
             contextAC: "",
             // tokenAC can be null if code completion is invalid here
@@ -504,9 +504,20 @@ export default defineComponent({
             return isErroneous;
         },
 
-        // Event callback equivalent to what would happen for a focus event callback 
+        positionAC(): void {
+            // To make sure the a/c component shows just below the spans, we set its top position based on the span height.
+            const spanH = document.getElementById(this.UID)?.clientHeight;
+            const acElement = document.getElementById(this.AC_UID);
+            if(spanH && acElement){
+                acElement.style.top = (spanH + "px");
+            }
+        },
+
+        // Event callback equivalent to what would happen for a focus event callback
         // (the spans don't get focus anymore because the containg editable div grab it)
         onGetCaret(event: MouseEvent | Event | null, fromNaturalClick?: boolean): void {
+            // Mount the AutoCompletion now (before any $nextTick below, so it exists by the time they look it up):
+            this.acActive = true;
             this.$nextTick(() => vueComponentsAPIHandler.labelSlotsStructureComponentAPI?.forInstance[getFrameLabelSlotsStructureUID(this.frameId, this.labelSlotsIndex)].updatePrependText());
 
             // When this method is triggered by a natural click on the text slot, we delay the chain of actions a bit,
@@ -2009,6 +2020,13 @@ export default defineComponent({
         },
     },
     watch: {
+        // The a/c element only exists from this point (see acActive), so position it once it's there:
+        acActive(isActive: boolean) {
+            if (isActive) {
+                this.$nextTick(() => this.positionAC());
+            }
+        },
+
         // Expose this component that other components might need, keyed by its (reactive) UID.
         // Vue 3 has deprecated direct access to components. Registering only once (e.g. in
         // created()) is NOT enough: v-for can reuse this same component instance for a different
