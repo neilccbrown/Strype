@@ -2,13 +2,17 @@
   image: text-generation.png
   description: The third version of the text generation project
 
-- file: text-generation-v5.spy
+- file: text-generation-v4.spy
   image: text-generation.png
   description: 4th version - Here we generalise to n-grams
 
 - file: text-generation-v5.spy
   image: text-generation.png
-  description: In this version we optimise by using a dictionary
+  description: In this version we use list comprehensions
+
+- file: text-generation-v6.spy
+  image: text-generation.png
+  description: The last version, using a dictionary instead of a list
 
 - file: beatbox.spy
   image: beatbox.png

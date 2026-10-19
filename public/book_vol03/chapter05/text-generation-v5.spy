@@ -1,15 +1,14 @@
 #(=> Strype:1:std
 #(=> editorCommandsSplitterPane2Size:{"tabsCollapsed":42.09}
 #(=> peaExpandedSplitterPane2Size:{"tabsExpanded":50,"splitExpanded":50}
-'''text-generation, Version 0.5
+'''text-generation, Version 0.4
 
-This is an advanced version that creates a dictionary (instead of a list) for instant lookup.
+In this version, we create n-grams for an arbitrary n to improve the quality of text.
 
 This project is part of the book "Creative Python Programming with Strype".
 Authors: Michael Kölling and Neil C.C. Brown'''
 #(=> Section:Imports
 import random 
-from collections import defaultdict 
 #(=> Section:Definitions
 #(=> FrameState:FoldToHeader;Frozen
 def read_file (filename ) :
@@ -17,25 +16,31 @@ def read_file (filename ) :
     with open(filename,encoding="utf-8")  as f  :
         return f.read() 
 def make_ngrams (text,n ) :
-    '''Take a text as a parameter and return a list of the bigrams in the text.'''
+    '''Take a text as a parameter and return a list of the n-grams in the text. The parameter \'n\' specifies the length of the n-grams.'''
     words  = text.split() 
     word_lists  = [words[i:] for i in range(n)] 
-    ngram_list  = list(zip(___strype_blank * word_lists)) 
-    ngrams  = defaultdict(list) 
-    for t  in ngram_list  :
-        ngrams[t[:-1]].append(t) 
-    return ngrams 
+    ngrams  = zip(___strype_blank * word_lists) 
+    return list(ngrams) 
 def generate_next_word (prev_words,ngrams ) :
-    '''Given two previous words and a list of trigrams, return a next word by randomly selecting one of the trigrams that matches both words.'''
-    matches  = ngrams[prev_words] 
-    choice  = random.choice(matches) 
-    return choice[-1] 
+    '''Given some previous words and a list of n-grams, return a next word by randomly selecting one of the n-grams that matches the previous words.
+    \'prev_word\' is a tuple of words. \'ngrams\' is a list of tuples. The length of prev_words must be one less than the length of the ngrams.'''
+    following  = [ngram[-1] for ngram in ngrams if ngram[:-1] == prev_words] 
+    if len(following) == 0  :
+        #if we don't find a match with all prev_words, take a match of only the last word
+        following  = [ngram[-1] for ngram in ngrams if ngram[-2] == prev_words[-1]] 
+    return random.choice(following) 
 #(=> Section:Main
-#(=> Disabled:text  = read_file("/books/fairy-tales.txt") 
-text  = read_file("/books/sherlock-holmes.txt") 
+text  = "" 
+text  = text + read_file("/books/sherlock-holmes.txt") 
+text  = text + read_file("/books/fairy-tales.txt") 
+text  = text + read_file("/books/pride-and-prejudice.txt") 
+text  = text + read_file("/books/three-men-in-a-boat.txt") 
+text  = text + read_file("/books/war-and-peace.txt") 
+text  = text + read_file("/books/winnie-the-pooh.txt") 
 
 ngrams  = make_ngrams(text,4) 
 
+#If our n-grams are length 4, the prev_words must be length 3 (always one less)
 prev_words  = ("There","was","a") 
 print(___strype_blank * prev_words,end=" ") 
 for n  in range(80)  :
