@@ -1,0 +1,7 @@
+- file: thematic-analysis-v1.spy
+  image: thematic-analysis.png
+  description: The starting version of the thematic analysis project
+
+- file: thematic-analysis-v2.spy
+  image: thematic-analysis.png
+  description: The second version of the thematic analysis project
