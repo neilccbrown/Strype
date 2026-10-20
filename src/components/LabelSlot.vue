@@ -1361,6 +1361,11 @@ export default defineComponent({
                         if(forbidOperator && this.frameType == AllFrameTypesIdentifier.for && inputString == ","){
                             forbidOperator = false;
                         }
+                        // For the class name (not the content of its parent classes' brackets, which are a nested slot), we forbid
+                        // operators and quotes too, but still allow brackets as that's how the parent classes get entered (#682):
+                        if(this.frameType == AllFrameTypesIdentifier.classdef && this.labelSlotsIndex == 0 && !isBracket && !this.coreSlotInfo.slotId.includes(",")){
+                            forbidOperator = true;
+                        }
                         let planningToInsertKey = !forbidOperator;
                         if(!forbidOperator && (this.frameType == AllFrameTypesIdentifier.fromimport || this.frameType == AllFrameTypesIdentifier.import)){
                             // If we're in some import frame, we check we match the rule mentioned above
@@ -1604,6 +1609,14 @@ export default defineComponent({
                                 }
                             }
                         } 
+                        // Likewise for the name of a function or class: only a plain name can be pasted (for a class, a bracketed list of
+                        // parent classes is also fine, and anything is fine inside those brackets, which are a nested slot) (#682)
+                        else if((this.frameType == AllFrameTypesIdentifier.funcdef || this.frameType == AllFrameTypesIdentifier.classdef) && this.labelSlotsIndex == 0
+                            && this.allowedSlotContent != AllowedSlotContent.FREE_TEXT_DOCUMENTATION && !this.coreSlotInfo.slotId.includes(",")){
+                            const allowsBrackets = this.frameType == AllFrameTypesIdentifier.classdef;
+                            pastedInvalidCode = tempSlots.operators.length > 0
+                                || tempSlots.fields.some((field) => isFieldStringSlot(field) || (!allowsBrackets && isFieldBracketedSlot(field)));
+                        }
                         if(pastedInvalidCode){
                             // Show an error message to the user, and do nothing else.
                             const msg = cloneDeep(MessageDefinitions.InvalidPythonParsePaste);
