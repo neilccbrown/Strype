@@ -1,6 +1,6 @@
 import { test, expect, Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
-import { loadContent } from "../support/loading-saving";
+import { loadContent, save } from "../support/loading-saving";
 import { clearDefaultProject, doPagePaste, enterTestingSection, pressFrameShortcut, switchToTestingFromMain, waitForEditorSettled } from "../support/editor";
 import { checkFrameErrorCount } from "../support/execution";
 import { setupStrypeTest } from "../support/general";
@@ -198,23 +198,66 @@ def test_errors ( ) :
         await expect(outcomeIcon(0)).not.toHaveClass(/test-outcome-passed/);
     });
 
-    test("The Testing Your Functions demo project runs, and its tests pass", async ({page}) => {
+    test("The Testing Your Functions demo project opens showing its tests, which pass, and its program runs", async ({page}) => {
         await loadContent(page, readFileSync("public/demos/console/testing_example.spy", "utf8"));
         const consoleLoc = page.locator("#peaConsole");
+        // It was saved with the Testing code showing, so that's how it opens (with the cursor in it):
+        await expect(heading(page)).toContainText("Testing");
+        await expect(page.locator("#frameContainer_-4")).toBeVisible();
+        await expect(page.locator("#frameContainer_-3 > .container-frames")).toBeHidden();
         await expect(runButton(page)).toBeEnabled({timeout: 120000});
-        // The program in My code uses the functions:
-        await runButton(page).click();
-        await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toContain("fun is testing");
-        expect(await consoleLoc.inputValue()).toContain("9 is not prime");
-        await expect(runButton(page)).toHaveText(/^\s*Run$/, {timeout: 120000});
-
-        // And the tests in Testing check them:
-        await goToTopOfMainCode(page);
-        await switchToTestingFromMain(page);
-        await expect(runButton(page)).toHaveText(/^\s*Run tests$/);
+        await expect(runButton(page)).toHaveText(/Run tests$/);
         await runButton(page).click();
         await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toMatch(/^Running tests\.\.\.\n4 passed, 0 failed\n$/);
         await checkFrameErrorCount(page, 0);
+
+        // And the program in My code uses the functions (clicking the heading switches to it):
+        await heading(page).locator(".frame-container-label-span").click();
+        await waitForEditorSettled(page);
+        await expect(runButton(page)).toHaveText(/^\s*Run$/);
+        await runButton(page).click();
+        await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toContain("fun is testing");
+        expect(await consoleLoc.inputValue()).toContain("9 is not prime");
+    });
+
+    test("A project saved with My code showing has no Testing header", async ({page}) => {
+        expect(readFileSync(await save(page, true), "utf8")).not.toContain("testingShowing");
+    });
+
+    test("A project saved with the Testing code showing has a header saying so", async ({page}) => {
+        await switchToTestingFromMain(page);
+        await expect(heading(page)).toContainText("Testing");
+        const saved = readFileSync(await save(page, true), "utf8").replace(/\r\n/g, "\n");
+        expect(saved).toContain("\n#(=> testingShowing:true\n");
+    });
+
+    test("A project with the Testing header opens showing the Testing code, and one without it opens showing My code", async ({page}) => {
+        const spyWithTestingShowing = `#(=> Strype:1:std
+#(=> testingShowing:true
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+print("hi") 
+#(=> Section:Testing
+def test_a ( ) :
+    assert 1 < 2 
+#(=> Section:End
+`;
+        // A project with the header opens showing the Testing code, with the cursor at the top of it...
+        await loadContent(page, spyWithTestingShowing);
+        await expect(heading(page)).toContainText("Testing");
+        await expect(page.locator("#frameContainer_-4")).toBeVisible();
+        await expect(page.locator("#caret_caretBody_-4")).not.toHaveClass(/invisible/);
+        await expect(runButton(page)).toHaveText(/Run tests$/, {timeout: 120000});
+        // ...so a frame added there goes into it:
+        await pressFrameShortcut(page, "s");
+        await waitForEditorSettled(page);
+        await expect(page.locator("#frameContainer_-4 .frame-div[data-frameType='funcdef']")).toHaveCount(2);
+
+        // And one without the header opens showing My code again:
+        await loadContent(page, spyWithTestingShowing.replace("#(=> testingShowing:true\n", ""));
+        await expect(heading(page)).toContainText("My code");
+        await expect(page.locator("#frameContainer_-4")).toBeHidden();
     });
 
     test("Clicking the heading, or its arrow, switches between My code and Testing and puts the cursor on the heading", async ({page}) => {
