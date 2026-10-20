@@ -32,12 +32,12 @@ jobs:
             - name: Setup Pages
               uses: actions/configure-pages@v5
             - name: Install Node.js and NPM
-              uses: volta-cli/action@v4
+              uses: volta-cli/action@v5
             - name: NPM Install
               run: npm install
             - name: Cache Pyodide
               id: cache-pyodide
-              uses: actions/cache@v4
+              uses: actions/cache@v5
               with:
                 path: public/pyodide
                 key: ${{ runner.os }}-pyodide-${{ hashFiles('package-lock.json', 'scripts/download-pyodide-libs.cjs') }}
@@ -94,12 +94,12 @@ jobs:
             - name: Checkout
               uses: actions/checkout@v6
             - name: Install Node.js and NPM
-              uses: volta-cli/action@v4
+              uses: volta-cli/action@v5
             - name: NPM Install
               run: npm install
             - name: Cache Pyodide
               id: cache-pyodide
-              uses: actions/cache@v4
+              uses: actions/cache@v5
               with:
                 path: public/pyodide
                 key: ${{ runner.os }}-pyodide-${{ hashFiles('package-lock.json', 'scripts/download-pyodide-libs.cjs') }}
@@ -111,7 +111,7 @@ jobs:
               env:
                   VITE_GITHUB_PAGE_BRANCH: ${{ github.ref_name }}
             - name: Upload build output
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                   name: dist
                   path: dist/
@@ -125,7 +125,7 @@ jobs:
             cancel-in-progress: false
         steps:
             - name: Download build output
-              uses: actions/download-artifact@v4
+              uses: actions/download-artifact@v8
               with:
                   name: dist
                   path: dist
