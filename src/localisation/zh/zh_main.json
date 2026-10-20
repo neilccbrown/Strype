@@ -88,6 +88,8 @@
     "runTestsButton": "运行测试",
     "testPassed": "此测试已通过",
     "testFailed": "此测试未通过",
+    "testPassBadge": "通过",
+    "testFailBadge": "失败",
     "preCompiledErrorNeedFix": "请先修复现有错误。",
     "noWebUSB": "此浏览器不支持 webUSB 连接。请使用 Google Chrome 等浏览器。",
     "emptyCodeError": "代码不能为空。",

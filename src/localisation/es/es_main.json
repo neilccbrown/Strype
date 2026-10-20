@@ -85,6 +85,8 @@
     "runTestsButton": "Ejecutar pruebas",
     "testPassed": "Esta prueba ha pasado",
     "testFailed": "Esta prueba ha fallado",
+    "testPassBadge": "Pasa",
+    "testFailBadge": "Falla",
     "preCompiledErrorNeedFix": "Primero corrija los erroes existentes.",
     "noWebUSB": "Este navegador no admite conexiones webUSB. Por favor utilice otro navegador (como Google Chrome).",
     "emptyCodeError": "El códdigo no puede estar vacío.",

@@ -28,10 +28,10 @@
                 <!-- ^^ Note: append to frame label is same as prepend to slot -->
             </div>
             <div class="frame-controls-container">
-                <!-- How a test_ function went in the last test run: a tick or a cross, greyed out once the code has been edited since -->
-                <i v-if="testOutcome && groupIndex == 0"
-                   :class="{'fas fa-xs test-outcome-icon': true, 'fa-check': testOutcome == 'passed', 'fa-times': testOutcome == 'failed', 'test-outcome-passed': testOutcome == 'passed' && !isTestOutcomeStale, 'test-outcome-failed': testOutcome == 'failed' && !isTestOutcomeStale, 'test-outcome-stale': isTestOutcomeStale}"
-                   :title="$t(testOutcome == 'passed' ? 'appMessage.testPassed' : 'appMessage.testFailed')"></i>
+                <!-- How a test_ function went in the last test run: a green "Pass" or red "Fail" badge, grey once the code has been edited since -->
+                <span v-if="testOutcome && groupIndex == 0"
+                      :class="{'test-outcome-badge': true, 'test-outcome-passed': testOutcome == 'passed' && !isTestOutcomeStale, 'test-outcome-failed': testOutcome == 'failed' && !isTestOutcomeStale, 'test-outcome-stale': isTestOutcomeStale}"
+                      :title="$t(testOutcome == 'passed' ? 'appMessage.testPassed' : 'appMessage.testFailed')">{{ $t(testOutcome == 'passed' ? 'appMessage.testPassBadge' : 'appMessage.testFailBadge') }} {{ testOutcome == 'passed' ? '\u2714' : '\u2716' }}</span>
                 <div ref="frozenControl" :class="{'frozen-control': true, 'frozen': isFrozen}" v-if="groupIndex == 0">
                     <img class="frozen-frozen" src="@/assets/images/snowflake.svg" v-if="isFrozen">
                 </div>
@@ -317,14 +317,25 @@ export default defineComponent({
 .runtime-past-err-icon {
     color:#706e6e;
 }
-.test-outcome-icon {
-    color: #706e6e; // grey: out of date, as the code has been edited since the tests were run
+// The "Pass"/"Fail" badge in the header of a test function: a rounded box with white text (and a tick or cross, in its
+// text presentation so that it takes the text colour rather than being drawn as a coloured emoji)
+.test-outcome-badge {
+    color: #fff;
+    background-color: #706e6e; // grey: out of date, as the code has been edited since the tests were run
+    font-size: 0.75em;
+    font-weight: 600;
+    line-height: 1.5;
+    padding: 0 7px;
+    border-radius: 7px;
+    white-space: nowrap;
+    font-variant-emoji: text;
+    user-select: none;
 }
 .test-outcome-passed {
-    color: #2e9b3e;
+    background-color: #2a8a3a;
 }
 .test-outcome-failed {
-    color: #d66;
+    background-color: #c94c4c;
 }
 .frame-header-label-projectDocumentation > img, .frame-header-label-funcdef > img, .frame-header-label-classdef > img {
     height: 0.9em;

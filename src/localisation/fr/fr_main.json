@@ -147,6 +147,8 @@
     "runTestsButton": "Exécuter les tests",
     "testPassed": "Ce test a réussi",
     "testFailed": "Ce test a échoué",
+    "testPassBadge": "Réussi",
+    "testFailBadge": "Échec",
     "preCompiledErrorNeedFix": "Veuillez d'abord corriger les erreurs existantes.",
     "noWebUSB": "Ce navigateur ne supporte pas les connexions webUSB. Veuillez utiliser un autre navigateur (par example Google Chrome).",
     "emptyCodeError": "Le code ne peut pas être vide.",

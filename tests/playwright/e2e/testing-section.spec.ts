@@ -158,7 +158,7 @@ def test_errors ( ) :
         const asserts = page.locator("#frameContainer_-4 .frame-div[data-frameType='assert']");
         await expect(testFunctions).toHaveCount(3);
         // Nothing is shown before the tests have been run:
-        await expect(page.locator(".test-outcome-icon")).toHaveCount(0);
+        await expect(page.locator(".test-outcome-badge")).toHaveCount(0);
 
         await goToTopOfMainCode(page);
         await switchToTestingFromMain(page);
@@ -166,13 +166,20 @@ def test_errors ( ) :
         await runButton(page).click();
         await expect.poll(async () => await page.locator("#peaConsole").inputValue(), {timeout: 120000}).toContain("1 passed, 2 failed");
 
-        // A tick or a cross in the header of each test function:
-        const outcomeIcon = (index: number) => testFunctions.nth(index).locator(".test-outcome-icon").first();
-        await expect(outcomeIcon(0)).toHaveClass(/fa-check/);
+        // A "Pass \u2714" or "Fail \u2716" badge in the header of each test function, with a green or red background and white text:
+        const outcomeIcon = (index: number) => testFunctions.nth(index).locator(".test-outcome-badge").first();
+        await expect(outcomeIcon(0)).toHaveText("Pass \u2714");
         await expect(outcomeIcon(0)).toHaveClass(/test-outcome-passed/);
-        await expect(outcomeIcon(1)).toHaveClass(/fa-times/);
+        await expect(outcomeIcon(0)).toHaveCSS("background-color", "rgb(42, 138, 58)");
+        await expect(outcomeIcon(0)).toHaveCSS("color", "rgb(255, 255, 255)");
+        await expect(outcomeIcon(1)).toHaveText("Fail \u2716");
         await expect(outcomeIcon(1)).toHaveClass(/test-outcome-failed/);
+        await expect(outcomeIcon(1)).toHaveCSS("background-color", "rgb(201, 76, 76)");
+        await expect(outcomeIcon(1)).toHaveCSS("color", "rgb(255, 255, 255)");
+        await expect(outcomeIcon(2)).toHaveText("Fail \u2716");
         await expect(outcomeIcon(2)).toHaveClass(/test-outcome-failed/);
+        // The badge is a rounded box:
+        expect(parseFloat(await outcomeIcon(0).evaluate((el) => getComputedStyle(el).borderTopLeftRadius))).toBeGreaterThan(3);
 
         // A failed assert statement is marked with a cross, whereas an error from evaluating it (the NameError) keeps the triangle:
         await expect(asserts.nth(0).locator(".err-icon")).toHaveCount(0);

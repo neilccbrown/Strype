@@ -34,6 +34,8 @@
     "runTestsButton": "Εκτέλεση δοκιμών",
     "testPassed": "Αυτή η δοκιμή πέρασε",
     "testFailed": "Αυτή η δοκιμή απέτυχε",
+    "testPassBadge": "Επιτυχία",
+    "testFailBadge": "Αποτυχία",
     "preCompiledErrorNeedFix": "Διορθώστε παρώντα σφάλματα πρώτα.",
     "noWebUSB": "Ο παρών περιηγητής δεν θποστηρίζει συνδέσεις μέσω webUSB. Παρακαλώ δοκιμάστε με Chrome ή Edge.",
     "emptyCodeError": "The code cannot be empty."
