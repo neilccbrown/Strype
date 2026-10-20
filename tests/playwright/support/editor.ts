@@ -337,6 +337,11 @@ export function getDefaultStrypeProjectImportsFullLine(): string {
     return "from strype.graphics import * \nfrom strype.sound import * \n";
 }
 
+// The Testing section of the default project as saved: its starter test function (empty, with a description)
+export function getDefaultStrypeProjectTestingFullLines(): string {
+    return "#(=> Section:Testing\ndef test_my_code ( ) :\n    \'\'\'Add assert statements to test your code\'\'\'\n    pass\n";
+}
+
 // Deletes forward (Delete key) from the top of a container until it's empty. `maxPresses` isn't a
 // count of frames to remove -- the recursion always runs to an empty container, however many
 // presses that takes, since deleting a top-level block frame removes its whole subtree (nested

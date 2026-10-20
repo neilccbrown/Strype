@@ -194,7 +194,8 @@ function flatten(codeLines: CodeMatch[]) : (string | RegExp)[] {
  */
 function checkCodeEquals(codeLines : CodeMatch[]) : Cypress.Chainable<JQuery<HTMLElement>> {
     return sanityCheck().then(() => {
-        cy.root().then((r) => cy.get("." + scssVars.frameDivClassName).filter((i, e) => noFrameDivBetween(r.get()[0], e)).each((f, i) => cy.wrap(f).within((f2) => {
+        // (The Testing section's frames, which the Python version's default project has one of, are checked separately below)
+        cy.root().then((r) => cy.get("." + scssVars.frameDivClassName).filter((i, e) => noFrameDivBetween(r.get()[0], e) && Cypress.$(e).closest("#frameContainer_-4").length == 0).each((f, i) => cy.wrap(f).within((f2) => {
             expect(i).lessThan(codeLines.length, "Found line #" + (i + 1) + " but only expected " + codeLines.length + " lines");
             matchFrameText(f2, codeLines[i]);
         })));
@@ -210,8 +211,15 @@ function checkCodeEquals(codeLines : CodeMatch[]) : Cypress.Chainable<JQuery<HTM
             // We check that project description is correct, and then discard it for the further code check.
             const indexOfFirstLineReturn = p.indexOf("\n");
             expect(p.substring(0, indexOfFirstLineReturn + 1)).equals(getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode")));
+            // The exported Python also has the Testing section's code at the end: in the Python version, that's the default
+            // project's starter test function (with its description) unless a test has changed or removed it
+            const exportedTestingCode = (Cypress.env("mode") == "microbit") ? [] : [
+                /def\s+test_my_code\s*\(\s*\)\s*:/,
+                /\s*[\x27"]{3}Add assert statements to test your code[\x27"]{3}/,
+                /\s*pass/,
+            ];
             expectMatchRegex(p.substring(indexOfFirstLineReturn + 1).split("\n").map((l) => l.trimEnd()),
-                flatten(codeLines).concat([/\s*/]));
+                flatten(codeLines).concat(exportedTestingCode).concat([/\s*/]));
         });
     });
 }

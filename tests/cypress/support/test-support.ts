@@ -164,6 +164,24 @@ export function focusEditorAndClear(): void {
         waitForEditorSettled();
         deleteFramesUpTo("#frameContainer_-3");
     });
+    // The Python version's default project has a (starter) test function in the Testing section, which isn't showing
+    // (so can't be navigated to) unless the My code heading is switched over to it, with left/right arrow on the heading.
+    // That heading is one {uparrow} above the top of Main, where we are now (the micro:bit version has no Testing section):
+    cy.then(() => {
+        if (Cypress.$("#frameContainer_-4 .frame-div").length > 0) {
+            // (One key at a time, settling in between, as the heading switching sections is not instant)
+            for (const key of ["{uparrow}", "{rightarrow}", "{downarrow}"]) {
+                cy.get("body").type(key);
+                waitForEditorSettled();
+            }
+            deleteFramesUpTo("#frameContainer_-4");
+            // Back to the heading, switch back to My code, and down to the top of Main again:
+            for (const key of ["{uparrow}", "{leftarrow}", "{downarrow}"]) {
+                cy.get("body").type(key);
+                waitForEditorSettled();
+            }
+        }
+    });
     cy.get(".frame-div").should("have.length", 0);
 }
 

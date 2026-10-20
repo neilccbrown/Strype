@@ -114,7 +114,7 @@ test.describe("Testing section", () => {
         await switchToTestingFromMain(page);
         await expect(runButton(page)).toBeEnabled({timeout: 120000});
         await runButton(page).click();
-        await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toContain("No tests found in the Testing section.");
+        await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toContain("1 passed, 0 failed");
         await expect(runButton(page)).toHaveText(/^\s*Run tests$/, {timeout: 120000});
 
         // The cursor is still on the heading: switch back to My code and run the program, which also clears the console:
@@ -130,13 +130,13 @@ test.describe("Testing section", () => {
         await expect(runButton(page)).toBeEnabled({timeout: 120000});
         await runButton(page).click();
         const consoleLoc = page.locator("#peaConsole");
-        await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toMatch(/^Running tests\.\.\.\nNo tests found in the Testing section\.\n$/);
+        await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toMatch(/^Running tests\.\.\.\n1 passed, 0 failed\n$/);
         await checkFrameErrorCount(page, 0);
 
         // A second run clears the console first, as a normal Run does, rather than appending:
         await expect(runButton(page)).toHaveText(/^\s*Run tests$/, {timeout: 120000});
         await runButton(page).click();
-        await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toMatch(/^Running tests\.\.\.\nNo tests found in the Testing section\.\n$/);
+        await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toMatch(/^Running tests\.\.\.\n1 passed, 0 failed\n$/);
     });
 
     test("Test functions show a tick or a cross after a run, and a failed assert shows a cross", async ({page}) => {
@@ -383,13 +383,13 @@ def test_raises ( ) :
     test("Pasting Python with test functions at the Testing section puts them there, and an assert can't be pasted into an ordinary function", async ({page}) => {
         await enterTestingSection(page);
         await doPagePaste(page, "def test_pasted():\n    assert 1 < 2\n");
-        await expect(page.locator("#frameContainer_-4 .frame-div[data-frameType='funcdef']")).toHaveCount(1);
+        await expect(page.locator("#frameContainer_-4 .frame-div[data-frameType='funcdef']")).toHaveCount(2);
         await expect(page.locator("#frameContainer_-4 .frame-div[data-frameType='assert']")).toHaveCount(1);
         await expect(page.locator("#frameContainer_-2 .frame-div")).toHaveCount(0);
         // The tests have the new function:
         await expect(runButton(page)).toBeEnabled({timeout: 120000});
         await runButton(page).click();
-        await expect.poll(async () => await page.locator("#peaConsole").inputValue(), {timeout: 120000}).toContain("1 passed, 0 failed");
+        await expect.poll(async () => await page.locator("#peaConsole").inputValue(), {timeout: 120000}).toContain("2 passed, 0 failed");
 
         // An assert doesn't go in an ordinary function in Definitions (the paste is refused). Clicking the heading
         // goes back to My code, with the cursor on the heading, and one step up from there is Definitions:
@@ -433,11 +433,12 @@ def test_raises ( ) :
         await testFunctionCommand.click();
         await waitForEditorSettled(page);
         const newFunction = page.locator("#frameContainer_-4 .frame-div[data-frameType='funcdef']");
-        await expect(newFunction).toHaveCount(1);
-        await expect(newFunction.locator(".label-slot-input").first()).toHaveText("test_");
+        // (It goes at the top of the Testing section, above the default test function:)
+        await expect(newFunction).toHaveCount(2);
+        await expect(newFunction.first().locator(".label-slot-input").first()).toHaveText("test_");
         await page.keyboard.type("clicked");
         await waitForEditorSettled(page);
-        await expect(newFunction.locator(".label-slot-input").first()).toHaveText("test_clicked");
+        await expect(newFunction.first().locator(".label-slot-input").first()).toHaveText("test_clicked");
     });
 
     test("Stopping a run of tests that doesn't finish works", async ({page}) => {
@@ -526,7 +527,7 @@ def test_a ( ) :
         await runButton(page).click();
 
         const consoleLoc = page.locator("#peaConsole");
-        await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toContain("0 passed, 1 failed");
+        await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toContain("1 passed, 1 failed");
         const consoleContent = await consoleLoc.inputValue();
         expect(consoleContent).toContain("FAILED test_strype_user_tests.py::test_fail");
         expect(consoleContent).toContain("ValueError: invalid literal for int()");
@@ -555,7 +556,7 @@ def test_a ( ) :
         await page.keyboard.type("works");
         await waitForEditorSettled(page);
         const allFuncDefs = page.locator("#frameContainer_-4 .frame-div[data-frameType='funcdef']");
-        await expect(allFuncDefs).toHaveCount(1);
+        await expect(allFuncDefs).toHaveCount(2); // the new one is at the top, above the default test function
         const funcDefFrame = allFuncDefs.first();
         await expect(funcDefFrame.locator(".label-slot-input").first()).toHaveText("test_works");
         await expect(funcDefFrame).toHaveCSS("background-color", "rgb(230, 210, 181)");
@@ -609,7 +610,7 @@ def test_a ( ) :
         await expect(runTestsButton).toBeEnabled({timeout: 120000});
         await runTestsButton.click();
         const consoleLoc = page.locator("#peaConsole");
-        await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toContain("0 passed, 1 failed");
+        await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toContain("1 passed, 1 failed");
         const consoleContent = await consoleLoc.inputValue();
         expect(consoleContent).toContain("FAILED test_strype_user_tests.py::test_fails");
         // Just pytest's explanation of what failed (its lines prefixed with E) is shown after the FAILED line: not the
@@ -640,7 +641,7 @@ def test_a ( ) :
         await expect(runTestsButton).toBeEnabled({timeout: 120000});
         await runTestsButton.click();
         const consoleLoc = page.locator("#peaConsole");
-        await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toContain("0 passed, 1 failed");
+        await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toContain("1 passed, 1 failed");
         expect(await consoleLoc.inputValue()).toContain("NameError");
     });
 
@@ -666,7 +667,7 @@ def test_a ( ) :
         await runTestsButton.click();
         const consoleLoc = page.locator("#peaConsole");
         await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toContain("passed");
-        expect(await consoleLoc.inputValue()).toContain("1 passed, 0 failed");
+        expect(await consoleLoc.inputValue()).toContain("2 passed, 0 failed");
     });
 
     test("Tests can call functions defined in the Definitions section", async ({page}) => {
@@ -708,13 +709,15 @@ def test_a ( ) :
         await runTestsButton.click();
         const consoleLoc = page.locator("#peaConsole");
         await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toContain("passed");
-        expect(await consoleLoc.inputValue()).toContain("1 passed, 0 failed");
+        expect(await consoleLoc.inputValue()).toContain("2 passed, 0 failed");
     });
 
     test("Test function shortcut is not available outside the Testing section", async ({page}) => {
         // The default caret is in My code; "s" must not create a function definition there:
         await pressFrameShortcut(page, "s");
         await waitForEditorSettled(page);
-        await expect(page.locator(".frame-div[data-frameType='funcdef']")).toHaveCount(0);
+        // (The only function definition in the project is the default test function in Testing)
+        await expect(page.locator(".frame-div[data-frameType='funcdef']")).toHaveCount(1);
+        await expect(page.locator("#frameContainer_-3 .frame-div[data-frameType='funcdef'], #frameContainer_-2 .frame-div[data-frameType='funcdef']")).toHaveCount(0);
     });
 });

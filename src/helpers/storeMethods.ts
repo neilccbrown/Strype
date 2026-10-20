@@ -1205,7 +1205,9 @@ export function checkCodeErrors(frameIdsForPrecompiled?: number | number[]): voi
     // So in case of an error, we catch it to allow the rest of the code to execute...
     try{
         const testsContainerId = useStore().getTestsFrameContainerId;
-        const hasTests = useStore().frameObjects[testsContainerId].childrenIds.length > 0;
+        // Whether there is anything to check in the Testing section: a function with nothing in it (as in the default
+        // project) has nothing for TigerPython to look at, and doing a second pass over the whole program costs
+        const hasTests = getAllChildrenAndJointFramesIds(testsContainerId).some((frameId) => useStore().frameObjects[frameId].frameType.type !== AllFrameTypesIdentifier.funcdef);
         const parser = new Parser(true, "py", true);
         // When there are tests, the main program (imports, definitions, main code) is checked without them, and the tests
         // are checked separately, as they run: seeing the imports and definitions but not the main code.
