@@ -305,11 +305,18 @@ export default class Parser {
     private saveAsSPY = false;
     private libraries : string[] = [];
     private omitMediaLiterals = false;
+    private soloTryFrameIds : number[] = []; // Enabled try frames with no except/finally, for which we emit the dummy except (see parseBlock)
     
     constructor(ignoreCheckErrors = false, destination: "spy" | "py-export" | "py" = "py", omitMediaLiterals = false) {
         this.ignoreCheckErrors = ignoreCheckErrors;
         this.saveAsSPY = destination == "spy";
         this.omitMediaLiterals = omitMediaLiterals;
+    }
+
+    // The ids of the (enabled) try frames found by the last parse that have no except or finally,
+    // so are not valid Python. They are only valid for saving (via a dummy except); running should be refused.
+    public getSoloTryFrameIds() : number[] {
+        return [...this.soloTryFrameIds];
     }
 
     public getLibraries() : string[] {
@@ -363,7 +370,7 @@ export default class Parser {
             )
             +
             ((block.frameType.type == AllFrameTypesIdentifier.try && (useStore().getJointFramesForFrameId(block.id)?.filter((f) => !f.isDisabled).length ?? 0) == 0)
-                ? indentation + "except " + STRYPE_DUMMY_FIELD + ":\n" + indentation + "    pass\n" : "") +
+                ? (!block.isDisabled && !this.saveAsSPY && this.soloTryFrameIds.push(block.id), "") + indentation + "except " + STRYPE_DUMMY_FIELD + ":\n" + indentation + "    pass\n" : "") +
             this.parseFrames(
                 useStore().getJointFramesForFrameId(block.id),
                 insideAClass,

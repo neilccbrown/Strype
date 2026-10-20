@@ -1021,7 +1021,7 @@ export const getAvailableNavigationPositions = function(showIsInCollapsedFrameCo
     }).filter((navigationPosition) => useStore().frameObjects[navigationPosition.frameId] && !(navigationPosition.isSlotNavigationPosition && useStore().frameObjects[navigationPosition.frameId].isDisabled)) as NavigationPosition[]; 
 };
 
-const getPrecompiledErrorFrameId = (frameId: number): string => {
+export const getPrecompiledErrorFrameId = (frameId: number): string => {
     return "precompilederr_" + frameId;
 };
 

@@ -110,7 +110,7 @@ import {handleAsyncRequests, handleSyncRequests} from "@/stryperuntime/main_brid
 import {callTrackingProxyPorts, getPythonClient, isPythonWorkerReady, renderer, serviceWorkerChannel, terminateAndRestartPyodide} from "@/stryperuntime/main_thread_python_handler";
 import { TurtlePixiHandler } from "@/stryperuntime/turtle_pixi_handler";
 import {closeAudioContext, createOrGetAudioContext} from "@/helpers/audioContext";
-import {clearAllRuntimeErrors, computeFrameSnapshot} from "@/helpers/storeMethods";
+import {clearAllRuntimeErrors, computeFrameSnapshot, getPrecompiledErrorFrameId} from "@/helpers/storeMethods";
 import {listEntriesForWorker} from "@/helpers/localFsCache";
 import html2canvas from "html2canvas";
 import FileSystemPane from "@/components/FileSystemTab/FileSystemPane.vue";
@@ -665,6 +665,20 @@ export default defineComponent({
 
                 const parser = new Parser();
                 const userCode = parser.getFullCode();
+                // A try without except/finally is only valid Strype (saved with a dummy except), not valid Python,
+                // so we don't run it, and flag the frame(s) instead:
+                const soloTryFrameIds = parser.getSoloTryFrameIds();
+                if (soloTryFrameIds.length > 0) {
+                    soloTryFrameIds.forEach((frameId) => {
+                        useStore().setFrameErroneous(frameId, this.$t("errorMessage.tryFrameWithoutExceptOrFinally"));
+                        useStore().addPreCompileErrors(getPrecompiledErrorFrameId(frameId));
+                    });
+                    this.$nextTick().then(() => {
+                        this.reachFirstError();
+                        useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
+                    });
+                    return;
+                }
                 parser.getErrorsFormatted(userCode);
                 // Clear the graphics area:
                 if (targetCanvas != null) {
