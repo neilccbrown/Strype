@@ -34,7 +34,7 @@
                 :frameId="frameId"
                 :frameType="frameType.type"
                 :labels="frameType.labels"
-                :class="{[scssVars.frameHeaderClassName]: true, [scssVars.errorClassName]: hasRuntimeError}"
+                :class="{[scssVars.frameHeaderClassName]: true, [scssVars.errorClassName]: hasRuntimeError, [scssVars.runtimeErrorClassName]: hasRuntimeError}"
                 :style="frameMarginStyle['header']"
                 :frameAllowChildren="allowChildren"
                 :frameAllowedCollapsedStates="frameType.allowedCollapsedStates"

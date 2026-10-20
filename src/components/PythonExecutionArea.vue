@@ -88,7 +88,7 @@ import { defineComponent } from "vue";
 import { useStore } from "@/store/store";
 import Parser from "@/parser/parser";
 import { mapStores } from "pinia";
-import { checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, debounceComputeAddFrameCommandContainerSize, getEditorCodeErrorsHTMLElements, getFrameUID, getPEAComponentRefId, getPEAConsoleId, getPEAControlsDivId, getPEAGraphicsContainerDivId, getPEATabContentContainerDivId, hasPrecompiledCodeError, setContextMenuEventClientXY, setPythonExecAreaLayoutButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
+import { checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, debounceComputeAddFrameCommandContainerSize, getEditorCodeErrorsHTMLElements, getFrameUID, getPEAComponentRefId, getPEAConsoleId, getPEAControlsDivId, getPEAGraphicsContainerDivId, getPEATabContentContainerDivId, hasNonRuntimeCodeError, setContextMenuEventClientXY, setPythonExecAreaLayoutButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
 import { CoordPosition, defaultEmptyStrypeLayoutDividerSettings, PythonExecRunningState, StrypeContextMenuItem, StrypePEALayoutData, StrypePEALayoutMode } from "@/types/types";
 import { WORLD_HEIGHT, WORLD_WIDTH } from "@/stryperuntime/image_and_collisions";
 import SVGIcon from "@/components/SVGIcon.vue";
@@ -110,7 +110,7 @@ import {handleAsyncRequests, handleSyncRequests} from "@/stryperuntime/main_brid
 import {callTrackingProxyPorts, getPythonClient, isPythonWorkerReady, renderer, serviceWorkerChannel, terminateAndRestartPyodide} from "@/stryperuntime/main_thread_python_handler";
 import { TurtlePixiHandler } from "@/stryperuntime/turtle_pixi_handler";
 import {closeAudioContext, createOrGetAudioContext} from "@/helpers/audioContext";
-import {clearAllRuntimeErrors, computeFrameSnapshot, getPrecompiledErrorFrameId} from "@/helpers/storeMethods";
+import {clearAllRuntimeErrors, computeFrameSnapshot} from "@/helpers/storeMethods";
 import {listEntriesForWorker} from "@/helpers/localFsCache";
 import html2canvas from "html2canvas";
 import FileSystemPane from "@/components/FileSystemTab/FileSystemPane.vue";
@@ -654,7 +654,7 @@ export default defineComponent({
             // We DELAY the action to make sure every other UI actions has been done, notably the error checking from LabelSlotsStructure.
             setTimeout(async () => {
                 // In case the error happens in the current frame (empty body) we have to give the UI time to update to be able to notify changes
-                if(hasPrecompiledCodeError()) {
+                if(hasNonRuntimeCodeError()) {
                     this.$nextTick().then(() => {
                         this.reachFirstError();   
                         // If we have an error, the code didn't actually run so we need to reflect this properly in the running state
@@ -665,21 +665,6 @@ export default defineComponent({
 
                 const parser = new Parser();
                 const userCode = parser.getFullCode();
-                // A try without except/finally is only valid Strype (saved with a dummy except), not valid Python,
-                // so we don't run it, and flag the frame(s) instead:
-                const soloTryFrameIds = parser.getSoloTryFrameIds();
-                if (soloTryFrameIds.length > 0) {
-                    soloTryFrameIds.forEach((frameId) => {
-                        useStore().setFrameErroneous(frameId, this.$t("errorMessage.tryFrameWithoutExceptOrFinally"));
-                        useStore().addPreCompileErrors(getPrecompiledErrorFrameId(frameId));
-                    });
-                    this.$nextTick().then(() => {
-                        this.reachFirstError();
-                        useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
-                    });
-                    return;
-                }
-                parser.getErrorsFormatted(userCode);
                 // Clear the graphics area:
                 if (targetCanvas != null) {
                     targetContext?.clearRect(0, 0, targetCanvas.width, targetCanvas.height);

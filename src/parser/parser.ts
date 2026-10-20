@@ -1,5 +1,5 @@
 import Compiler from "@/compiler/compiler";
-import {hasEditorCodeErrors, trimmedKeywordOperators} from "@/helpers/editor";
+import {hasNonRuntimeCodeError, trimmedKeywordOperators} from "@/helpers/editor";
 import { UNARY_PREFIX_OPERATORS } from "@/helpers/operatorPrecedence";
 import { generateFlatSlotBases, getParentOrJointParent, retrieveSlotByPredicate } from "@/helpers/storeMethods";
 import i18n from "@/i18n";
@@ -33,7 +33,7 @@ export function parseCodeAndGetParseElements(requireCompilation: boolean, destin
     const parser = new Parser(false, destination);
     const out = parser.parse({});
 
-    const hasErrors = hasEditorCodeErrors();
+    const hasErrors = hasNonRuntimeCodeError();
     const compiler = new Compiler();
     if(requireCompilation){
         compiler.compile(out);
@@ -311,12 +311,6 @@ export default class Parser {
         this.ignoreCheckErrors = ignoreCheckErrors;
         this.saveAsSPY = destination == "spy";
         this.omitMediaLiterals = omitMediaLiterals;
-    }
-
-    // The ids of the (enabled) try frames found by the last parse that have no except or finally,
-    // so are not valid Python. They are only valid for saving (via a dummy except); running should be refused.
-    public getSoloTryFrameIds() : number[] {
-        return [...this.soloTryFrameIds];
     }
 
     public getLibraries() : string[] {
@@ -706,6 +700,12 @@ export default class Parser {
         if(inputCode.trim().length == 0){
             return i18n.global.t("appMessage.emptyCodeError");
         }
+
+        // A try with no except/finally is only valid in Strype (it is saved with a dummy except), not in Python,
+        // so we show an error on the frame(s) (this also stops the code being run or exported):
+        this.soloTryFrameIds.forEach((frameId) => {
+            useStore().setFrameErroneous(frameId, i18n.global.t("errorMessage.tryFrameWithoutExceptOrFinally"));
+        });
 
         const errors = this.getErrors(inputCode);
         let errorString = "";
