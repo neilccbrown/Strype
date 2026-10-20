@@ -33,7 +33,7 @@ test.describe("Collapsing a class", () => {
         // A frame caret should still be visible somewhere on screen:
         const caret = await checkFrameXorTextCursor(page, true);
         // ...and it must really be on screen (not just un-flagged but inside the hidden class body):
-        const box = await caret.evaluate((el) => ({width: el.getBoundingClientRect().width, shown: (el as HTMLElement).offsetParent !== null}));
+        const box = await caret.evaluate((el) => ({width: (el as HTMLElement).getBoundingClientRect().width, shown: (el as HTMLElement).offsetParent !== null}));
         expect(box.shown).toBe(true);
         expect(box.width).toBeGreaterThan(0);
     });
