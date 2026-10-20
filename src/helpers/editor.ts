@@ -735,11 +735,12 @@ export function hasEditorCodeErrors(): boolean {
     return countEditorCodeErrors() > 0;
 }
 
-// True if there is any error which is not a runtime error from the last run (e.g. syntax errors, blank slots,
-// TigerPython errors).  Such errors mean the code can't be run or converted to Python; a runtime error (which
-// is flagged by the runtime error class, in addition to the usual error class) doesn't.
+// True if there is any error which is not a runtime error from the last run (i.e. a precompile error: syntax errors,
+// blank slots, TigerPython errors, etc).  Such errors mean the code can't be run or converted to Python; a runtime
+// error doesn't.  Errors are flagged with either the runtime or the precompile error class, in addition to the usual
+// error class (or error-slot class).
 export function hasNonRuntimeCodeError(): boolean {
-    return hasEditorCodeErrors() && (errorHTMLElements?.some((element) => !element.classList.contains(scssVars.runtimeErrorClassName)) ?? false);
+    return hasEditorCodeErrors() && (errorHTMLElements?.some((element) => element.classList.contains(scssVars.precompileErrorClassName)) ?? false);
 }
 
 // This methods checks for the relative positions of the current position (which can be a focused slot or a blue caret) towards the positions of the errors (slots or 1st slot in frame header or a frame)
