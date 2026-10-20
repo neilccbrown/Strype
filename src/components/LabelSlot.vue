@@ -1009,8 +1009,9 @@ export default defineComponent({
             // We already handle some keys separately, so no need to process any further (i.e. deletion)
             // We can just discard any keys with length > 0
             if(event.key.length > 1 || event.ctrlKey || event.metaKey || event.altKey){
-                // Do not updated the a/c if arrows up/down, escape, enter and tab keys are hit because it will mess with navigation of the a/c
-                if(!["ArrowUp", "ArrowDown","Enter","Escape", "Tab"].includes(event.key)) {
+                // Do not updated the a/c if arrows up/down, escape, enter and tab keys are hit because it will mess with navigation of the a/c.
+                // Likewise for the modifier keys on their own: they don't change anything, but updating would reset the a/c selection (#977)
+                if(!["ArrowUp", "ArrowDown","Enter","Escape", "Tab", "Shift", "Control", "Alt", "Meta", "AltGraph", "CapsLock", "Fn"].includes(event.key)) {
                     this.$nextTick(() => {
                         this.updateAC();
                     });
