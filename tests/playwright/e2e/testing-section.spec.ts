@@ -64,7 +64,8 @@ test.describe("Testing section", () => {
         // The cursor on the heading is shown as an outline round its text, not as a frame cursor:
         await expect(headingText).toHaveClass(/frame-container-heading-focused/);
         await expect(visibleFrameCursors).toHaveCount(0);
-        // A double-headed arrow appears to the right of the heading to show that left/right do something:
+        // A double-headed arrow to the right of the heading (always there, blue while the heading is focused) shows that left/right do something:
+        await expect(heading(page).locator(".frame-container-heading-arrows")).toHaveClass(/frame-container-heading-arrows-focused/);
         const arrow = heading(page).locator(".frame-container-heading-arrows svg");
         await expect(arrow).toHaveCount(1);
         const textBox = await headingText.boundingBox();
@@ -94,7 +95,7 @@ test.describe("Testing section", () => {
         await page.keyboard.press("ArrowDown");
         await waitForEditorSettled(page);
         await expect(headingText).not.toHaveClass(/frame-container-heading-focused/);
-        await expect(heading(page).locator(".frame-container-heading-arrows")).toHaveCount(0);
+        await expect(heading(page).locator(".frame-container-heading-arrows")).not.toHaveClass(/frame-container-heading-arrows-focused/);
         await expect(visibleFrameCursors).toHaveCount(1);
         await page.keyboard.press("ArrowUp");
         await waitForEditorSettled(page);
@@ -260,33 +261,54 @@ def test_a ( ) :
         await expect(page.locator("#frameContainer_-4")).toBeHidden();
     });
 
-    test("Clicking the heading, or its arrow, switches between My code and Testing and puts the cursor on the heading", async ({page}) => {
+    test("Clicking the heading, or its arrow, switches between My code and Testing; the cursor goes into the section unless the heading already had it", async ({page}) => {
         const headingText = heading(page).locator(".frame-container-label-span");
         const arrow = heading(page).locator(".frame-container-heading-arrows");
         await expect(headingText).not.toHaveClass(/frame-container-heading-focused/);
-        await expect(arrow).toHaveCount(0);
+        // The arrow is always there, with a tooltip saying what clicking does (as has the heading):
+        await expect(arrow).toHaveCount(1);
+        await expect(arrow).not.toHaveClass(/frame-container-heading-arrows-focused/);
+        await expect(arrow).toHaveAttribute("title", "Toggle testing mode");
+        await expect(headingText).toHaveAttribute("title", "Toggle testing mode");
         // (The Run button only shows its "Run"/"Run tests" label once the Python worker is ready, until then it says it is initialising:)
         await expect(runButton(page)).toBeEnabled({timeout: 120000});
 
+        // The heading didn't have the cursor, so it goes to the top of the Testing section instead:
         await headingText.click();
         await waitForEditorSettled(page);
         await expect(heading(page)).toContainText("Testing");
         await expect(page.locator("#frameContainer_-4")).toBeVisible();
-        await expect(headingText).toHaveClass(/frame-container-heading-focused/);
+        await expect(headingText).not.toHaveClass(/frame-container-heading-focused/);
+        await expect(page.locator("#frameContainer_-4 .caret:not(.invisible)")).toHaveCount(1);
         await expect(runButton(page)).toHaveText(/^\s*Run tests$/);
 
-        // The arrow is clickable too, and the keys work from where the click left the cursor:
+        // The same for the arrow, going back to the top of My code:
         await arrow.click();
         await waitForEditorSettled(page);
         await expect(heading(page)).toContainText("My code");
-        await expect(headingText).toHaveClass(/frame-container-heading-focused/);
+        await expect(headingText).not.toHaveClass(/frame-container-heading-focused/);
+        await expect(page.locator("#frameContainer_-3 .caret:not(.invisible)")).toHaveCount(1);
         await expect(runButton(page)).toHaveText(/^\s*Run$/);
+
+        // If the heading already has the cursor, clicking keeps it there, and the keys work from there:
+        await page.keyboard.press("ArrowUp");
+        await waitForEditorSettled(page);
+        await expect(headingText).toHaveClass(/frame-container-heading-focused/);
+        await arrow.click();
+        await waitForEditorSettled(page);
+        await expect(heading(page)).toContainText("Testing");
+        await expect(headingText).toHaveClass(/frame-container-heading-focused/);
+        await expect(arrow).toHaveClass(/frame-container-heading-arrows-focused/);
+        await headingText.click();
+        await waitForEditorSettled(page);
+        await expect(heading(page)).toContainText("My code");
+        await expect(headingText).toHaveClass(/frame-container-heading-focused/);
         await page.keyboard.press("ArrowRight");
         await waitForEditorSettled(page);
         await expect(heading(page)).toContainText("Testing");
     });
 
-    test("Switching with frames selected cancels the selection and puts the cursor on the heading", async ({page}) => {
+    test("Switching with frames selected cancels the selection and puts the cursor in the new section", async ({page}) => {
         // Select the two frames in My code with the keyboard (the cursor starts at the top of My code):
         await page.keyboard.press("Shift+ArrowDown");
         await page.keyboard.press("Shift+ArrowDown");
@@ -298,16 +320,18 @@ def test_a ( ) :
         await waitForEditorSettled(page);
         await expect(heading(page)).toContainText("Testing");
         await expect(page.locator(".selected")).toHaveCount(0);
-        await expect(heading(page).locator(".frame-container-label-span")).toHaveClass(/frame-container-heading-focused/);
-        // Back in My code, the frames are still not selected, and the heading still has the cursor:
+        await expect(heading(page).locator(".frame-container-label-span")).not.toHaveClass(/frame-container-heading-focused/);
+        await expect(page.locator("#frameContainer_-4 .caret:not(.invisible)")).toHaveCount(1);
+        // Back in My code, the frames are still not selected, and the cursor is at the top of it:
         await heading(page).locator(".frame-container-heading-arrows").click();
         await waitForEditorSettled(page);
         await expect(heading(page)).toContainText("My code");
         await expect(page.locator(".selected")).toHaveCount(0);
-        await expect(heading(page).locator(".frame-container-label-span")).toHaveClass(/frame-container-heading-focused/);
+        await expect(heading(page).locator(".frame-container-label-span")).not.toHaveClass(/frame-container-heading-focused/);
+        await expect(page.locator("#frameContainer_-3 .caret:not(.invisible)")).toHaveCount(1);
     });
 
-    test("Switching with text selected in a slot cancels the selection and puts the cursor on the heading", async ({page}) => {
+    test("Switching with text selected in a slot cancels the selection and puts the cursor in the new section", async ({page}) => {
         // Select the text of the argument to print in My code ("myString"):
         const slot = page.locator("#frameContainer_-3 .label-slot-input", {hasText: /^myString$/}).last();
         await slot.click();
@@ -324,8 +348,8 @@ def test_a ( ) :
         // No text is selected any more, and no slot is being edited:
         expect(await page.evaluate(() => (document.getSelection()?.toString() ?? ""))).toEqual("");
         expect(await page.evaluate(() => document.activeElement?.classList.contains("label-slot-input") ?? false)).toBe(false);
-        await expect(heading(page).locator(".frame-container-label-span")).toHaveClass(/frame-container-heading-focused/);
-        await expect(page.locator(".caret:not(.invisible)")).toHaveCount(0);
+        await expect(heading(page).locator(".frame-container-label-span")).not.toHaveClass(/frame-container-heading-focused/);
+        await expect(page.locator("#frameContainer_-4 .caret:not(.invisible)")).toHaveCount(1);
     });
 
     test("The heading can't be clicked or triggered while a program is running", async ({page}) => {
@@ -392,10 +416,11 @@ def test_raises ( ) :
         await expect.poll(async () => await page.locator("#peaConsole").inputValue(), {timeout: 120000}).toContain("2 passed, 0 failed");
 
         // An assert doesn't go in an ordinary function in Definitions (the paste is refused). Clicking the heading
-        // goes back to My code, with the cursor on the heading, and one step up from there is Definitions:
+        // goes back to the top of My code, and two steps up from there is Definitions (the heading is in between):
         await heading(page).locator(".frame-container-label-span").click();
         await waitForEditorSettled(page);
         await expect(heading(page)).toContainText("My code");
+        await page.keyboard.press("ArrowUp");
         await page.keyboard.press("ArrowUp");
         await waitForEditorSettled(page);
         await doPagePaste(page, "def helper():\n    assert 1 < 2\n");
@@ -408,6 +433,9 @@ def test_raises ( ) :
         await page.locator("#frameContainer_-3 .frame-container-label-span").click();
         await waitForEditorSettled(page);
         await expect(heading(page)).toContainText("Testing");
+        // (Clicking put the cursor in the Testing code; go up to the heading itself.)
+        await page.keyboard.press("ArrowUp");
+        await waitForEditorSettled(page);
         // Tab opens the frame commands pane at the heading, whose commands are those of the Testing section:
         await page.keyboard.press("Tab");
         await expect(page.locator("#addFramePanel .frame-cmd-container", {hasText: "test function"})).toBeVisible();

@@ -3,13 +3,13 @@
         <!-- The Testing container has no heading of its own: it shares the "My code" heading, which switches between the two -->
         <div v-if="!isTestsFrameContainer" class="frame-container-header" @click.self="onOuterContainerClick">
             <button v-if="!isMainCodeFrameContainer && !isDefsFrameContainer" class="frame-container-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
-            <span :class="{[scssVars.frameContainerLabelSpanClassName]: true,'no-toggle-frame-container-span': isMainCodeFrameContainer || isDefsFrameContainer, 'frame-container-heading-focused': isHeadingFocused, 'frame-container-heading-focused-pane': isHeadingFocused && isFrameCommandsPaneActive, 'frame-container-heading-clickable': isMainCodeFrameContainer && !isPythonExecuting}" @click.self="onLabelClicked">{{headingLabel}}</span>
-            <!-- While the heading has the frame cursor, left/right arrow (or clicking this or the heading) switch between My code and Testing: the double-headed arrow hints at that -->
-            <span v-if="isHeadingFocused" :class="{'frame-container-heading-arrows': true, 'frame-container-heading-arrows-pane': isFrameCommandsPaneActive, 'frame-container-heading-clickable': !isPythonExecuting}" aria-hidden="true" @click.stop="onHeadingClicked">
+            <span :class="{[scssVars.frameContainerLabelSpanClassName]: true,'no-toggle-frame-container-span': isMainCodeFrameContainer || isDefsFrameContainer, 'frame-container-heading-focused': isHeadingFocused, 'frame-container-heading-focused-pane': isHeadingFocused && isFrameCommandsPaneActive, 'frame-container-heading-clickable': isMainCodeFrameContainer && !isPythonExecuting}" :title="isMainCodeFrameContainer && mainHeadingTakesFocus ? $t('appMessage.toggleTestingMode') : undefined" @click.self="onLabelClicked">{{headingLabel}}</span>
+            <!-- Clicking this (or the heading) switches between My code and Testing code, as does left/right arrow while the heading has the frame cursor. It is green, or blue while the heading is focused -->
+            <span v-if="isMainCodeFrameContainer && mainHeadingTakesFocus" :class="{'frame-container-heading-arrows': true, 'frame-container-heading-arrows-focused': isHeadingFocused, 'frame-container-heading-arrows-pane': isHeadingFocused && isFrameCommandsPaneActive, 'frame-container-heading-clickable': !isPythonExecuting}" :title="$t('appMessage.toggleTestingMode')" aria-hidden="true" @click.stop="onHeadingClicked">
                 <svg width="32" height="14" viewBox="0 0 32 14">
-                    <path d="M6 9 Q16 3 26 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    <path d="M1 9 L8 5 L8 13 Z" fill="currentColor"/>
-                    <path d="M31 9 L24 5 L24 13 Z" fill="currentColor"/>
+                    <path d="M7.3 7.6 Q16 2.5 24.7 7.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M1.5 11.5 L9.2 10.5 L5.4 4.7 Z" fill="currentColor"/>
+                    <path d="M30.5 11.5 L22.8 10.5 L26.6 4.7 Z" fill="currentColor"/>
                 </svg>
             </span>
             <ChildrenFrameStateToggle v-if="isDefsFrameContainer" :frames="frames" :parentIsFrozen="false"/>
@@ -238,11 +238,20 @@ export default defineComponent({
             return getFrameUID(frameId);
         },
         
-        // Clicking the "My code"/"Testing" heading (or its arrow) switches between the two, and puts the frame cursor on it.
+        // Clicking the "My code"/"Testing" heading (or its arrow) switches between the two. The frame cursor goes to the
+        // start of the section shown, unless it was already on the heading, in which case it stays there.
         // (Not while a program is running: the store ignores it then, and the heading isn't styled as clickable.)
         onHeadingClicked(): void {
             if (this.isMainCodeFrameContainer && !this.isPythonExecuting) {
+                const wasFocused = this.isHeadingFocused;
                 this.appStore.toggleMainSectionShowsTests();
+                // If the heading didn't have the cursor already, the cursor goes to the start of the section being shown
+                // (once it has re-rendered); otherwise it stays on the heading, which the toggle has already done.
+                if (!wasFocused) {
+                    this.$nextTick(() => {
+                        this.appStore.setCurrentFrame({id: this.headingCaretFrameId, caretPosition: CaretPosition.body});
+                    });
+                }
             }
         },
 
@@ -403,11 +412,17 @@ export default defineComponent({
     outline-color: #b8bac0;
 }
 
-// A double-headed (slightly curved) arrow to the right of the focused heading, pointing left and right (the keys that switch section)
+// A double-headed (slightly curved) arrow to the right of the heading, pointing left and right (the keys that switch section)
 .frame-container-heading-arrows {
     display: flex;
     align-items: center;
     margin-left: 10px;
+    position: relative;
+    top: calc(-0.3em + 0.1rem);
+    color: #274D19;
+}
+
+.frame-container-heading-arrows-focused {
     color: #3467FE;
 }
 
