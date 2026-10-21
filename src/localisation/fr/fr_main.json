@@ -109,6 +109,7 @@
     "cloudDrivePublicShareFailed": "Le projet n'a pas pu être partagé publiquement.<br>(Erreur : {error})",
     "clouldFileRestoreSharingStatus": "Une erreur est survenue lors de la tentative de restauration du partage de ficher dans {drivename}.<br>Détails : {errordetails}",
     "matchFrameWithoutCase": "Un cadre match doit au moins contenir un cadre case.",
+    "tryFrameWithoutExceptOrFinally": "Un cadre try doit avoir un cadre except ou finally.",
     "frameNotAllowedInParent": "Ce type de cadre n'est pas autorisé ici.",
     "fileIO": {
       "openReadingError": "Strype a rencontré une erreur interne lors de l'ouverture du fichier (problème de lecture du contenu).",

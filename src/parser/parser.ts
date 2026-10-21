@@ -1,5 +1,5 @@
 import Compiler from "@/compiler/compiler";
-import {hasEditorCodeErrors, trimmedKeywordOperators} from "@/helpers/editor";
+import {hasNonRuntimeCodeError, trimmedKeywordOperators} from "@/helpers/editor";
 import { UNARY_PREFIX_OPERATORS } from "@/helpers/operatorPrecedence";
 import { generateFlatSlotBases, getParentOrJointParent, retrieveSlotByPredicate } from "@/helpers/storeMethods";
 import i18n from "@/i18n";
@@ -34,7 +34,7 @@ export function parseCodeAndGetParseElements(requireCompilation: boolean, destin
     const parser = new Parser(false, destination);
     const out = parser.parse({});
 
-    const hasErrors = hasEditorCodeErrors();
+    const hasErrors = hasNonRuntimeCodeError();
     const compiler = new Compiler();
     if(requireCompilation){
         compiler.compile(out);
@@ -297,6 +297,7 @@ export default class Parser {
     private saveAsSPY = false;
     private libraries : string[] = [];
     private omitMediaLiterals = false;
+    private soloTryFrameIds : number[] = []; // Enabled try frames with no except/finally, for which we emit the dummy except (see parseBlock)
     
     constructor(ignoreCheckErrors = false, destination: "spy" | "py-export" | "py" = "py", omitMediaLiterals = false) {
         this.ignoreCheckErrors = ignoreCheckErrors;
@@ -355,7 +356,7 @@ export default class Parser {
             )
             +
             ((block.frameType.type == AllFrameTypesIdentifier.try && (useStore().getJointFramesForFrameId(block.id)?.filter((f) => !f.isDisabled).length ?? 0) == 0)
-                ? indentation + "except " + STRYPE_DUMMY_FIELD + ":\n" + indentation + "    pass\n" : "") +
+                ? (!block.isDisabled && !this.saveAsSPY && this.soloTryFrameIds.push(block.id), "") + indentation + "except " + STRYPE_DUMMY_FIELD + ":\n" + indentation + "    pass\n" : "") +
             this.parseFrames(
                 useStore().getJointFramesForFrameId(block.id),
                 insideAClass,
@@ -691,6 +692,12 @@ export default class Parser {
         if(inputCode.trim().length == 0){
             return i18n.global.t("appMessage.emptyCodeError");
         }
+
+        // A try with no except/finally is only valid in Strype (it is saved with a dummy except), not in Python,
+        // so we show an error on the frame(s) (this also stops the code being run or exported):
+        this.soloTryFrameIds.forEach((frameId) => {
+            useStore().setFrameErroneous(frameId, i18n.global.t("errorMessage.tryFrameWithoutExceptOrFinally"));
+        });
 
         const errors = this.getErrors(inputCode);
         let errorString = "";
