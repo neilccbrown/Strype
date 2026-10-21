@@ -351,7 +351,8 @@
     "alpha": "Alpha"
   },
   "book": {
-    "dialogTitle": "Manuel Strype"
+    "dialogTitle": "Manuel Strype",
+    "noProjects": "Ce chapitre n'a pas de projets associés"
   },
   "demos": {
     "dialogTitle": "Exemples de programmes",
