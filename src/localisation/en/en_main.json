@@ -377,7 +377,8 @@
     "alpha": "Alpha"
   },
   "book": {
-    "dialogTitle": "Strype textbook"
+    "dialogTitle": "Strype textbook",
+    "noProjects": "This chapter has no associated projects"
   },
   "demos": {
     "dialogTitle": "Example programs",
