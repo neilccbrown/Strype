@@ -1,0 +1,15 @@
+- file: haunted-mansion.spy
+  image: haunted-mansion.png
+  description: A starter for a text-based adventure game
+
+- file: haunted-mansion-v2.spy
+  image: haunted-mansion.png
+  description: Second version of the adventure game
+
+- file: haunted-mansion-v3.spy
+  image: haunted-mansion.png
+  description: This version of the game adds images and sounds
+
+- file: adventure.spy
+  image: adventure.png
+  description: An framework for a graphical adventure game with keyboard control
