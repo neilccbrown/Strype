@@ -11,8 +11,8 @@ import { nextTick } from "vue";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import { debounce } from "lodash";
 // #v-endif
-import {toUnicodeEscapes} from "@/parser/parser";
-import { fromUnicodeEscapes, pasteMixedPython } from "@/helpers/pythonToFrames";
+import { pasteMixedPython } from "@/helpers/pythonToFrames";
+import { decodeFieldPlaceholders, escapeForFieldPlaceholder, FIELD_PLACEHOLDER_END, FIELD_PLACEHOLDER_START, toUnicodeEscapes } from "@/helpers/pythonSlotsShared";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { eventBus } from "@/helpers/appContext";
 import { isHexColourLiteral } from "@/helpers/colour";
@@ -1500,9 +1500,6 @@ export const getSameLevelAncestorIndex = (slotId: string, sameLevelThanSlotParen
     return parseInt(slotId.split(",")[ancestorLevels -1]);
 };
 
-// We need to replace fields with placeholders to make parsing of brackets easier:
-const FIELD_PLACEHOLDER_START = "$strype_field_placeholder";
-const FIELD_PLACEHOLDER_END = "_strype_field_placeholder$";
 function removePossibleFieldPlaceholderFromStart(s: string) : string {
     if (s.startsWith(FIELD_PLACEHOLDER_START)) {
         const end = s.indexOf(FIELD_PLACEHOLDER_END);
@@ -1515,23 +1512,7 @@ function removePossibleFieldPlaceholderFromStart(s: string) : string {
 export function transformFieldPlaceholders(input: string) : string {
     input = input.replaceAll(STRING_SINGLEQUOTE_PLACERHOLDER, "'");
     input = input.replaceAll(STRING_DOUBLEQUOTE_PLACERHOLDER, "\"");
-    
-    const startIndex = input.indexOf(FIELD_PLACEHOLDER_START);
-    if (startIndex === -1) {
-        return input; // No more placeholders
-    }
-    const endIndex = input.indexOf(FIELD_PLACEHOLDER_END, startIndex + FIELD_PLACEHOLDER_START.length);
-    if (endIndex === -1) {
-        return input; // No matching end marker; treat as finished
-    }
-    const decoded = fromUnicodeEscapes(input.substring(startIndex + FIELD_PLACEHOLDER_START.length, endIndex));
-    const newInput =
-        input.substring(0, startIndex) +
-        decoded +
-        input.substring(endIndex + FIELD_PLACEHOLDER_END.length);
-
-    // Recurse to handle more placeholders:
-    return transformFieldPlaceholders(newInput);
+    return decodeFieldPlaceholders(input);
 }
 
 function splitAtCommas<X>(operands: X[], operators: BaseSlot[]): { operands: X[], operators: string[] }[] {
@@ -1701,7 +1682,7 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
         // so if we fed the parser only "-3", it would see it as an unitary sign and not an operator.
         // So for the parser to "see" the bracket part we will use a placeholder token that will be removed when aggrating the slots. 
         let afterBracketCode = (closingBracketPos > -1) ? codeLiteral.substring(closingBracketPos + 1) : "";
-        const bracketPlaceholder = FIELD_PLACEHOLDER_START + toUnicodeEscapes(beforeBracketCode + openingBracketValue + innerBracketCode + closingBracketValue) + FIELD_PLACEHOLDER_END;
+        const bracketPlaceholder = FIELD_PLACEHOLDER_START + escapeForFieldPlaceholder(beforeBracketCode + openingBracketValue + innerBracketCode + closingBracketValue) + FIELD_PLACEHOLDER_END;
         if(afterBracketCode.length > 0){
             afterBracketCode = bracketPlaceholder + afterBracketCode;
         }

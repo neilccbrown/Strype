@@ -10,6 +10,7 @@ import {AppSPYFullPrefix} from "@/helpers/appContext";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import { actOnGraphicsImport } from "@/helpers/editor";
 // #v-endif
+import {toUnicodeEscapes} from "@/helpers/pythonSlotsShared";
 import {STRYPE_DUMMY_FIELD, STRYPE_EXPRESSION_BLANK, STRYPE_INVALID_FSTRING_WRAPPER, STRYPE_INVALID_OP, STRYPE_INVALID_OPS_WRAPPER, STRYPE_INVALID_SLOT, escapeForPlainStringLiteral} from "@/helpers/pythonToFrames";
 
 const INDENT = "    ";
@@ -79,15 +80,6 @@ function isValidPythonNumber(str: string): boolean {
         floatNum.test(trimmed) ||
         complexNum.test(trimmed)
     ) && !trimmed.endsWith("_");
-}
-
-export function toUnicodeEscapes(input: string): string {
-    return Array.from(input)
-        .map((char) => {
-            const code = char.codePointAt(0) ?? 0;
-            return "u" + code.toString(16).padStart(4, "0");
-        })
-        .join("");
 }
 
 function interleave<T>(a: T[], b: T[]): T[] {
