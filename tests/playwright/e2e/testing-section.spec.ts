@@ -141,6 +141,8 @@ test.describe("Testing section", () => {
     });
 
     test("Test functions show a tick or a cross after a run, and a failed assert shows a cross", async ({page}) => {
+        // A wide window, so that the Run tests button's outcome badge has room to show its "Pass"/"Fail" text too (when narrow, just its tick or cross is shown):
+        await page.setViewportSize({width: 1800, height: 900});
         await loadContent(page, `#(=> Strype:1:std
 #(=> Section:Imports
 #(=> Section:Definitions
@@ -182,6 +184,16 @@ def test_errors ( ) :
         // The badge is a rounded box:
         expect(parseFloat(await outcomeIcon(0).evaluate((el) => getComputedStyle(el).borderTopLeftRadius))).toBeGreaterThan(3);
 
+        // The overall outcome of the run (some tests failed) is shown to the left of the Run tests button, when there's room:
+        const overallSlot = page.locator(".pea-test-outcome-slot");
+        const overallIcon = overallSlot.locator(".pea-test-outcome-icon");
+        const overallText = overallSlot.locator(".pea-test-outcome-text");
+        await expect(overallText).toHaveText("Fail");
+        await expect(overallIcon.locator("svg path")).toHaveAttribute("d", /M8 2 L2 8/); // the cross (a tick would be a different path)
+        await expect(overallSlot).toHaveClass(/pea-test-outcome-failed/);
+        await expect(overallIcon).toHaveCSS("background-color", "rgb(201, 76, 76)");
+        expect(await overallIcon.evaluate((icon, button) => icon.getBoundingClientRect().right <= button.getBoundingClientRect().left, await runButton(page).elementHandle())).toBe(true);
+
         // A failed assert statement is marked with a cross, whereas an error from evaluating it (the NameError) keeps the triangle:
         await expect(asserts.nth(0).locator(".err-icon")).toHaveCount(0);
         await expect(asserts.nth(1).locator(".err-icon")).toHaveClass(/fa-times/);
@@ -197,6 +209,16 @@ def test_errors ( ) :
         await expect(outcomeIcon(0)).toHaveClass(/test-outcome-stale/);
         await expect(outcomeIcon(1)).toHaveClass(/test-outcome-stale/);
         await expect(outcomeIcon(0)).not.toHaveClass(/test-outcome-passed/);
+        await expect(overallSlot).toHaveClass(/pea-test-outcome-stale/);
+        await expect(overallIcon).toHaveCSS("background-color", "rgb(112, 110, 110)");
+
+        // In a narrow window there is only room for the icon, which keeps its width and fills the height of the slot, so that
+        // no part of the word, wrapped out of view, is seen beneath it:
+        const iconWidthWhenWide = (await overallIcon.boundingBox())?.width;
+        await page.setViewportSize({width: 1150, height: 900});
+        await expect.poll(async () => await overallText.evaluate((text) => text.getBoundingClientRect().top >= (text.parentElement?.getBoundingClientRect().bottom ?? 0) - 0.5)).toBe(true);
+        expect(await overallIcon.evaluate((icon) => Math.abs(icon.getBoundingClientRect().height - (icon.parentElement?.getBoundingClientRect().height ?? -1)) < 0.5)).toBe(true);
+        expect(Math.abs(((await overallIcon.boundingBox())?.width ?? 0) - (iconWidthWhenWide ?? -1))).toBeLessThan(0.5);
     });
 
     test("The Testing Your Functions demo project opens showing its tests, which pass, and its program runs", async ({page}) => {

@@ -18,8 +18,22 @@
                      isFilesAreaShowing) -- it's always reachable as its own tab regardless of layout mode. -->
                 <BTab :button-id="filesTabId" :title="'📁 '+$t('PEA.fileSystem')" title-link-class="pea-display-tab"></BTab>
             </BTabs>
-            <div class="flex-padding"/>            
-            <div class="flex-padding"/>
+            <!-- Takes all the free space between the tabs and the Run button. In the tests mode, it holds the overall outcome of the last test run:
+                 a green "Pass" or red "Fail" pill, grey once the code has been edited since. When the slot is too narrow for the word, only the
+                 tick or cross is shown, and the slot always has room for at least that (see the CSS for .pea-test-outcome-slot). -->
+            <div :class="{'pea-test-outcome-slot': true, 'pea-test-outcome-slot-reserved': isRunButtonForTests, 'pea-test-outcome-passed': isRunButtonForTests && lastTestRunOutcome == 'passed' && !isLastTestRunStale, 'pea-test-outcome-failed': isRunButtonForTests && lastTestRunOutcome == 'failed' && !isLastTestRunStale, 'pea-test-outcome-stale': isRunButtonForTests && !!lastTestRunOutcome && isLastTestRunStale}">
+                <template v-if="isRunButtonForTests && lastTestRunOutcome">
+                    <!-- The icon comes first in the DOM (but is displayed last, see the CSS) so that it is the text that wraps out of view first -->
+                    <span class="pea-test-outcome-icon" :title="$t(lastTestRunOutcome == 'passed' ? 'appMessage.testsPassed' : 'appMessage.testsFailed')">
+                        <!-- Drawn rather than a text symbol (✔/✖), so that it is exactly centred whatever font the browser would use for one -->
+                        <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path v-if="lastTestRunOutcome == 'passed'" d="M1.2 5.4 L3.9 8 L8.8 2"/>
+                            <path v-else d="M2 2 L8 8 M8 2 L2 8"/>
+                        </svg>
+                    </span>
+                    <span class="pea-test-outcome-text" :title="$t(lastTestRunOutcome == 'passed' ? 'appMessage.testsPassed' : 'appMessage.testsFailed')">{{ $t(lastTestRunOutcome == 'passed' ? 'appMessage.testPassBadge' : 'appMessage.testFailBadge') }}</span>
+                </template>
+            </div>
             <button id="runButton" ref="runButton" class="pea-controls-button" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : (isRunButtonForTests ? 'appMessage.runTestsButton' : 'PEA.run')) + ' (Ctrl+Enter)'" :class="{highlighted: highlightPythonRunningState}" :disabled="!isPythonWorkerReady">
                 <img v-if="!isPythonExecuting" :src="faviconURL" class="pea-play-img">
                 <span v-else class="python-running">{{runCodeButtonIconText}}</span>
@@ -498,6 +512,15 @@ export default defineComponent({
             return this.appStore.mainSectionShowsTests;
         },
 
+        lastTestRunOutcome(): "passed" | "failed" | undefined {
+            return this.appStore.lastTestRunOutcome;
+        },
+
+        // The outcome of the last test run is out of date once the editor has been changed since
+        isLastTestRunStale(): boolean {
+            return this.appStore.editorLastModificationAt > this.appStore.lastTestRunAt;
+        },
+
         runCodeButtonLabel(): string {
             if (!isPythonWorkerReady.value) {
                 return " " + this.$t("PEA.loading");
@@ -963,6 +986,7 @@ export default defineComponent({
             this.appStore.wasLastRuntimeErrorFrameId = undefined;
             clearAllRuntimeErrors();
             clearAllTestOutcomes();
+            this.appStore.lastTestRunOutcome = undefined;
 
             // Separate Parser instances: Parser.parse() leaves internal state (e.g. exitFlag) set after
             // reaching a stop boundary, which would corrupt a second parse() call reusing the same instance.
@@ -1027,6 +1051,8 @@ export default defineComponent({
                 let output: string;
                 if (results.collectionError) {
                     output = `Could not run tests:\n${results.collectionError}\n`;
+                    this.appStore.lastTestRunOutcome = "failed";
+                    this.appStore.lastTestRunAt = Date.now();
                 }
                 else if (results.results.length == 0) {
                     output = "No tests found in the Testing section.\n";
@@ -1108,6 +1134,7 @@ export default defineComponent({
                     frame.testOutcome = outcomes.every((r) => r.outcome == "passed") ? "passed" : "failed";
                 }
             }
+            store.lastTestRunOutcome = results.every((r) => r.outcome == "passed") ? "passed" : "failed";
             store.lastTestRunAt = Date.now();
         },
 
@@ -1729,6 +1756,68 @@ export default defineComponent({
         width:100%;
         background-color: $pea-outer-background-color;
         align-items: center;
+    }
+
+    // The free space between the tabs and the Run button, which holds the overall outcome of the last test run: a pill
+    // with white text, made of two adjoining parts, the tick or cross (fixed size) and the word "Pass"/"Fail". The slot is a
+    // wrapping row, fixed to one line high with the overflow hidden, and reversed: the icon is first in the DOM so is placed
+    // at the end of the line, with the text before it when there is room for both. Otherwise the text wraps onto a second
+    // line and is clipped, leaving just the icon, which keeps its own size. The tick or cross is an
+    // SVG in the text colour, centred in the icon part.
+    // The same look as the badge in a test function's header (see FrameHeader.vue), but with its own class names as these
+    // styles are global.
+    .pea-test-outcome-slot {
+        flex: 1 1 0;
+        min-width: 0;
+        display: flex;
+        flex-direction: row-reverse;
+        flex-wrap: wrap;
+        align-content: flex-start;
+        overflow: hidden;
+        height: 1.6em;
+        font-size: 0.85em;
+        font-weight: 600;
+        line-height: 1.6;
+        color: #fff;
+        white-space: nowrap;
+        user-select: none;
+    }
+    // In the tests mode we always keep enough room for the icon part:
+    .pea-test-outcome-slot-reserved {
+        min-width: 2.2em;
+    }
+    .pea-test-outcome-icon, .pea-test-outcome-text {
+        background-color: #706e6e; // grey: out of date, as the code has been edited since the tests were run
+    }
+    .pea-test-outcome-icon {
+        box-sizing: border-box;
+        width: 2.2em;
+        height: 1.6em; // the full height of the pill, and of the slot: the wrapped text part must not show beneath it
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.6em;
+
+        svg {
+            width: 1em;
+            height: 1em;
+        }
+    }
+    // The text part overlaps the icon by 0.6em (negative margin), in front of it, so that the rounded left end of the icon isn't
+    // seen as a gap between the two parts; they are the same colour so look like one pill. The overlap is only over the empty
+    // space to the left of the icon's symbol (which is centred in its 2.2em, so starts about 0.6em in), and the padding after
+    // the text leaves about 0.3em between the text and the symbol:
+    .pea-test-outcome-text {
+        position: relative; // to be in front of the icon part, which it overlaps
+        padding: 0 0.3em 0 0.6em;
+        margin-right: -0.6em;
+        border-radius: 0.6em 0 0 0.6em;
+    }
+    .pea-test-outcome-passed .pea-test-outcome-icon, .pea-test-outcome-passed .pea-test-outcome-text {
+        background-color: #2a8a3a;
+    }
+    .pea-test-outcome-failed .pea-test-outcome-icon, .pea-test-outcome-failed .pea-test-outcome-text {
+        background-color: #c94c4c;
     }
 
     .pea-controls-button {

@@ -147,6 +147,11 @@ export const useStore = defineStore("app", {
             // has been modified since then (see editorLastModificationAt)
             lastTestRunAt: 0,
 
+            // How the last test run went overall (shown next to the "Run tests" button): "passed" if there was at least
+            // one test and all of them passed, "failed" otherwise (including when the tests couldn't be collected).
+            // Undefined before any run, while one is in progress, and when no tests were found.
+            lastTestRunOutcome: undefined as "passed" | "failed" | undefined,
+
             // The third section of the editor shows either the main code ("My code") or the testing code
             // ("Testing"); the "My code" heading toggles between the two (see toggleMainSectionShowsTests()).
             mainSectionShowsTests: false,

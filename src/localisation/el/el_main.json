@@ -36,6 +36,8 @@
     "testFailed": "Αυτή η δοκιμή απέτυχε",
     "testPassBadge": "Επιτυχία",
     "testFailBadge": "Αποτυχία",
+    "testsPassed": "Όλες οι δοκιμές πέρασαν",
+    "testsFailed": "Ορισμένες δοκιμές απέτυχαν",
     "preCompiledErrorNeedFix": "Διορθώστε παρώντα σφάλματα πρώτα.",
     "noWebUSB": "Ο παρών περιηγητής δεν θποστηρίζει συνδέσεις μέσω webUSB. Παρακαλώ δοκιμάστε με Chrome ή Edge.",
     "emptyCodeError": "The code cannot be empty."

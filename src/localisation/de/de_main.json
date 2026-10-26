@@ -86,6 +86,8 @@
     "testFailed": "Dieser Test ist fehlgeschlagen",
     "testPassBadge": "Bestanden",
     "testFailBadge": "Fehler",
+    "testsPassed": "Alle Tests waren erfolgreich",
+    "testsFailed": "Einige Tests sind fehlgeschlagen",
     "preCompiledErrorNeedFix": "Bitte erst die existierenden Fehler beheben.",
     "noWebUSB": "Dieser Browser unterstützt keine webUSB-Verbindungen. Bitte benutze einen anderen Browser (z.B. Google Chrome).",
     "emptyCodeError": "Dieser Code darf nicht leer sein.",

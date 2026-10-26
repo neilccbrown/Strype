@@ -87,6 +87,8 @@
     "testFailed": "Esta prueba ha fallado",
     "testPassBadge": "Pasa",
     "testFailBadge": "Falla",
+    "testsPassed": "Todas las pruebas han pasado",
+    "testsFailed": "Algunas pruebas han fallado",
     "preCompiledErrorNeedFix": "Primero corrija los erroes existentes.",
     "noWebUSB": "Este navegador no admite conexiones webUSB. Por favor utilice otro navegador (como Google Chrome).",
     "emptyCodeError": "El códdigo no puede estar vacío.",
