@@ -103,9 +103,9 @@ import CaretContainer from "@/components/CaretContainer.vue";
 import { useStore } from "@/store/store";
 import FrameBody from "@/components/FrameBody.vue";
 import JointFrames from "@/components/JointFrames.vue";
-import { AllFrameTypesIdentifier, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CoordPosition, CurrentFrame, DefaultFramesDefinition, FrameContextMenuActionName, FrozenState, isFieldBaseSlot, NavigationPosition, Position, PythonExecRunningState, StrypeContextMenuItem } from "@/types/types";
-import { calculateNextCollapseState, frameOrChildHasErrors, getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getNextSibling, getOutmostDisabledAncestorFrameId, getFrameSectionIdFromFrameId, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
-import { copyFramesToClipboard, copyFrameTextReadyForClipboard, CustomEventTypes, getCaretContainerRef, getFrameBodyRef, getFrameBodyUID, getFrameHeaderUID, getFrameLabelSlotsStructureUID, getFrameUID, getHTML2CanvasFramesSelectionCropOptions, getJointFramesRef, isIdAFrameId, notifyDragStarted, parseFrameUID, setContextMenuEventClientXY, testFunctionBgColour, testFunctionNamePrefix } from "@/helpers/editor";
+import { AllFrameTypesIdentifier, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CoordPosition, CurrentFrame, DefaultFramesDefinition, FrameContextMenuActionName, FrozenState, NavigationPosition, Position, PythonExecRunningState, StrypeContextMenuItem } from "@/types/types";
+import { calculateNextCollapseState, frameOrChildHasErrors, getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getNextSibling, getOutmostDisabledAncestorFrameId, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent, isTestFunctionFrame } from "@/helpers/storeMethods";
+import { copyFramesToClipboard, copyFrameTextReadyForClipboard, CustomEventTypes, getCaretContainerRef, getFrameBodyRef, getFrameBodyUID, getFrameHeaderUID, getFrameLabelSlotsStructureUID, getFrameUID, getHTML2CanvasFramesSelectionCropOptions, getJointFramesRef, isIdAFrameId, notifyDragStarted, parseFrameUID, setContextMenuEventClientXY, testFunctionBgColour } from "@/helpers/editor";
 import { pasteMixedPython } from "@/helpers/pythonToFrames";
 import { mapStores } from "pinia";
 import { BPopover, useToggle } from "bootstrap-vue-next";
@@ -219,11 +219,7 @@ export default defineComponent({
 
         // A function definition in the Testing section whose name starts with "test_" (i.e. one pytest will run)
         isTestFunctionDef(): boolean {
-            if(this.frameType.type !== AllFrameTypesIdentifier.funcdef || getFrameSectionIdFromFrameId(this.frameId) != this.appStore.getTestsFrameContainerId){
-                return false;
-            }
-            const nameSlot = this.appStore.frameObjects[this.frameId].labelSlotsDict[0]?.slotStructures.fields[0];
-            return !!nameSlot && isFieldBaseSlot(nameSlot) && (nameSlot as BaseSlot).code.startsWith(testFunctionNamePrefix);
+            return isTestFunctionFrame(this.appStore.frameObjects[this.frameId]);
         },
 
         frameStyle(): Record<string, string> {

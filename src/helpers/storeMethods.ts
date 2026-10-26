@@ -906,6 +906,33 @@ export const isContainedInFrame = function (currFrameId: number, caretPosition: 
     return isAncestorTypeFound;
 };
 
+// Name prefix that marks a function definition in the Testing section as a test (pytest's convention).
+export const testFunctionNamePrefix = "test_";
+
+// Whether the frame is a function definition in the Testing section whose name starts with the test prefix (i.e. one pytest will run)
+export const isTestFunctionFrame = function (frame: FrameObject): boolean {
+    if (frame.frameType.type !== AllFrameTypesIdentifier.funcdef || getFrameSectionIdFromFrameId(frame.id) != useStore().getTestsFrameContainerId) {
+        return false;
+    }
+    const nameSlot = frame.labelSlotsDict[0]?.slotStructures.fields[0];
+    return !!nameSlot && isFieldBaseSlot(nameSlot) && (nameSlot as BaseSlot).code.startsWith(testFunctionNamePrefix);
+};
+
+// Whether the caret position is inside a test function (see isTestFunctionFrame())
+export const isInsideTestFunction = function (frameId: number, caretPosition: CaretPosition): boolean {
+    let frameToCheckId = (caretPosition === CaretPosition.body || caretPosition === CaretPosition.header)
+        ? frameId
+        : getParentId(useStore().frameObjects[frameId]);
+    while (frameToCheckId > 0) {
+        const frame = useStore().frameObjects[frameToCheckId];
+        if (isTestFunctionFrame(frame)) {
+            return true;
+        }
+        frameToCheckId = getParentId(frame);
+    }
+    return false;
+};
+
 // return/global/break/continue/assert are the only frame types whose availability at a given position isn't
 // fully captured by a plain forbiddenChildrenTypes check -- they're additionally gated by an ancestor
 // container (the Defs section, a case block, or a for/while loop). Used both to build the frame
@@ -923,8 +950,8 @@ export const isAncestorGatedFrameTypeAllowed = function (frameId: number, caretP
     case AllFrameTypesIdentifier.continue:
         return isContainedInFrame(frameId, caretPosition, [AllFrameTypesIdentifier.for, AllFrameTypesIdentifier.while]);
     case AllFrameTypesIdentifier.assert:
-        // Anywhere in the Testing section (inside test functions, or at its top level), and nowhere else:
-        return TestingSectionAvailable && getFrameSectionIdFromFrameId(frameId) == useStore().getTestsFrameContainerId;
+        // Only inside a test function (a function named test_...) in the Testing section, and nowhere else:
+        return TestingSectionAvailable && isInsideTestFunction(frameId, caretPosition);
     default:
         return true;
     }

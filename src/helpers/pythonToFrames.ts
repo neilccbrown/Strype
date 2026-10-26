@@ -1,6 +1,6 @@
 import { AllFrameTypesIdentifier, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CurrentFrame, EditorFrameObjects, FrameObject, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, LabelSlotsContent, SlotsStructure, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrozenState, TestsContainerDefinition } from "@/types/types";
 import {useStore} from "@/store/store";
-import {checkCodeErrors, getFrameSectionIdFromFrameId} from "@/helpers/storeMethods";
+import {checkCodeErrors, getFrameSectionIdFromFrameId, testFunctionNamePrefix} from "@/helpers/storeMethods";
 import {CustomEventTypes, getLastCaretPosInsideParent} from "@/helpers/editor";
 import i18n from "@/i18n";
 import {cloneDeep, escapeRegExp} from "lodash";
@@ -1145,11 +1145,13 @@ function canPastePythonAtStrypeLocation(currentStrypeLocation : STRYPE_LOCATION,
         frames = removeTopLevelBlankFrames(frames);
         return !topLevelCopiedFrames.some((frame) => ![AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.library, AllFrameTypesIdentifier.comment, AllFrameTypesIdentifier.blank].includes(frame.frameType.type));
     case STRYPE_LOCATION.TESTS_SECTION:
-        // Top-level frames must be ones the Testing section itself allows (function definitions, assert, a
-        // few module-level statements); anything nested follows the rules for being inside a function:
+        // Top-level frames must be ones the Testing section itself allows (function definitions, and what My code
+        // allows apart from assert); anything nested follows the rules for being inside a function, where an
+        // assert is only allowed inside a test function:
         return !copiedPythonToFrames.some((frame) => (topLevelCopiedFrameIds.includes(frame.id))
             ? TestsContainerDefinition.forbiddenChildrenTypes.includes(frame.frameType.type)
-            : [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.classdef, AllFrameTypesIdentifier.funcdef].includes(frame.frameType.type));
+            : [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.classdef, AllFrameTypesIdentifier.funcdef].includes(frame.frameType.type)
+                || (frame.frameType.type == AllFrameTypesIdentifier.assert && !isInsideCopiedTestFunction(frame, frames)));
     case STRYPE_LOCATION.PROJECT_DOC_SECTION:
         frames = removeTopLevelBlankFrames(frames);
         // Given we transform top comment, shouldn't be anything left:
@@ -1158,6 +1160,19 @@ function canPastePythonAtStrypeLocation(currentStrypeLocation : STRYPE_LOCATION,
         // We shouldn't reach this but for safety we return false
         return false;
     }
+}
+
+// Whether a copied frame is inside a copied function definition named as a test (see testFunctionNamePrefix)
+function isInsideCopiedTestFunction(frame: FrameObject, frames: CopiedFrames): boolean {
+    let parent = frames.frames[(frame.jointParentId > 0) ? frame.jointParentId : frame.parentId];
+    while (parent) {
+        if (parent.frameType.type == AllFrameTypesIdentifier.funcdef) {
+            const nameSlot = parent.labelSlotsDict[0]?.slotStructures.fields[0];
+            return !!nameSlot && isFieldBaseSlot(nameSlot) && (nameSlot as BaseSlot).code.startsWith(testFunctionNamePrefix);
+        }
+        parent = frames.frames[(parent.jointParentId > 0) ? parent.jointParentId : parent.parentId];
+    }
+    return false;
 }
 
 // Note: modifies in-place, but for convenience returns its parameter

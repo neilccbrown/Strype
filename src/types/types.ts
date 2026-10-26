@@ -521,28 +521,6 @@ export const MainFramesContainerDefinition: FramesDefinitions = {
     colour: "#BBC6B6",
 };
 
-// Statements allowed directly inside the Testing section (i.e. outside any test function). funcdef
-// can't nest inside if/for/while/match anywhere in Strype (see BlockDefinition.forbiddenChildrenTypes),
-// which rules out the main reason those would otherwise be useful here (conditionally/dynamically
-// defining test_ functions) -- so only statements with a standalone module-level purpose are kept:
-// funccall/varassign/comment/blank for ordinary top-level code and shared test data, and try/with
-// for guarding a shared setup resource, and raise for a deliberate "stop collecting this file"
-// bail-out. "global" is a no-op at module level and "return" is a syntax error outside a function,
-// so neither is included despite being in StandardFrameTypesIdentifiers. Imports are deliberately
-// not allowed here either -- there are no test-only imports, the generated test file instead gets
-// the project's own Imports section copied in (see parser.ts's parseJustTests()/parseJustImports()
-// and executeTests() in workers/python-execution.ts), so add an import there as usual.
-const TestsAllowedStatementTypes: string[] = [
-    StandardFrameTypesIdentifiers.funccall,
-    StandardFrameTypesIdentifiers.blank,
-    StandardFrameTypesIdentifiers.comment,
-    StandardFrameTypesIdentifiers.varassign,
-    StandardFrameTypesIdentifiers.try,
-    StandardFrameTypesIdentifiers.with,
-    StandardFrameTypesIdentifiers.raise,
-    StandardFrameTypesIdentifiers.assert,
-];
-
 export const TestsContainerDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: ContainerTypesIdentifiers.testsContainer,
@@ -550,9 +528,13 @@ export const TestsContainerDefinition: FramesDefinitions = {
         { label: i18n.global.t("appMessage.testsContainer"), showSlots: false, defaultText: "" },
     ],
     allowedCollapsedStates: [CollapsedState.FULLY_VISIBLE, CollapsedState.ONLY_HEADER_VISIBLE],
-    forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
-        .filter((frameTypeDef: string) => !TestsAllowedStatementTypes.includes(frameTypeDef)
-            && frameTypeDef !== DefIdentifiers.funcdef),
+    // The Testing section takes whatever "My code" does, plus function definitions (but not classes). Assert is
+    // never allowed directly here: it is only allowed inside a test function (see isAncestorGatedFrameTypeAllowed()).
+    // Imports are not allowed either: the generated test file gets the project's own Imports section copied in
+    // (see parser.ts's parseJustTests()/parseJustImports() and executeTests() in workers/python-execution.ts).
+    forbiddenChildrenTypes: MainFramesContainerDefinition.forbiddenChildrenTypes
+        .filter((frameTypeDef: string) => frameTypeDef !== DefIdentifiers.funcdef)
+        .concat([AllFrameTypesIdentifier.assert]),
     colour: "#BBC6B6",
 };
 

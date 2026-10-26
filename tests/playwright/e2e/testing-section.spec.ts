@@ -597,7 +597,7 @@ def test_a ( ) :
         await expect(funcDefFrame).not.toHaveCSS("background-color", "rgb(230, 210, 181)");
     });
 
-    test("Assert frame is available at the top level of the Testing section, but not in other sections", async ({page}) => {
+    test("Assert frame is only available inside a test function, not at the top level of Testing or in other sections", async ({page}) => {
         const assertFrames = page.locator(".frame-div[data-frameType='assert']");
         await expect(assertFrames).toHaveCount(0);
 
@@ -610,11 +610,21 @@ def test_a ( ) :
 
         await enterTestingSection(page);
 
-        // But available in the Testing section, even outside any function:
+        // Nor at the top level of the Testing section:
         await pressFrameShortcut(page, "k");
         await waitForEditorSettled(page);
-        await expect(assertFrames).toHaveCount(1);
-        await expect(page.locator("#frameContainer_-4 .frame-div[data-frameType='assert']")).toHaveCount(1);
+        await expect(assertFrames).toHaveCount(0);
+        await page.keyboard.press("Escape");
+        await waitForEditorSettled(page);
+
+        // But the other frames of My code are, such as a while loop, though not a class:
+        await pressFrameShortcut(page, "w");
+        await waitForEditorSettled(page);
+        await expect(page.locator("#frameContainer_-4 .frame-div[data-frameType='while']")).toHaveCount(1);
+        await page.keyboard.press("Escape");
+        await pressFrameShortcut(page, "c");
+        await waitForEditorSettled(page);
+        await expect(page.locator("#frameContainer_-4 .frame-div[data-frameType='classdef']")).toHaveCount(0);
     });
 
     test("Assert frame can be used inside a test function", async ({page}) => {
