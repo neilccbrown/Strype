@@ -1539,6 +1539,10 @@ export function pasteMixedPython(completeSource: string, at: CurrentFrame, clear
         else if (curLocation == STRYPE_LOCATION.IN_FUNCDEF || curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION || isInTestsSection) {
             posAfter = adjusted;
         }
+        else {
+            // The statements went to the top of My code, which isn't showing while the Testing code is:
+            useStore().mainSectionShowsTests = false;
+        }
     }
     // (The micro:bit version has no Testing section, as it has nowhere to run tests, so anything in one is dropped.)
     if (TestingSectionAvailable && testsFrames.frameIds.length > 0) {

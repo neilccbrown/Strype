@@ -493,6 +493,41 @@ def test_raises ( ) :
         await expect(page.locator("#frameContainer_-3 .frame-div[data-frameType='funccall']")).toHaveCount(1);
     });
 
+    test("A frame that moves to My code from another section switches from Testing to My code", async ({page}) => {
+        // Typing "while " in Definitions turns the frame into a while loop, which is moved to My code:
+        await goToTopOfMainCode(page);
+        await switchToTestingFromMain(page);
+        await expect(heading(page).locator(".frame-container-label-span")).toContainText("Testing");
+        await page.keyboard.press("ArrowUp"); // up from the heading to Definitions
+        await waitForEditorSettled(page);
+        await page.keyboard.type("x");
+        await waitForEditorSettled(page);
+        await expect(page.locator("#frameContainer_-2 .frame-div[data-frameType='funccall']")).toHaveCount(1);
+        await page.keyboard.press("Backspace");
+        await page.keyboard.type("while ");
+        await page.keyboard.type("True");
+        await waitForEditorSettled(page);
+        const mainWhile = page.locator("#frameContainer_-3 .frame-div[data-frameType='while']");
+        await expect(mainWhile).toHaveCount(1);
+        // My code is now showing, with the heading's style on its label, and the moved frame can be seen:
+        await expect(heading(page).locator(".frame-container-label-span")).toContainText("My code");
+        await expect(heading(page).locator(".frame-container-heading-inactive")).toContainText("Testing");
+        await expect(page.locator("#frameContainer_-3 .container-frames")).toBeVisible();
+        await expect(page.locator("#frameContainer_-4")).toBeHidden();
+        await expect(mainWhile).toBeVisible();
+
+        // Likewise, pasting statements for My code while the cursor is in Definitions, with Testing showing:
+        await goToTopOfMainCode(page);
+        await switchToTestingFromMain(page);
+        await expect(heading(page).locator(".frame-container-label-span")).toContainText("Testing");
+        await page.keyboard.press("ArrowUp");
+        await waitForEditorSettled(page);
+        await doPagePaste(page, "for i in range(3):\n    print(i)\n");
+        await expect(page.locator("#frameContainer_-3 .frame-div[data-frameType='for']")).toHaveCount(1);
+        await expect(heading(page).locator(".frame-container-label-span")).toContainText("My code");
+        await expect(page.locator("#frameContainer_-4")).toBeHidden();
+    });
+
     test("The frame commands pane offers a new test function in the Testing section only", async ({page}) => {
         // In My code, there is no test function command:
         await page.keyboard.press("Tab");

@@ -900,6 +900,10 @@ export default defineComponent({
             frame.parentId = newParentId;
             // The destination section may be collapsed, and the user needs to see the moved frame:
             this.appStore.frameObjects[getFrameSectionIdFromFrameId(this.frameId)].collapsedState = CollapsedState.FULLY_VISIBLE;
+            // Likewise if it has gone to My code, which isn't showing while the Testing code is:
+            if(getFrameSectionIdFromFrameId(this.frameId) === this.appStore.getMainCodeFrameContainerId){
+                this.appStore.mainSectionShowsTests = false;
+            }
         },
 
         // Computes what a new joint frame could be, and where in its root's jointFrameIds it would
