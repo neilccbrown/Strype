@@ -3,7 +3,9 @@
         <!-- The Testing container has no heading of its own: it shares the "My code" heading, which switches between the two -->
         <div v-if="!isTestsFrameContainer" class="frame-container-header" @click.self="onOuterContainerClick">
             <button v-if="!isMainCodeFrameContainer && !isDefsFrameContainer" class="frame-container-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
-            <span :class="{[scssVars.frameContainerLabelSpanClassName]: true,'no-toggle-frame-container-span': isMainCodeFrameContainer || isDefsFrameContainer, 'frame-container-heading-focused': isHeadingFocused, 'frame-container-heading-focused-pane': isHeadingFocused && isFrameCommandsPaneActive, 'frame-container-heading-clickable': isMainCodeFrameContainer && !isPythonExecuting}" :title="isMainCodeFrameContainer && mainHeadingTakesFocus ? $t('appMessage.toggleTestingMode') : undefined" @click.self="onLabelClicked">{{headingLabel}}</span>
+            <!-- For the "My code" container, this is the "My code" label, always on the left of the arrow. It has the heading's (green, bold) style while My code is showing,
+                 and is dark grey and not bold while Testing is (when the "Testing code" label, on the right of the arrow, has the heading's style instead) -->
+            <span :class="{[scssVars.frameContainerLabelSpanClassName]: !isMainCodeFrameContainer || !isShowingTests, 'frame-container-heading-inactive': isMainCodeFrameContainer && isShowingTests, 'no-toggle-frame-container-span': isMainCodeFrameContainer || isDefsFrameContainer, 'frame-container-heading-focused': isHeadingFocused && !isShowingTests, 'frame-container-heading-focused-pane': isHeadingFocused && !isShowingTests && isFrameCommandsPaneActive, 'frame-container-heading-clickable': isMainCodeFrameContainer && !isPythonExecuting}" :title="isMainCodeFrameContainer && mainHeadingTakesFocus ? $t('appMessage.toggleTestingMode') : undefined" :data-label="containerLabel" @click.self="onLabelClicked">{{containerLabel}}</span>
             <!-- Clicking this (or the heading) switches between My code and Testing code, as does left/right arrow while the heading has the frame cursor. It is green, or blue while the heading is focused -->
             <span v-if="isMainCodeFrameContainer && mainHeadingTakesFocus" :class="{'frame-container-heading-arrows': true, 'frame-container-heading-arrows-focused': isHeadingFocused, 'frame-container-heading-arrows-pane': isHeadingFocused && isFrameCommandsPaneActive, 'frame-container-heading-clickable': !isPythonExecuting}" :title="$t('appMessage.toggleTestingMode')" aria-hidden="true" @click.stop="onHeadingClicked">
                 <svg width="32" height="14" viewBox="0 0 32 14">
@@ -12,6 +14,8 @@
                     <path d="M30.5 11.5 L22.8 10.5 L26.6 4.7 Z" fill="currentColor"/>
                 </svg>
             </span>
+            <!-- The "Testing code" label, always on the right of the arrow: it has the heading's style while Testing is showing, and is dark grey and not bold otherwise -->
+            <span v-if="isMainCodeFrameContainer && mainHeadingTakesFocus" :class="{[scssVars.frameContainerLabelSpanClassName]: isShowingTests, 'frame-container-heading-inactive': !isShowingTests, 'frame-container-heading-second': true, 'no-toggle-frame-container-span': true, 'frame-container-heading-focused': isHeadingFocused && isShowingTests, 'frame-container-heading-focused-pane': isHeadingFocused && isShowingTests && isFrameCommandsPaneActive, 'frame-container-heading-clickable': !isPythonExecuting}" :title="$t('appMessage.toggleTestingMode')" :data-label="testingHeadingLabel" @click.self="onHeadingClicked">{{testingHeadingLabel}}</span>
             <ChildrenFrameStateToggle v-if="isDefsFrameContainer" :frames="frames" :parentIsFrozen="false"/>
         </div>
         <!-- The "My code" header can take the frame cursor, so that up/down arrows stop on it between the definitions and the main code -->
@@ -152,11 +156,9 @@ export default defineComponent({
             return this.appStore.mainSectionShowsTests;
         },
 
-        // The "My code" heading changes to "Testing" while the testing code is what's showing
-        headingLabel(): string {
-            return (this.isMainCodeFrameContainer && this.isShowingTests)
-                ? this.$t("appMessage.testsContainer")
-                : (this.containerLabel ?? "");
+        // The label for the testing code, shown after the "My code" one, with the heading's style while the testing code is what's showing
+        testingHeadingLabel(): string {
+            return this.$t("appMessage.testsContainer");
         },
 
         // Of the main code and the testing code, only one is shown at a time
@@ -428,6 +430,28 @@ export default defineComponent({
 
 .frame-container-heading-arrows-pane {
     color: #b8bac0;
+}
+
+// The label of the section that isn't showing (the "My code" and "Testing code" labels stay where they are, on either side of the arrow)
+.frame-container-heading-inactive {
+    color: #555;
+    font-weight: normal;
+
+    // Takes the width the label would have in bold (with an invisible copy of it, with no height), so that the labels and the arrow
+    // don't move when the two labels swap styles
+    &::after {
+        content: attr(data-label);
+        display: block;
+        height: 0;
+        overflow: hidden;
+        visibility: hidden;
+        font-weight: 600;
+    }
+}
+
+// The "Testing code" label, to the right of the arrow
+.no-toggle-frame-container-span.frame-container-heading-second {
+    margin-left: 10px;
 }
 
 .frame-container-heading-clickable {
