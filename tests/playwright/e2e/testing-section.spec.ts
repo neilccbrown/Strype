@@ -528,6 +528,49 @@ def test_raises ( ) :
         await expect(page.locator("#frameContainer_-4")).toBeHidden();
     });
 
+    test("Typing assert outside a test function moves it into a new test function in the Testing section", async ({page}) => {
+        const testFunctions = page.locator("#frameContainer_-4 .frame-div[data-frameType='funcdef']");
+        const functionName = (index: number) => testFunctions.nth(index).locator(".label-slot-input").first();
+        await goToTopOfMainCode(page);
+        await page.keyboard.type("x");
+        await waitForEditorSettled(page);
+        await page.keyboard.press("Backspace");
+        await page.keyboard.type("assert ");
+        await page.keyboard.type("1 == 1");
+        await waitForEditorSettled(page);
+
+        // Testing is now showing, with a new test function at the top (above the starter one), holding the assert:
+        await expect(heading(page).locator(".frame-container-label-span")).toContainText("Testing");
+        await expect(page.locator("#frameContainer_-3 .frame-div[data-frameType='assert']")).toHaveCount(0);
+        await expect(testFunctions).toHaveCount(2);
+        await expect(functionName(0)).toHaveText("test_1");
+        const newAssert = testFunctions.nth(0).locator(".frame-div[data-frameType='assert']");
+        await expect(newAssert).toHaveCount(1);
+        await expect(newAssert).toBeVisible();
+        await expect(newAssert).toContainText(/1\s*==\s*1/);
+
+        // Again, from My code: the next name is used (test_2), also at the top:
+        await page.locator("#frameContainer_-3 .frame-container-heading-inactive, #frameContainer_-3 .frame-container-label-span").first().click();
+        await waitForEditorSettled(page);
+        await expect(heading(page).locator(".frame-container-label-span")).toContainText("My code");
+        await goToTopOfMainCode(page);
+        await page.keyboard.type("x");
+        await waitForEditorSettled(page);
+        await page.keyboard.press("Backspace");
+        await page.keyboard.type("assert ");
+        await page.keyboard.type("2 == 2");
+        await waitForEditorSettled(page);
+        await expect(heading(page).locator(".frame-container-label-span")).toContainText("Testing");
+        await expect(testFunctions).toHaveCount(3);
+        await expect(functionName(0)).toHaveText("test_2");
+        await expect(functionName(1)).toHaveText("test_1");
+
+        // Typed inside a test function, it just converts there:
+        await page.keyboard.press("Escape");
+        await expect(testFunctions.nth(0).locator(".frame-div[data-frameType='assert']")).toHaveCount(1);
+        await expect(testFunctions).toHaveCount(3);
+    });
+
     test("The frame commands pane offers a new test function in the Testing section only", async ({page}) => {
         // In My code, there is no test function command:
         await page.keyboard.press("Tab");

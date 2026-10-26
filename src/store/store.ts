@@ -1,9 +1,9 @@
 import { nextTick} from "vue";
-import { FrameObject, CollapsedState, CurrentFrame, CaretPosition, FrozenState, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, DefsContainerDefinition, TestsContainerDefinition, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode, SaveRequestReason, RootContainerFrameDefinition, StrypeLayoutDividerSettings, MediaSlot, SlotInfosOptionalMedia, ModifierKeyCode } from "@/types/types";
+import { FrameObject, CollapsedState, CurrentFrame, CaretPosition, FrozenState, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, DefsContainerDefinition, TestsContainerDefinition, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, getFrameDefType, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode, SaveRequestReason, RootContainerFrameDefinition, StrypeLayoutDividerSettings, MediaSlot, SlotInfosOptionalMedia, ModifierKeyCode } from "@/types/types";
 import { getObjectPropertiesDifferences } from "@/helpers/common";
 import { loadPinnedLocalFiles, pinnedLocalFilesStateKey, savePinnedLocalFiles } from "@/helpers/load-save";
 import i18n from "@/i18n";
-import {calculateNextCollapseState, checkCodeErrors, checkStateDataIntegrity, evaluateSlotType, filterAllowedJointChildrenAfter, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getFrameSectionIdFromFrameId, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isAncestorGatedFrameTypeAllowed, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
+import {testFunctionNamePrefix, calculateNextCollapseState, checkCodeErrors, checkStateDataIntegrity, evaluateSlotType, filterAllowedJointChildrenAfter, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getFrameSectionIdFromFrameId, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isAncestorGatedFrameTypeAllowed, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
 import { AppPlatform, AppVersion, eventBus, projectDocumentationFrameId, TestingSectionAvailable } from "@/helpers/appContext";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
@@ -1754,6 +1754,45 @@ export const useStore = defineStore("app", {
             this.mainSectionShowsTests = !this.mainSectionShowsTests;
             // The heading's cursor belongs to whichever of the two sections is showing (see FrameContainer.vue):
             this.setCurrentFrame({id: this.mainSectionShowsTests ? this.getTestsFrameContainerId : this.getMainCodeFrameContainerId, caretPosition: CaretPosition.header});
+        },
+
+        // Adds a new test function (a function definition in the Testing section named test_1, test_2... -- the lowest number
+        // not already used by a function there) at the top of the Testing section, as the "new test function" command does,
+        // and returns its frame id. It has no content yet; the caller is expected to put something in its body.
+        addNewTestFunction(): number {
+            const testsContainer = this.frameObjects[this.getTestsFrameContainerId];
+            const usedNames = new Set(testsContainer.childrenIds
+                .map((frameId) => this.frameObjects[frameId])
+                .filter((frame) => frame.frameType.type == AllFrameTypesIdentifier.funcdef)
+                .map((frame) => frame.labelSlotsDict[0]?.slotStructures.fields[0])
+                .map((nameSlot) => (nameSlot && isFieldBaseSlot(nameSlot)) ? (nameSlot as BaseSlot).code : ""));
+            let testNumber = 1;
+            while (usedNames.has(testFunctionNamePrefix + testNumber)) {
+                testNumber++;
+            }
+            // For safety we make sure the new ID isn't already used (see addFrameWithCommand())
+            let newId = this.nextAvailableId++;
+            while (this.frameObjects[newId] != undefined) {
+                newId++;
+            }
+            const frameType = cloneDeep(getFrameDefType(AllFrameTypesIdentifier.funcdef));
+            const labelSlotsDict: {[index: number]: LabelSlotsContent} = {};
+            frameType.labels.forEach((label, index) => {
+                if (label.showSlots ?? true) {
+                    labelSlotsDict[index] = {shown: !label.hidableLabelSlots, slotStructures: {fields: [{code: ""}], operators: []}};
+                }
+            });
+            (labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code = testFunctionNamePrefix + testNumber;
+            this.frameObjects[newId] = {
+                ...cloneDeep(EmptyFrameObject),
+                frameType: frameType,
+                caretVisibility: CaretPosition.body,
+                id: newId,
+                parentId: testsContainer.id,
+                labelSlotsDict: labelSlotsDict,
+            };
+            testsContainer.childrenIds.splice(0, 0, newId);
+            return newId;
         },
 
         cycleFrameCollapsedState(frameId: number) {

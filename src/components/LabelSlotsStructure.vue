@@ -62,7 +62,7 @@ import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
 import { bumpCaretRequestSeq, CustomEventTypes, getEditableSelectionText, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFunctionCallDefaultText, getLabelSlotUID, getMatchingBracket, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, isSlotShortcutsPaneSpaceDueToDelay, openBracketCharacters, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringQuoteCharacters, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength, getFrameHeaderUID, getLastCaretPosInsideParent, getFlatCodeSlotsInLabelStruct, focusCaretContainerInput, closeRenameIdentifierPopups, getImportFrameNameBindings, waitForElementId } from "@/helpers/editor";
-import { checkCodeErrors, evaluateSlotType, filterAllowedJointChildrenAfter, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos, getParentId, getFrameSectionIdFromFrameId, areSlotStructuresIsomorphic, getAncestorFrameOfTypeId, findSlotsWithIndentifierName, isAncestorGatedFrameTypeAllowed } from "@/helpers/storeMethods";
+import { checkCodeErrors, evaluateSlotType, filterAllowedJointChildrenAfter, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos, getParentId, getFrameSectionIdFromFrameId, areSlotStructuresIsomorphic, getAncestorFrameOfTypeId, findSlotsWithIndentifierName, isAncestorGatedFrameTypeAllowed, isInsideTestFunction } from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import Parser from "@/parser/parser";
 import { calculateParamPrompt, invalidateParamPromptCache, prefetchImportedLibraryData } from "@/autocompletion/acManager";
@@ -73,7 +73,7 @@ import { handleVerticalCaretMove } from "@/helpers/spans";
 import { preparePasteMediaData } from "@/helpers/media";
 import { useAsyncComputed } from "@/helpers/vue3composables";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
-import { eventBus } from "@/helpers/appContext";
+import { eventBus, TestingSectionAvailable } from "@/helpers/appContext";
 import { BPopover } from "bootstrap-vue-next";
 
 interface KeywordFrameConversionDef {
@@ -834,6 +834,11 @@ export default defineComponent({
             if(parentId === 0){
                 return false;
             }
+            if(targetType === AllFrameTypesIdentifier.assert){
+                // An assert is only allowed inside a test function, but typed anywhere else it still converts, and the
+                // frame is then moved into a new test function (see performKeywordFrameConversion()):
+                return TestingSectionAvailable;
+            }
             if(this.appStore.frameObjects[parentId].frameType.forbiddenChildrenTypes.includes(targetType)){
                 // Not allowed right here, but if the type belongs in another section we still convert
                 // and then move the frame to where it belongs, as if it had been pasted here --
@@ -901,8 +906,13 @@ export default defineComponent({
             // The destination section may be collapsed, and the user needs to see the moved frame:
             this.appStore.frameObjects[getFrameSectionIdFromFrameId(this.frameId)].collapsedState = CollapsedState.FULLY_VISIBLE;
             // Likewise if it has gone to My code, which isn't showing while the Testing code is:
-            if(getFrameSectionIdFromFrameId(this.frameId) === this.appStore.getMainCodeFrameContainerId){
+            // (or to the Testing code, which isn't showing while My code is):
+            const newSectionId = getFrameSectionIdFromFrameId(this.frameId);
+            if(newSectionId === this.appStore.getMainCodeFrameContainerId){
                 this.appStore.mainSectionShowsTests = false;
+            }
+            else if(newSectionId === this.appStore.getTestsFrameContainerId){
+                this.appStore.mainSectionShowsTests = true;
             }
         },
 
@@ -1086,7 +1096,14 @@ export default defineComponent({
             // If this type isn't allowed where the frame currently is (e.g. "import" typed in the main
             // section), move it to the section it belongs in, as if it had been pasted here:
             const currentParentId = this.appStore.frameObjects[this.frameId].parentId;
-            if(!def.isJoint && this.appStore.frameObjects[currentParentId].frameType.forbiddenChildrenTypes.includes(def.targetType)){
+            if(def.targetType === AllFrameTypesIdentifier.assert && !isInsideTestFunction(this.frameId, CaretPosition.below)){
+                // An assert outside a test function goes into a new one (test_1, test_2...), at the top of the Testing section,
+                // which is then the section that is showing:
+                this.relocateFrameToCaretPosition({id: this.appStore.addNewTestFunction(), caretPosition: CaretPosition.body});
+                const movedFrameId = this.frameId;
+                waitForElementId(getFrameHeaderUID(movedFrameId)).then(() => document.getElementById(getFrameHeaderUID(movedFrameId))?.scrollIntoView({block: "nearest"}));
+            }
+            else if(!def.isJoint && this.appStore.frameObjects[currentParentId].frameType.forbiddenChildrenTypes.includes(def.targetType)){
                 const relocationTarget = this.getSectionRelocationTarget(def.targetType);
                 if(relocationTarget){
                     this.relocateFrameToCaretPosition(relocationTarget);
