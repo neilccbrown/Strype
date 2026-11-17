@@ -1,0 +1,11 @@
+- file: text-generation-v1.spy
+  image: text-generation.png
+  description: The starting version of the text generation project
+
+- file: text-generation-v2.spy
+  image: text-generation.png
+  description: The second version of the text generation project
+
+- file: sentiment-analysis.spy
+  image: sentiment-analysis.png
+  description: Analyse how positive or negative a text is
