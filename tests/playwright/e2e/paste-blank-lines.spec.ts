@@ -76,3 +76,53 @@ test.describe("Copying and pasting blank frames within Strype", () => {
         expect(await getFrameTypes(page)).toEqual([...original, ...original]);
     });
 });
+
+// Returns the frame types as in getFrameTypes(), but each prefixed by a dot per level of nesting
+// (a joint frame like "else" is nested inside its "if", as it is in the DOM), joined into one string.
+async function getFrameTree(page: Page) : Promise<string> {
+    return await page.evaluate(() => Array.from(document.querySelectorAll("[data-frameType]")).map((e) => {
+        let depth = 0;
+        for (let p = e.parentElement; p; p = p.parentElement) {
+            if (p.hasAttribute("data-frameType")) {
+                depth++;
+            }
+        }
+        const t = (e as HTMLElement).dataset.frametype as string;
+        return ".".repeat(depth) + (t == "blank" ? "_" : t == "varassign" ? "=" : t == "funccall" ? "call" : t);
+    }).join(" "));
+}
+
+// Pastes the code, checks the resulting frame tree, then copies all those frames, pastes them again
+// at the end and checks that the tree is now two copies of the original.
+async function checkRoundTrip(page: Page, code: string, expectedTree: string) : Promise<void> {
+    await enterCode(page, ["", "", code]);
+    expect(await getFrameTree(page)).toEqual(expectedTree);
+    const frameCount = expectedTree.split(" ").length;
+    await page.keyboard.press("End");
+    // More presses than there are top-level frames is fine, it stops at the top:
+    for (let i = 0; i < frameCount; i++) {
+        await page.keyboard.press("Shift+ArrowUp");
+    }
+    await page.keyboard.press("ControlOrMeta+c");
+    await page.keyboard.press("End");
+    await doPagePaste(page, await page.evaluate(() => window.navigator.clipboard.readText()));
+    expect(await getFrameTree(page)).toEqual(expectedTree + " " + expectedTree);
+}
+
+// Note: a body with nothing but blanks (and comments) is written out with a "pass" at the start (which doesn't become a frame).
+test.describe("Round-tripping control flow with only blank frames in the body", () => {
+    test("if", ({page}) => checkRoundTrip(page, "if x:\n    pass\n    \n    \n", "if ._ ._"));
+    test("while", ({page}) => checkRoundTrip(page, "while x:\n    pass\n    \n    \n", "while ._ ._"));
+    test("for", ({page}) => checkRoundTrip(page, "for i in y:\n    pass\n    \n", "for ._"));
+    test("try/except", ({page}) => checkRoundTrip(page, "try:\n    pass\n    \nexcept:\n    pass\n    \n    \n", "try ._ .except .._ .._"));
+    test("if/elif/else", ({page}) => checkRoundTrip(page, "if x:\n    pass\n    \nelif y:\n    pass\n    \n    \nelse:\n    pass\n    \n", "if ._ .elif .._ .._ .else .._"));
+    test("Blanks after the construct are kept outside it", ({page}) => checkRoundTrip(page, "if x:\n    pass\n    \n\n\nprint(1)\n", "if ._ _ _ call"));
+});
+
+test.describe("Round-tripping control flow with blanks before, between and after assignments", () => {
+    test("while", ({page}) => checkRoundTrip(page, "while x:\n    \n    a = 1\n    \n    \n    b = 2\n    \n", "while ._ .= ._ ._ .= ._"));
+    test("for, with no blanks at the ends", ({page}) => checkRoundTrip(page, "for i in y:\n    a = 1\n    \n    b = 2\n", "for .= ._ .="));
+    test("try/except/finally", ({page}) => checkRoundTrip(page, "try:\n    \n    a = 1\n    \n    b = 2\n    \nexcept:\n    \n    c = 3\n    \n    d = 4\n    \nfinally:\n    e = 5\n    \n", "try ._ .= ._ .= ._ .except .._ ..= .._ ..= .._ .finally ..= .._"));
+    test("if/elif/else", ({page}) => checkRoundTrip(page, "if x:\n    \n    a = 1\n    \n    b = 2\n    \nelif y:\n    \n    c = 3\n    \nelse:\n    \n    d = 4\n    \n", "if ._ .= ._ .= ._ .elif .._ ..= .._ .else .._ ..= .._"));
+    test("Nested, with blanks at the end of both bodies", ({page}) => checkRoundTrip(page, "if x:\n    if y:\n        \n        a = 1\n        \n        b = 2\n        \n    \n    \n", "if .if .._ ..= .._ ..= .._ ._ ._"));
+});
