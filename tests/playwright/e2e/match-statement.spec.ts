@@ -360,7 +360,7 @@ test.describe("Delete Match statement", () => {
     
     test("Backspace inside complex Match", async ({page}) => {
         // Paste some small complex match case code
-        await doPagePaste(page, complexMatchCodeLiteral);
+        await doPagePaste(page, complexMatchCodeLiteral.trimStart());
         await waitForEditorSettled(page);
         // Go back to the top of the main section, then inside main
         await page.keyboard.press("Home");

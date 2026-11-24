@@ -520,8 +520,7 @@ def outer():
     });
     it("Moves nested functions in main code", () => {
         // Since the default code contains a project doc, we need to include it to the code
-        testRoundTripPasteAndDownload(`
-if True:
+        testRoundTripPasteAndDownload(`if True:
     def inner():
         return 7
     pass
@@ -533,8 +532,7 @@ if True:
     });
     it("Moves nested imports in main code", () => {
         // Since the default code contains a project doc, we need to include it to the code
-        testRoundTripPasteAndDownload(`
-if True:
+        testRoundTripPasteAndDownload(`if True:
     import random
     random.random()
 `,"", `${defaultProjectDocFullLine}import random

@@ -322,8 +322,7 @@ print("Hi")
         await checkFrameErrorCount(page, 0);
     });
     test("Check console clears stderr #2", async ({page}) => {
-        await enterCode(page, ["import traceback", "", `
-try:
+        await enterCode(page, ["import traceback", "", `try:
     print(len(None))
 except Exception:
     traceback.print_exc()

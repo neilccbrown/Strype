@@ -399,7 +399,7 @@ test.describe("Check graphics works when shared with turtle", () => {
             Actor("mouse-test.jpg")
             while True:
                 pace(20)
-        `]);
+        `.replace(/^\n|\n\s*$/g, "")]);
         await page.click("#graphicsPEATab");
         await setupGraphicsRedrawObserver(page);
         const button = await startRunning(page);

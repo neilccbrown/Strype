@@ -307,7 +307,7 @@ test.describe("Variable changes in main section", () => {
         // pressN(..., true) already waits for the editor to settle after each press:
         await pressN("Delete", 2, true)(page);
         // Paste intial code
-        await doPagePaste(page, mainCodeMultiVarsCodeLiteral);
+        await doPagePaste(page, mainCodeMultiVarsCodeLiteral.trimStart());
         // Rename both variables
         await page.keyboard.press("Home");
         await waitForEditorSettled(page);
