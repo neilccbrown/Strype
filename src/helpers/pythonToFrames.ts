@@ -300,7 +300,7 @@ export function offsetAllIds(frames: CopiedFrames, offset: number) : CopiedFrame
 // throws CopyFailure with a string with some info about where the Python parse failed. Calls the
 // tree-sitter-based parse/walk pipeline (parseWithTreeSitter() + processBlockItems()); this used
 // to call a Skulpt-based parseWithSkulpt() + copyFramesFromPython() pipeline instead, since deleted.
-function copyFramesFromParsedPython(codeLines: string[], currentStrypeLocation: STRYPE_LOCATION, format: "py" | "spy", linenoMapping?: Record<number, number>) : CopiedFrames {
+function copyFramesFromParsedPython(codeLines: string[], currentStrypeLocation: STRYPE_LOCATION, format: "py" | "spy", linenoMapping?: Record<number, number>, keepTrailingBlanks = false) : CopiedFrames {
     const indents = new Map<number, string>();
 
     // Then find the common amount of indentation on non-blank lines and remove it:
@@ -356,8 +356,9 @@ function copyFramesFromParsedPython(codeLines: string[], currentStrypeLocation: 
         // We assign new IDs starting from 1, later on they are offset:
         // A .spy file's blank lines are all real blank frames, including any after the section's last statement (which
         // are not followed by anything in this section's lines), so look all the way to the end of the lines for
-        // those. For plain Python, trailing blank lines are just whitespace after the code, so aren't frames:
-        processBlockItems(parsed.tree.rootNode.children, -1, format === "spy" ? codeLines.length : undefined, {nextId: 1, addToNonJoint: result.frameIds, addToJoint: undefined, loadedFrames: result.frames, disabledLines: parsed.disabledLines, frameStateLines: new Map<number, SavedFrameState>(), parent: null, jointParent: null, lastLineProcessed: 0, lineNumberToIndentation: indents, isSPY: format === "spy", transformTopComment: (c) => {
+        // those. For plain Python, trailing blank lines of a section are just whitespace after the code, so aren't frames
+        // -- except for the blank lines at the very end of pasted text, where the caller tells us to keep them:
+        processBlockItems(parsed.tree.rootNode.children, -1, (format === "spy" || keepTrailingBlanks) ? codeLines.length : undefined, {nextId: 1, addToNonJoint: result.frameIds, addToJoint: undefined, loadedFrames: result.frames, disabledLines: parsed.disabledLines, frameStateLines: new Map<number, SavedFrameState>(), parent: null, jointParent: null, lastLineProcessed: 0, lineNumberToIndentation: indents, isSPY: format === "spy", transformTopComment: (c) => {
             result.docSlots = c;
         }});
         // At this stage, we can make a sanity check that we can copy the given Python code in the current position in Strype (for example, no "import" in a function definition section)
@@ -1208,7 +1209,7 @@ function makeMapping(section: NumberedLine[]) : Record<number, number> {
 // Each line of the original will end up in exactly one of the four parts of the return.
 // With Python's indentation rules, this operation is actually easier at line level than it is post-parse.
 // The mappings map line numbers in the returned sections to line numbers in the original
-function splitLinesToSections(allLines : string[], leadingAssignmentsGoInDefs: boolean, functionsStayInMain = false) : {projectDoc: string[], imports: string[]; funcDefs: string[]; classDefs: string[]; main: string[], tests: string[], importsMapping: Record<number, number>, funcDefsMapping: Record<number, number>, classDefsMapping: Record<number, number>, mainMapping: Record<number, number>, testsMapping: Record<number, number>, headers: Record<string, string>, format: "py" | "spy"} {
+function splitLinesToSections(allLines : string[], leadingAssignmentsGoInDefs: boolean, functionsStayInMain = false) : {projectDoc: string[], imports: string[]; funcDefs: string[]; classDefs: string[]; main: string[], tests: string[], importsMapping: Record<number, number>, funcDefsMapping: Record<number, number>, classDefsMapping: Record<number, number>, mainMapping: Record<number, number>, testsMapping: Record<number, number>, headers: Record<string, string>, format: "py" | "spy", trailingBlanksSection?: "imports" | "funcDefs" | "classDefs" | "main"} {
     // There's two possibilities:
     //  - we're loading a .spy with section headings, or
     //  - we're loading a .py where we must infer it.
@@ -1400,7 +1401,23 @@ function splitLinesToSections(allLines : string[], leadingAssignmentsGoInDefs: b
         }
     }
 
+    // Similarly, trailing blank lines go in the section that holds the last real line.  We record which section that is,
+    // because unlike blanks in the middle of the code, blanks at the end of a section aren't picked up by default when
+    // converting to frames (see keepTrailingBlanks in copyFramesFromParsedPython()):
+    let trailingBlanksSection : "imports" | "funcDefs" | "classDefs" | "main" | undefined = undefined;
+    if (lastNonBlankIndex >= 0 && lastNonBlankIndex < allLines.length - 1) {
+        const candidates = {imports, funcDefs, classDefs, main};
+        const maxLineno = (sec: NumberedLine[]) => sec.reduce((m, l) => Math.max(m, l.lineno), 0);
+        const last = (Object.keys(candidates) as (keyof typeof candidates)[]).reduce((best, k) => maxLineno(candidates[k]) > maxLineno(candidates[best]) ? k : best, "main" as keyof typeof candidates);
+        // If the project doc has the last line (which can only happen if it's the only thing), blanks are dropped:
+        if (maxLineno(candidates[last]) > maxLineno(projectDoc)) {
+            candidates[last].push(...allLines.slice(lastNonBlankIndex + 1).map((text, i) => ({text, lineno: lastNonBlankIndex + 2 + i})));
+            trailingBlanksSection = last;
+        }
+    }
+
     return {
+        trailingBlanksSection,
         projectDoc: projectDoc.sort((a, b) => a.lineno - b.lineno).map((l) => l.text), 
         imports: imports.sort((a, b) => a.lineno - b.lineno).map((l) => l.text),
         funcDefs: funcDefs.sort((a, b) => a.lineno - b.lineno).map((l) => l.text),
@@ -1506,15 +1523,15 @@ export function pasteMixedPython(completeSource: string, at: CurrentFrame, clear
     let testsFrames : CopiedFrames;
     let docFrames : CopiedFrames;
     try {
-        importFrames = copyFramesFromParsedPython(s.imports, STRYPE_LOCATION.IMPORTS_SECTION, s.format, s.importsMapping);
-        funcDefFrames = copyFramesFromParsedPython(s.funcDefs, STRYPE_LOCATION.DEFS_SECTION, s.format, s.funcDefsMapping);
-        classDefFrames = copyFramesFromParsedPython(s.classDefs, STRYPE_LOCATION.DEFS_SECTION, s.format, s.classDefsMapping);
+        importFrames = copyFramesFromParsedPython(s.imports, STRYPE_LOCATION.IMPORTS_SECTION, s.format, s.importsMapping, s.trailingBlanksSection == "imports");
+        funcDefFrames = copyFramesFromParsedPython(s.funcDefs, STRYPE_LOCATION.DEFS_SECTION, s.format, s.funcDefsMapping, s.trailingBlanksSection == "funcDefs");
+        classDefFrames = copyFramesFromParsedPython(s.classDefs, STRYPE_LOCATION.DEFS_SECTION, s.format, s.classDefsMapping, s.trailingBlanksSection == "classDefs");
         // We may be trying to paste something inside a function defintion.
         // The "content" to paste is seen as if it was to paste in the main section,
         // however the rules are slightly different: we use the current location to decide
         // what container we should check the code against.
         const pastingSectionTarget = (curLocation == STRYPE_LOCATION.IN_FUNCDEF || isInTestsSection) ? curLocation : STRYPE_LOCATION.MAIN_CODE_SECTION;
-        mainFrames = copyFramesFromParsedPython(s.main, pastingSectionTarget, s.format, s.mainMapping);
+        mainFrames = copyFramesFromParsedPython(s.main, pastingSectionTarget, s.format, s.mainMapping, s.trailingBlanksSection == "main");
         testsFrames = copyFramesFromParsedPython(s.tests, STRYPE_LOCATION.TESTS_SECTION, s.format, s.testsMapping);
         docFrames = copyFramesFromParsedPython(s.projectDoc, STRYPE_LOCATION.PROJECT_DOC_SECTION, s.format, s.mainMapping);
     }

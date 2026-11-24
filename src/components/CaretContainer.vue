@@ -334,10 +334,11 @@ export default defineComponent({
                 }
                 // #v-endif
                 const pythonCode = event.clipboardData?.getData("text");
-                // Note we don't permanently trim the code because we need to preserve leading indent.
+                // Note we don't trim the code because we need to preserve leading indent and leading/trailing blank lines
+                // (a single final newline is ignored by pasteMixedPython).
                 // But we trim for the purposes of checking if there's any content at all:
                 if (pythonCode != undefined && pythonCode?.trim()) {
-                    const res = pasteMixedPython(pythonCode.trimEnd(), pasteDestination, false, false, true);
+                    const res = pasteMixedPython(pythonCode, pasteDestination, false, false, true);
                     if(res != null){
                         this.appStore.saveStateChanges(stateBeforeChanges);
                     }
