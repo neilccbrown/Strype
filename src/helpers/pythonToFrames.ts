@@ -1292,7 +1292,18 @@ function splitLinesToSections(allLines : string[], leadingAssignmentsGoInDefs: b
     // -1 if we're not in a def
     let outermostDefIndentLevel = -1;
     let curDefTypeIsClass = false;
+    // Blank lines before the first and after the last real line aren't part of any particular
+    // section as far as the loop below can tell, so we leave them out of it and add them to the
+    // appropriate section afterwards (see below):
+    const firstNonBlankIndex = allLines.findIndex((l) => l.trim() != "");
+    let lastNonBlankIndex = allLines.length - 1;
+    while (lastNonBlankIndex >= 0 && allLines[lastNonBlankIndex].trim() == "") {
+        lastNonBlankIndex--;
+    }
     allLines.forEach((line : string, zeroBasedLine : number) => {
+        if (zeroBasedLine < firstNonBlankIndex || zeroBasedLine > lastNonBlankIndex) {
+            return;
+        }
         const lineWithNum : NumberedLine = {text: line, lineno: zeroBasedLine + 1};
         const indentLevel = line.length - line.trimStart().length;
         if (line.trim() != "" && indentLevel <= outermostDefIndentLevel) {
@@ -1362,6 +1373,11 @@ function splitLinesToSections(allLines : string[], leadingAssignmentsGoInDefs: b
                 }
                 main.push(lineWithNum);
             }
+            else if (latestAssignments.length > 0) {
+                // A blank between assignments that are still waiting to be placed (see above): it belongs with them,
+                // not with the blanks that precede the first real line of main (which we deliberately skip):
+                latestAssignments.push(lineWithNum);
+            }
         }
     });
     // Add any trailing comments and assignments:
@@ -1372,7 +1388,18 @@ function splitLinesToSections(allLines : string[], leadingAssignmentsGoInDefs: b
         main.push(...latestAssignments);
     }
     main.push(...latestComments);
-    
+
+    // Blank lines before the first real line go in the same section as that line, so that
+    // pasting "\n\nx = 1" gives two blank frames and then x = 1.  The project doc can't hold blanks, so we drop them then:
+    if (firstNonBlankIndex > 0) {
+        const sections = [projectDoc, imports, funcDefs, classDefs, main].filter((sec) => sec.length > 0);
+        const minLineno = (sec: NumberedLine[]) => sec.reduce((m, l) => Math.min(m, l.lineno), Infinity);
+        const first = sections.reduce((best, sec) => minLineno(sec) < minLineno(best) ? sec : best);
+        if (first !== projectDoc) {
+            first.push(...allLines.slice(0, firstNonBlankIndex).map((text, i) => ({text, lineno: i + 1})));
+        }
+    }
+
     return {
         projectDoc: projectDoc.sort((a, b) => a.lineno - b.lineno).map((l) => l.text), 
         imports: imports.sort((a, b) => a.lineno - b.lineno).map((l) => l.text),
